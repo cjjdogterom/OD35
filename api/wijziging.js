@@ -2,8 +2,8 @@ const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
+  'https://mxbtmbcgycjqapjzulrp.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14YnRtYmNneWNqcWFwanp1bHJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MDQ4MzgsImV4cCI6MjA5MzQ4MDgzOH0.6Qowa_mqhH7YtrljF5fZnQzUaG_u4N5TodcnLzRhYSM'
 );
 
 module.exports = async function handler(req, res) {
@@ -25,7 +25,7 @@ module.exports = async function handler(req, res) {
   });
   if (dbError) {
     console.error('DB fout:', dbError);
-    return res.status(500).json({ error: 'Opslaan mislukt' });
+    return res.status(500).json({ error: 'Opslaan mislukt: ' + dbError.message });
   }
 
   // Haal admin e-mails op
@@ -59,7 +59,6 @@ module.exports = async function handler(req, res) {
       });
     } catch (emailErr) {
       console.error('E-mail fout:', emailErr);
-      // Verzoek is wel opgeslagen, dus geen fout teruggeven
     }
   }
 
