@@ -4357,35 +4357,63 @@ function closeLightbox() {
 async function uploadFotos(files, albumId) {
   if (!files || files.length === 0) return;
   const progress = document.getElementById('foto-upload-progress');
-  const fileArr = Array.from(files);
+  const setProgress = (msg, isError) => {
+    if (!progress) return;
+    progress.textContent = msg;
+    progress.style.color = isError ? '#c0392b' : 'var(--moss)';
+    progress.style.display = 'block';
+  };
+
+  const fileArr = Array.from(files).filter(f => f.type.startsWith('image/'));
+  if (fileArr.length === 0) { setProgress('Geen afbeeldingen geselecteerd.', true); return; }
+
   let done = 0;
   const total = fileArr.length;
-  if (progress) progress.textContent = `Bezig met uploaden: 0 / ${total}`;
+  setProgress(`Bezig met uploaden: 0 / ${total}…`, false);
 
   for (const file of fileArr) {
     try {
-      const ext = file.name.split('.').pop().toLowerCase();
-      const uuid = crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2);
-      const path = `${albumId}/${uuid}.${ext}`;
+      const ext = file.name.split('.').pop().replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg';
+      const uid = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '_' + Math.random().toString(36).slice(2));
+      const path = `${albumId}/${uid}.${ext}`;
 
-      const { error: upErr } = await db.storage.from('fotos').upload(path, file, { cacheControl: '3600', upsert: false });
-      if (upErr) throw upErr;
+      setProgress(`Uploaden ${done + 1} / ${total}: ${file.name}…`, false);
+
+      const { error: upErr } = await db.storage.from('fotos').upload(path, file, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: file.type,
+      });
+      if (upErr) {
+        console.error('Storage upload fout:', upErr);
+        setProgress(`Fout bij "${file.name}": ${upErr.message || JSON.stringify(upErr)}`, true);
+        continue;
+      }
 
       const { data: urlData } = db.storage.from('fotos').getPublicUrl(path);
-      const url = urlData.publicUrl;
+      if (!urlData?.publicUrl) {
+        setProgress(`Kon URL niet ophalen voor "${file.name}".`, true);
+        continue;
+      }
 
-      const { error: insErr } = await db.from('fotos').insert({ album_id: albumId, url, volgorde: 0 });
-      if (insErr) throw insErr;
+      const { error: insErr } = await db.from('fotos').insert({ album_id: albumId, url: urlData.publicUrl, volgorde: done });
+      if (insErr) {
+        console.error('DB insert fout:', insErr);
+        setProgress(`Fout bij opslaan "${file.name}": ${insErr.message}`, true);
+        continue;
+      }
 
       done++;
-      if (progress) progress.textContent = `Geüpload: ${done} / ${total}`;
+      setProgress(`Geüpload: ${done} / ${total}`, false);
     } catch (e) {
       console.error('Upload fout:', e);
-      if (progress) progress.textContent = `Fout bij uploaden van ${file.name}: ${e.message}`;
+      setProgress(`Onverwachte fout bij "${file.name}": ${e.message}`, true);
     }
   }
 
-  if (progress) progress.textContent = `Klaar! ${done} foto${done !== 1 ? "'s" : ''} geüpload.`;
+  if (done === total) setProgress(`Klaar! ${done} foto${done !== 1 ? "'s" : ''} geüpload.`, false);
+  else if (done > 0) setProgress(`${done} van ${total} foto's geüpload (${total - done} mislukt).`, true);
+
   await loadFotos(albumId);
   await loadAlbums();
   renderAlbumFotos(albumId);
