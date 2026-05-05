@@ -2106,6 +2106,7 @@
   </select>
   <button id="reset" class="reset-btn">Reset</button>
   <button id="export-excel" class="export-btn" title="Exporteer alle data naar Excel">Excel export</button>
+  <button id="broadcast-btn" class="export-btn admin-only" title="Stuur een mail naar alle leden" style="display:none">Mail naar iedereen</button>
 </div>
 
 <div class="alphabet" id="alphabet"></div>
@@ -2329,6 +2330,10 @@ function updateAdminUI() {
     fab.classList.remove('logged-in');
     fab.title = 'Admin inloggen';
   }
+  // Toon/verberg admin-only UI elementen
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = adminUser ? '' : 'none';
+  });
 }
 
 // ── Admin: persoon modal ──────────────────────────────────────────────────────
@@ -3988,6 +3993,113 @@ document.getElementById('history-reset').addEventListener('click', () => {
   }
 });
 
+// ==================== MAIL NAAR IEDEREEN ====================
+function getAllEmails(filterMode) {
+  let pool = PEOPLE;
+  if (filterMode === 'levend') {
+    pool = pool.filter(p => p['Status'] !== 'Overleden');
+  } else if (filterMode === 'filtered') {
+    pool = pool.filter(p => {
+      if (currentQuery && !p._searchText.includes(currentQuery)) return false;
+      if (currentJaar && String(p['Aankomstjaar']) !== currentJaar) return false;
+      if (currentStatus === 'levend' && p['Status'] === 'Overleden') return false;
+      if (currentStatus === 'overleden' && p['Status'] !== 'Overleden') return false;
+      if (currentStatus === 'huis-oudste' && !isHuisOudste(p)) return false;
+      if (currentLetter) {
+        const first = (p['Achternaam'] || '').charAt(0).toUpperCase();
+        if (first !== currentLetter) return false;
+      }
+      return true;
+    });
+  }
+  const emails = new Set();
+  pool.forEach(p => {
+    for (let i = 1; i <= 5; i++) {
+      const e = (p[`E-mail ${i}`] || '').trim();
+      if (e && /@/.test(e)) emails.add(e.toLowerCase());
+    }
+  });
+  return [...emails];
+}
+
+function refreshBroadcastCount() {
+  const mode = document.getElementById('bc-filter').value;
+  const emails = getAllEmails(mode);
+  document.getElementById('bc-count').textContent = emails.length;
+  const info = document.getElementById('broadcast-recipients-info');
+  if (info) {
+    info.textContent = `${emails.length} unieke e-mailadressen geselecteerd. Mails worden via Resend verstuurd.`;
+  }
+}
+
+document.getElementById('broadcast-btn').addEventListener('click', () => {
+  if (!isAdmin()) return;
+  document.getElementById('bc-subject').value = '';
+  document.getElementById('bc-html').value = '';
+  document.getElementById('bc-replyto').value = adminUser?.email || '';
+  document.getElementById('bc-error').textContent = '';
+  document.getElementById('bc-result').textContent = '';
+  document.getElementById('bc-submit').disabled = false;
+  document.getElementById('broadcast-modal').classList.remove('hidden');
+  refreshBroadcastCount();
+});
+
+document.getElementById('close-broadcast-modal').addEventListener('click', () => {
+  document.getElementById('broadcast-modal').classList.add('hidden');
+});
+
+document.getElementById('bc-filter').addEventListener('change', refreshBroadcastCount);
+
+document.getElementById('broadcast-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const submitBtn = document.getElementById('bc-submit');
+  const errEl = document.getElementById('bc-error');
+  const resEl = document.getElementById('bc-result');
+  errEl.textContent = '';
+  resEl.textContent = '';
+
+  const mode = document.getElementById('bc-filter').value;
+  const recipients = getAllEmails(mode);
+  if (recipients.length === 0) {
+    errEl.textContent = 'Geen ontvangers gevonden met de huidige filter.';
+    return;
+  }
+  const subject = document.getElementById('bc-subject').value.trim();
+  const html = document.getElementById('bc-html').value.trim();
+  const replyTo = document.getElementById('bc-replyto').value.trim();
+  if (!subject || !html) {
+    errEl.textContent = 'Onderwerp en bericht zijn verplicht.';
+    return;
+  }
+  if (!confirm(`Weet je zeker dat je een mail wilt versturen naar ${recipients.length} ontvangers?`)) return;
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Versturen…';
+  resEl.textContent = `Bezig met versturen naar ${recipients.length} ontvangers (kan even duren)…`;
+
+  try {
+    const res = await fetch('/api/broadcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subject, html, recipients, replyTo: replyTo || null })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Versturen mislukt.';
+    } else {
+      resEl.innerHTML = `<strong>Klaar.</strong> ${data.ok} verstuurd, ${data.failed} mislukt (van ${data.total}).`;
+      if (data.errors && data.errors.length) {
+        resEl.innerHTML += `<br><small>Eerste fouten: ${data.errors.map(e => `${e.email}: ${e.message}`).join(' / ')}</small>`;
+      }
+    }
+  } catch (err) {
+    errEl.textContent = 'Netwerkfout: ' + err.message;
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = `Verstuur naar <span id="bc-count">${recipients.length}</span> ontvangers`;
+  }
+});
+
 // ==================== EXCEL EXPORT ====================
 document.getElementById('export-excel').addEventListener('click', () => {
   if (typeof XLSX === 'undefined') {
@@ -4635,6 +4747,40 @@ async function submitAlbumForm() {
       </div>
       <button type="submit" class="login-btn" id="login-submit">Inloggen</button>
       <div class="login-error" id="login-error"></div>
+    </form>
+  </div>
+</div>
+
+<!-- Mail naar iedereen modal -->
+<div class="modal-overlay hidden" id="broadcast-modal">
+  <div class="modal-box wide">
+    <button class="modal-close" id="close-broadcast-modal">✕</button>
+    <h3>Mail naar iedereen</h3>
+    <p class="modal-sub" id="broadcast-recipients-info">Hieronder worden de ontvangers berekend zodra je het venster opent…</p>
+    <form id="broadcast-form">
+      <div class="login-field">
+        <label>Filter</label>
+        <select id="bc-filter" style="width:100%; padding:0.6rem; border:1px solid var(--line); background:#fff; font-family:inherit;">
+          <option value="all">Alle leden met e-mailadres</option>
+          <option value="levend">Alleen levenden</option>
+          <option value="filtered">Personen die nu in de lijst staan (huidige zoekfilter)</option>
+        </select>
+      </div>
+      <div class="login-field">
+        <label>Reply-To (optioneel — antwoord-adres)</label>
+        <input type="email" id="bc-replyto" placeholder="bv. praeses@oudleden-od35.nl">
+      </div>
+      <div class="login-field">
+        <label>Onderwerp</label>
+        <input type="text" id="bc-subject" required placeholder="Bijvoorbeeld: Uitnodiging reünie 2026">
+      </div>
+      <div class="login-field">
+        <label>Bericht (HTML toegestaan, gebruik &lt;br&gt; of &lt;p&gt; voor regelafbreking)</label>
+        <textarea id="bc-html" required rows="10" style="width:100%; padding:0.6rem; border:1px solid var(--line); font-family:Georgia,serif; font-size:0.95rem;" placeholder="Beste oud-huisgenoten,&#10;&#10;..."></textarea>
+      </div>
+      <button type="submit" class="login-btn" id="bc-submit">Verstuur naar <span id="bc-count">0</span> ontvangers</button>
+      <div class="login-error" id="bc-error" style="margin-top:0.5rem;"></div>
+      <div id="bc-result" style="margin-top:0.5rem; font-size:0.85rem;"></div>
     </form>
   </div>
 </div>
