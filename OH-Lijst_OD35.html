@@ -1662,6 +1662,43 @@
     margin: 0.5rem 0;
   }
 
+/* ==================== WIJZIGINGSVERZOEKEN TAB ==================== */
+.wijz-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap;
+}
+.wijz-header h2 { margin: 0; font-size: 1.4rem; color: var(--burgundy); font-family: 'Lora', serif; font-weight: normal; }
+.wijz-controls { display: flex; gap: 0.5rem; }
+.wijz-list { display: flex; flex-direction: column; gap: 1rem; }
+.wijz-card {
+  background: var(--paper); border: 1px solid var(--line);
+  border-left: 4px solid var(--burgundy);
+  padding: 1.2rem 1.4rem; position: relative;
+}
+.wijz-card.afgehandeld { border-left-color: #4a8c4a; opacity: 0.65; }
+.wijz-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
+.wijz-card-persoon { font-weight: 600; font-size: 1.05rem; color: var(--ink); }
+.wijz-card-datum { font-size: 0.78rem; color: var(--gray); white-space: nowrap; }
+.wijz-card-aanvrager { font-size: 0.85rem; color: var(--gray); margin-bottom: 0.8rem; }
+.wijz-card-aanvrager a { color: var(--burgundy); text-decoration: none; }
+.wijz-card-aanvrager a:hover { text-decoration: underline; }
+.wijz-row { display: grid; grid-template-columns: 130px 1fr; gap: 0.5rem 1rem; padding: 0.4rem 0; border-bottom: 1px solid #f0ebe2; font-size: 0.92rem; }
+.wijz-row:last-of-type { border-bottom: none; }
+.wijz-row .label { color: var(--gray); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 0.1rem; }
+.wijz-row .value { color: var(--ink); white-space: pre-wrap; word-break: break-word; }
+.wijz-actions { margin-top: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.wijz-check-label { display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; user-select: none; font-size: 0.9rem; }
+.wijz-check-label input { width: 18px; height: 18px; cursor: pointer; }
+.wijz-delete-btn { background: transparent; border: 1px solid var(--line); color: var(--gray); padding: 0.4rem 0.8rem; cursor: pointer; font-family: 'Lora', serif; font-size: 0.82rem; border-radius: 2px; }
+.wijz-delete-btn:hover { background: #c14040; color: white; border-color: #c14040; }
+.wijz-empty { text-align: center; padding: 3rem 1rem; color: var(--gray); font-style: italic; }
+.tab-badge {
+  display: inline-block; min-width: 18px; padding: 1px 6px;
+  background: #c14040; color: white; border-radius: 9px;
+  font-size: 0.7rem; font-weight: bold; margin-left: 4px; vertical-align: 1px;
+}
+.tab-badge:empty { display: none; }
+
 /* ==================== FOTO'S TAB ==================== */
 .fotos-header {
   display: flex;
@@ -2086,6 +2123,7 @@
   <button class="tab-btn" data-tab="agenda">Agenda</button>
   <button class="tab-btn" data-tab="contacten">Contacten</button>
   <button class="tab-btn" data-tab="geschiedenis">Geschiedenis</button>
+  <button class="tab-btn admin-only" data-tab="wijzigingen" style="display:none">Verzoeken <span id="wijzigingen-badge" class="tab-badge"></span></button>
 </nav>
 
 <!-- ==================== TAB: PERSONEN ==================== -->
@@ -2192,6 +2230,21 @@
   </div>
   <div id="fotos-content"></div>
 </div><!-- /panel-fotos -->
+
+<!-- ==================== TAB: WIJZIGINGSVERZOEKEN (admin only) ==================== -->
+<div class="tab-panel" id="panel-wijzigingen">
+  <div class="wijz-header">
+    <h2>Wijzigingsverzoeken</h2>
+    <div class="wijz-controls">
+      <select id="wijz-filter" class="filter-select">
+        <option value="open">Openstaand</option>
+        <option value="afgehandeld">Afgehandeld</option>
+        <option value="alle">Alle</option>
+      </select>
+    </div>
+  </div>
+  <div id="wijz-list" class="wijz-list"></div>
+</div><!-- /panel-wijzigingen -->
 
 <footer>
   Oude Delft 35 · oud-huisgenoten register · 401 personen · 1896–2024
@@ -2328,6 +2381,14 @@ function updateAdminUI() {
     bar.classList.remove('visible');
     fab.classList.remove('logged-in');
     fab.title = 'Admin inloggen';
+  }
+  // Toon/verberg admin-only UI elementen
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = adminUser ? '' : 'none';
+  });
+  // Laad wijzigingen badge zodra admin inlogt
+  if (adminUser && typeof loadWijzigingen === 'function') {
+    loadWijzigingen();
   }
 }
 
@@ -3217,6 +3278,111 @@ document.getElementById('tab-nav').addEventListener('click', e => {
   if (tab === 'contacten') renderContacts();
   if (tab === 'geschiedenis') renderHistory();
   if (tab === 'fotos') { loadAlbums().then(renderFotosTab); }
+  if (tab === 'wijzigingen') { loadWijzigingen(); }
+});
+
+// ==================== WIJZIGINGSVERZOEKEN ====================
+let wijzigingenList = [];
+
+async function loadWijzigingen() {
+  if (!isAdmin()) return;
+  const list = document.getElementById('wijz-list');
+  if (list) list.innerHTML = '<div class="wijz-empty">Laden…</div>';
+  try {
+    const { data, error } = await db.from('wijzigingsverzoeken')
+      .select('*')
+      .order('aangemaakt_op', { ascending: false });
+    if (error) throw error;
+    wijzigingenList = data || [];
+    renderWijzigingen();
+    updateWijzigingenBadge();
+  } catch (e) {
+    if (list) list.innerHTML = `<div class="wijz-empty">Fout bij laden: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function updateWijzigingenBadge() {
+  const badge = document.getElementById('wijzigingen-badge');
+  if (!badge) return;
+  const open = wijzigingenList.filter(w => !w.afgehandeld).length;
+  badge.textContent = open > 0 ? open : '';
+}
+
+function renderWijzigingen() {
+  const list = document.getElementById('wijz-list');
+  const filter = document.getElementById('wijz-filter')?.value || 'open';
+  if (!list) return;
+
+  let filtered = wijzigingenList;
+  if (filter === 'open') filtered = filtered.filter(w => !w.afgehandeld);
+  else if (filter === 'afgehandeld') filtered = filtered.filter(w => w.afgehandeld);
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="wijz-empty">Geen ${filter === 'afgehandeld' ? 'afgehandelde' : filter === 'open' ? 'openstaande' : ''} wijzigingsverzoeken.</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(w => {
+    const datum = w.aangemaakt_op ? new Date(w.aangemaakt_op).toLocaleString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    return `
+      <div class="wijz-card ${w.afgehandeld ? 'afgehandeld' : ''}" data-id="${escapeHtml(w.id)}">
+        <div class="wijz-card-head">
+          <div class="wijz-card-persoon">${escapeHtml(w.persoon || '')}</div>
+          <div class="wijz-card-datum">${escapeHtml(datum)}</div>
+        </div>
+        <div class="wijz-card-aanvrager">
+          Aangevraagd door <strong>${escapeHtml(w.aanvrager_naam || '')}</strong>
+          ${w.aanvrager_email ? ` &middot; <a href="mailto:${escapeHtml(w.aanvrager_email)}">${escapeHtml(w.aanvrager_email)}</a>` : ''}
+        </div>
+        <div class="wijz-row"><div class="label">Veld</div><div class="value">${escapeHtml(w.veld || '')}</div></div>
+        <div class="wijz-row"><div class="label">Wijziging</div><div class="value">${escapeHtml(w.wijziging || '')}</div></div>
+        ${w.toelichting ? `<div class="wijz-row"><div class="label">Toelichting</div><div class="value">${escapeHtml(w.toelichting)}</div></div>` : ''}
+        <div class="wijz-actions">
+          <label class="wijz-check-label">
+            <input type="checkbox" data-action="toggle-afgehandeld" data-id="${escapeHtml(w.id)}" ${w.afgehandeld ? 'checked' : ''}>
+            <span>Afgehandeld</span>
+          </label>
+          <button class="wijz-delete-btn" data-action="delete-wijziging" data-id="${escapeHtml(w.id)}">Verwijderen</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+document.getElementById('wijz-filter').addEventListener('change', renderWijzigingen);
+
+document.getElementById('wijz-list').addEventListener('change', async e => {
+  if (!e.target.matches('[data-action="toggle-afgehandeld"]')) return;
+  const id = e.target.dataset.id;
+  const checked = e.target.checked;
+  const card = e.target.closest('.wijz-card');
+  if (card) card.classList.toggle('afgehandeld', checked);
+  try {
+    const { error } = await db.from('wijzigingsverzoeken')
+      .update({ afgehandeld: checked }).eq('id', id);
+    if (error) throw error;
+    const w = wijzigingenList.find(x => x.id === id);
+    if (w) w.afgehandeld = checked;
+    updateWijzigingenBadge();
+  } catch (err) {
+    alert('Fout bij opslaan: ' + err.message);
+    e.target.checked = !checked;
+    if (card) card.classList.toggle('afgehandeld', !checked);
+  }
+});
+
+document.getElementById('wijz-list').addEventListener('click', async e => {
+  if (!e.target.matches('[data-action="delete-wijziging"]')) return;
+  const id = e.target.dataset.id;
+  if (!confirm('Dit verzoek definitief verwijderen?')) return;
+  try {
+    const { error } = await db.from('wijzigingsverzoeken').delete().eq('id', id);
+    if (error) throw error;
+    wijzigingenList = wijzigingenList.filter(x => x.id !== id);
+    renderWijzigingen();
+    updateWijzigingenBadge();
+  } catch (err) {
+    alert('Verwijderen mislukt: ' + err.message);
+  }
 });
 
 // ==================== AGENDA ====================
