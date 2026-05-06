@@ -8,67 +8,83 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400&family=Bodoni+Moda:ital,wght@0,400;0,500;0,600;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Cinzel:wght@400;500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=DM+Serif+Display:ital,wght@0,400;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=DM+Mono:wght@400;500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  :root, [data-theme="delft"] {
-    /* Delfts Klassiek — oude bibliotheek, warm crème + Delfts blauw */
+  :root, [data-theme="bibliotheca"] {
+    /* Bibliotheca — perkament-geel + royal blue, traditioneel-warm */
     --ink: #1a1812;
-    --paper: #faf6ec;
-    --paper-warm: #f1ead8;
-    --burgundy: #2c5d8f;
-    --burgundy-deep: #1f4570;
-    --gold: #b08a4b;
-    --gold-soft: #d2b07a;
-    --moss: #1a5fa0;
-    --gray: #6b6358;
-    --gray-light: #a89e8e;
-    --line: rgba(26, 24, 18, 0.18);
+    --paper: #f3e8c8;
+    --paper-warm: #ead9a4;
+    --burgundy: #1e3d6f;
+    --burgundy-deep: #122648;
+    --gold: #8a3a26;
+    --gold-soft: #b25f44;
+    --moss: #1e3d6f;
+    --gray: #6e5944;
+    --gray-light: #a59172;
+    --line: rgba(26, 24, 18, 0.22);
     --line-soft: rgba(26, 24, 18, 0.08);
-    --highlight: #dde8f3;
-    --font-display: var(--font-display);
-    --font-body: var(--font-body);
-    --font-mono: var(--font-mono);
-  }
-  [data-theme="marine"] {
-    /* Marine — yacht club / art deco, navy + ivoor + brass */
-    --ink: #0e1f33;
-    --paper: #f6f1e2;
-    --paper-warm: #e9e0c8;
-    --burgundy: #14365d;
-    --burgundy-deep: #0a2240;
-    --gold: #a07c3e;
-    --gold-soft: #c8a36a;
-    --moss: #14365d;
-    --gray: #5a5848;
-    --gray-light: #968a72;
-    --line: rgba(14, 31, 51, 0.2);
-    --line-soft: rgba(14, 31, 51, 0.08);
-    --highlight: #e1e6f0;
+    --highlight: #e1ddc6;
     --font-display: 'Playfair Display', Georgia, serif;
-    --font-body: 'Source Serif 4', 'Source Serif Pro', Georgia, serif;
-    --font-mono: 'DM Mono', var(--font-mono);
+    --font-body: 'Lora', Georgia, serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --display-letter-spacing: 0;
+    --display-text-transform: none;
   }
-  [data-theme="sapphire"] {
-    /* Saffier — modern luxe, italiaanse villa, diep saffierblauw + zilver-grijs */
-    --ink: #14182a;
-    --paper: #ece9da;
-    --paper-warm: #ddd8c4;
-    --burgundy: #0d3a6c;
-    --burgundy-deep: #082549;
-    --gold: #707487;
-    --gold-soft: #9b9eaf;
-    --moss: #0d3a6c;
-    --gray: #4a4d5a;
-    --gray-light: #888a98;
-    --line: rgba(20, 24, 42, 0.22);
-    --line-soft: rgba(20, 24, 42, 0.08);
-    --highlight: #d8dfee;
-    --font-display: 'Bodoni Moda', 'Didot', Georgia, serif;
-    --font-body: 'EB Garamond', Garamond, Georgia, serif;
-    --font-mono: var(--font-mono);
+  [data-theme="gatsby"] {
+    /* Gatsby — Art Deco, peacock teal-blauw + ivoor + warm goud, geometrische caps */
+    --ink: #14140e;
+    --paper: #faf3df;
+    --paper-warm: #f0e6c4;
+    --burgundy: #145468;
+    --burgundy-deep: #0a3744;
+    --gold: #c89c4a;
+    --gold-soft: #e4c178;
+    --moss: #145468;
+    --gray: #6a6048;
+    --gray-light: #a89c78;
+    --line: rgba(20, 20, 14, 0.2);
+    --line-soft: rgba(20, 20, 14, 0.08);
+    --highlight: #d8e6ec;
+    --font-display: 'Cinzel', 'Trajan', Georgia, serif;
+    --font-body: 'Crimson Text', Garamond, Georgia, serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --display-letter-spacing: 0.08em;
+    --display-text-transform: uppercase;
+  }
+  [data-theme="atelier"] {
+    /* Atelier — modern hotel-chic, koel staalblauw + crisp ivoor + sans-serif body */
+    --ink: #1a1f2c;
+    --paper: #f5f4ee;
+    --paper-warm: #ebe9e0;
+    --burgundy: #2a3a55;
+    --burgundy-deep: #18223a;
+    --gold: #5e6478;
+    --gold-soft: #8e94a6;
+    --moss: #2a3a55;
+    --gray: #5a606e;
+    --gray-light: #9aa0ae;
+    --line: rgba(26, 31, 44, 0.18);
+    --line-soft: rgba(26, 31, 44, 0.07);
+    --highlight: #e2e6f0;
+    --font-display: 'DM Serif Display', Georgia, serif;
+    --font-body: 'Inter', -apple-system, system-ui, sans-serif;
+    --font-mono: 'DM Mono', 'JetBrains Mono', monospace;
+    --display-letter-spacing: -0.01em;
+    --display-text-transform: none;
   }
   body { font-family: var(--font-body); }
+  /* Display elementen krijgen letter-spacing en transform van het thema */
+  h1, h2, h3, h4, .hero-title {
+    letter-spacing: var(--display-letter-spacing, 0);
+  }
+  /* Alleen Gatsby krijgt uppercase headings; bij anderen op none */
+  [data-theme="gatsby"] h1,
+  [data-theme="gatsby"] h2,
+  [data-theme="gatsby"] h3 {
+    text-transform: uppercase;
+  }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1610,9 +1626,9 @@
     box-shadow: inset 0 0 0 2px var(--paper), 0 0 0 1px rgba(0,0,0,0.15);
     flex-shrink: 0;
   }
-  .theme-swatch-delft    { background: linear-gradient(135deg, #2c5d8f 50%, #faf6ec 50%); }
-  .theme-swatch-marine   { background: linear-gradient(135deg, #14365d 50%, #f6f1e2 50%); }
-  .theme-swatch-sapphire { background: linear-gradient(135deg, #0d3a6c 50%, #ece9da 50%); }
+  .theme-swatch-bibliotheca { background: linear-gradient(135deg, #1e3d6f 50%, #f3e8c8 50%); }
+  .theme-swatch-gatsby      { background: linear-gradient(135deg, #145468 50%, #faf3df 50%); }
+  .theme-swatch-atelier     { background: linear-gradient(135deg, #2a3a55 50%, #f5f4ee 50%); }
   .modal-overlay {
     position: fixed; inset: 0;
     background: rgba(26,24,18,0.65);
@@ -4882,25 +4898,25 @@ async function submitAlbumForm() {
 
 <div class="theme-popover" id="theme-popover">
   <div class="theme-title">Thema</div>
-  <button class="theme-option" data-theme-choice="delft">
-    <div class="theme-swatch theme-swatch-delft"></div>
+  <button class="theme-option" data-theme-choice="bibliotheca">
+    <div class="theme-swatch theme-swatch-bibliotheca"></div>
     <div>
-      <div style="font-family:'Cormorant Garamond',serif;font-weight:600">Delfts Klassiek</div>
-      <div style="font-size:0.72rem;color:var(--gray)">Cormorant + Lora</div>
+      <div style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.05rem">Bibliotheca</div>
+      <div style="font-size:0.72rem;color:var(--gray)">oud-perkament · royal blue</div>
     </div>
   </button>
-  <button class="theme-option" data-theme-choice="marine">
-    <div class="theme-swatch theme-swatch-marine"></div>
+  <button class="theme-option" data-theme-choice="gatsby">
+    <div class="theme-swatch theme-swatch-gatsby"></div>
     <div>
-      <div style="font-family:'Playfair Display',serif;font-weight:600">Marine</div>
-      <div style="font-size:0.72rem;color:var(--gray)">Playfair + Source Serif</div>
+      <div style="font-family:'Cinzel',serif;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-size:0.95rem">Gatsby</div>
+      <div style="font-size:0.72rem;color:var(--gray)">Art Deco · peacock + goud</div>
     </div>
   </button>
-  <button class="theme-option" data-theme-choice="sapphire">
-    <div class="theme-swatch theme-swatch-sapphire"></div>
+  <button class="theme-option" data-theme-choice="atelier">
+    <div class="theme-swatch theme-swatch-atelier"></div>
     <div>
-      <div style="font-family:'Bodoni Moda',serif;font-weight:600">Saffier</div>
-      <div style="font-size:0.72rem;color:var(--gray)">Bodoni + EB Garamond</div>
+      <div style="font-family:'DM Serif Display',serif;font-weight:400;font-size:1.05rem">Atelier</div>
+      <div style="font-size:0.72rem;color:var(--gray);font-family:Inter,sans-serif">modern hotel · staalblauw</div>
     </div>
   </button>
 </div>
@@ -5067,7 +5083,13 @@ async function submitAlbumForm() {
 // ==================== THEME PICKER ====================
 (function() {
   const THEME_KEY = 'od35_theme';
-  const valid = ['delft', 'marine', 'sapphire'];
+  const valid = ['bibliotheca', 'gatsby', 'atelier'];
+  // Migreer oude theme-namen
+  const oldKey = localStorage.getItem('od35_theme');
+  if (oldKey && !valid.includes(oldKey)) {
+    const map = { delft: 'bibliotheca', marine: 'gatsby', sapphire: 'atelier', bordeaux: 'bibliotheca', forest: 'atelier' };
+    localStorage.setItem('od35_theme', map[oldKey] || 'bibliotheca');
+  }
   function applyTheme(name) {
     if (!valid.includes(name)) name = 'delft';
     document.documentElement.setAttribute('data-theme', name);
@@ -5077,7 +5099,7 @@ async function submitAlbumForm() {
     });
   }
   // Apply saved theme meteen
-  const saved = localStorage.getItem(THEME_KEY) || 'delft';
+  const saved = localStorage.getItem(THEME_KEY) || 'bibliotheca';
   applyTheme(saved);
 
   // Wire up popover
