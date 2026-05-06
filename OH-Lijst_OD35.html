@@ -4472,22 +4472,24 @@ function openMailModal() {
   document.getElementById('mail-modal').classList.remove('hidden');
 }
 
-document.getElementById('mail-btn').addEventListener('click', openMailModal);
-document.getElementById('close-mail-modal').addEventListener('click', () => {
-  document.getElementById('mail-modal').classList.add('hidden');
-});
-
-// Mode tabs
-document.querySelectorAll('.mail-mode-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    mailMode = tab.dataset.mailMode;
-    document.querySelectorAll('.mail-mode-tab').forEach(b => b.classList.toggle('active', b === tab));
-    renderMailRecipientArea();
+// Wire de mail-knoppen in DOMContentLoaded omdat het mail-modal verderop in HTML staat
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('mail-btn').addEventListener('click', openMailModal);
+  document.getElementById('close-mail-modal').addEventListener('click', () => {
+    document.getElementById('mail-modal').classList.add('hidden');
   });
-});
 
-// Click handlers binnen recipient-area (delegated)
-document.getElementById('mail-recipient-area').addEventListener('click', e => {
+  // Mode tabs
+  document.querySelectorAll('.mail-mode-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      mailMode = tab.dataset.mailMode;
+      document.querySelectorAll('.mail-mode-tab').forEach(b => b.classList.toggle('active', b === tab));
+      renderMailRecipientArea();
+    });
+  });
+
+  // Click handlers binnen recipient-area (delegated)
+  document.getElementById('mail-recipient-area').addEventListener('click', e => {
   // Year chip toggle
   const chip = e.target.closest('.mail-year-chip');
   if (chip) {
@@ -4615,6 +4617,7 @@ document.getElementById('mail-copy-btn').addEventListener('click', async () => {
     ta.remove();
   }
 });
+}); // einde DOMContentLoaded voor mail-listeners
 
 // ==================== EXCEL EXPORT ====================
 document.getElementById('export-excel').addEventListener('click', () => {
