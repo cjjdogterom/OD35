@@ -8,57 +8,67 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400&family=Bodoni+Moda:ital,wght@0,400;0,500;0,600;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root, [data-theme="delft"] {
-    /* Delfts Blauw — klassiek (default) */
+    /* Delfts Klassiek — oude bibliotheek, warm crème + Delfts blauw */
     --ink: #1a1812;
     --paper: #faf6ec;
     --paper-warm: #f1ead8;
     --burgundy: #2c5d8f;
     --burgundy-deep: #1f4570;
-    --gold: #5b8cb5;
-    --gold-soft: #7ea7cb;
+    --gold: #b08a4b;
+    --gold-soft: #d2b07a;
     --moss: #1a5fa0;
     --gray: #6b6358;
     --gray-light: #a89e8e;
     --line: rgba(26, 24, 18, 0.18);
     --line-soft: rgba(26, 24, 18, 0.08);
     --highlight: #dde8f3;
+    --font-display: var(--font-display);
+    --font-body: var(--font-body);
+    --font-mono: var(--font-mono);
   }
-  [data-theme="bordeaux"] {
-    /* Bordeaux — wijnrood + warm crème, sfeer van een bibliotheek */
-    --ink: #1f1410;
-    --paper: #f7efde;
-    --paper-warm: #ede2c6;
-    --burgundy: #6b1d2c;
-    --burgundy-deep: #491220;
-    --gold: #a87a3a;
-    --gold-soft: #c69a5e;
-    --moss: #6b1d2c;
-    --gray: #6e5a4d;
-    --gray-light: #a8927e;
-    --line: rgba(31, 20, 16, 0.18);
-    --line-soft: rgba(31, 20, 16, 0.08);
-    --highlight: #f3e4e7;
+  [data-theme="marine"] {
+    /* Marine — yacht club / art deco, navy + ivoor + brass */
+    --ink: #0e1f33;
+    --paper: #f6f1e2;
+    --paper-warm: #e9e0c8;
+    --burgundy: #14365d;
+    --burgundy-deep: #0a2240;
+    --gold: #a07c3e;
+    --gold-soft: #c8a36a;
+    --moss: #14365d;
+    --gray: #5a5848;
+    --gray-light: #968a72;
+    --line: rgba(14, 31, 51, 0.2);
+    --line-soft: rgba(14, 31, 51, 0.08);
+    --highlight: #e1e6f0;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'Source Serif 4', 'Source Serif Pro', Georgia, serif;
+    --font-mono: 'DM Mono', var(--font-mono);
   }
-  [data-theme="forest"] {
-    /* Smaragd — donkergroen + crème, landgoed-esthetiek */
-    --ink: #14140e;
-    --paper: #f4eeda;
-    --paper-warm: #e8e0c4;
-    --burgundy: #2d5538;
-    --burgundy-deep: #1c3924;
-    --gold: #9e7e3e;
-    --gold-soft: #c2a05f;
-    --moss: #2d5538;
-    --gray: #5f5944;
-    --gray-light: #968f7c;
-    --line: rgba(20, 20, 14, 0.18);
-    --line-soft: rgba(20, 20, 14, 0.08);
-    --highlight: #e2ebe2;
+  [data-theme="sapphire"] {
+    /* Saffier — modern luxe, italiaanse villa, diep saffierblauw + zilver-grijs */
+    --ink: #14182a;
+    --paper: #ece9da;
+    --paper-warm: #ddd8c4;
+    --burgundy: #0d3a6c;
+    --burgundy-deep: #082549;
+    --gold: #707487;
+    --gold-soft: #9b9eaf;
+    --moss: #0d3a6c;
+    --gray: #4a4d5a;
+    --gray-light: #888a98;
+    --line: rgba(20, 24, 42, 0.22);
+    --line-soft: rgba(20, 24, 42, 0.08);
+    --highlight: #d8dfee;
+    --font-display: 'Bodoni Moda', 'Didot', Georgia, serif;
+    --font-body: 'EB Garamond', Garamond, Georgia, serif;
+    --font-mono: var(--font-mono);
   }
+  body { font-family: var(--font-body); }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -74,13 +84,13 @@
     max-height: 80px; margin-bottom: 2rem; opacity: 0.9;
   }
   #pw-screen h1 {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-display);
     font-size: clamp(1.6rem, 5vw, 2.4rem);
     font-weight: 600; color: var(--ink);
     margin-bottom: 0.3rem; text-align: center;
   }
   #pw-screen p {
-    font-family: 'Lora', serif; font-style: italic;
+    font-family: var(--font-body); font-style: italic;
     color: var(--gray); font-size: 1rem;
     margin-bottom: 2rem; text-align: center;
   }
@@ -91,21 +101,21 @@
     flex: 1; padding: 0.8rem 1rem;
     border: 1px solid var(--line); border-right: none;
     background: var(--paper-warm);
-    font-family: 'Lora', serif; font-size: 1rem;
+    font-family: var(--font-body); font-size: 1rem;
     color: var(--ink); outline: none;
   }
   #pw-screen input[type="password"]:focus { border-color: var(--burgundy); }
   #pw-screen button {
     padding: 0.8rem 1.25rem;
     background: var(--burgundy); color: white; border: none;
-    font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+    font-family: var(--font-mono); font-size: 0.75rem;
     letter-spacing: 0.1em; text-transform: uppercase;
     cursor: pointer;
   }
   #pw-screen button:hover { background: var(--burgundy-deep); }
   #pw-screen .pw-error {
     margin-top: 0.75rem; color: #c0392b;
-    font-size: 0.85rem; font-family: 'Lora', serif;
+    font-size: 0.85rem; font-family: var(--font-body);
     font-style: italic; display: none;
   }
   #pw-screen .pw-ornament {
@@ -116,7 +126,7 @@
   html, body {
     background: var(--paper);
     color: var(--ink);
-    font-family: 'Lora', Georgia, serif;
+    font-family: var(--font-body);
     font-size: 16px;
     line-height: 1.6;
     min-height: 100vh;
@@ -153,7 +163,7 @@
   }
 
   .eyebrow {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.7rem;
     letter-spacing: 0.4em;
     text-transform: uppercase;
@@ -162,7 +172,7 @@
   }
 
   h1 {
-    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-family: var(--font-display);
     font-weight: 600;
     font-size: clamp(2.5rem, 6vw, 4.5rem);
     line-height: 1;
@@ -178,7 +188,7 @@
   }
 
   .subtitle {
-    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-family: var(--font-display);
     font-style: italic;
     font-size: 1.3rem;
     color: var(--gray);
@@ -213,7 +223,7 @@
   }
 
   .stat-line {
-    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-family: var(--font-display);
     font-size: 1.05rem;
     color: var(--gray);
     font-style: italic;
@@ -262,7 +272,7 @@
     background: var(--paper);
     border: 1px solid var(--line);
     padding: 0.75rem 1rem 0.75rem 2.5rem;
-    font-family: 'Lora', Georgia, serif;
+    font-family: var(--font-body);
     font-size: 1rem;
     color: var(--ink);
     outline: none;
@@ -283,7 +293,7 @@
     background: var(--paper);
     border: 1px solid var(--line);
     padding: 0.75rem 0.9rem;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.75rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -299,7 +309,7 @@
     color: var(--paper);
     border: 1px solid var(--ink);
     padding: 0.75rem 1.2rem;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.7rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
@@ -310,7 +320,7 @@
   .reset-btn:hover { background: var(--burgundy); border-color: var(--burgundy); }
 
   .results-count {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.75rem;
     letter-spacing: 0.1em;
     color: var(--gray);
@@ -362,7 +372,7 @@
   }
 
   .person-jaar {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.85rem;
     color: var(--burgundy);
     font-weight: 500;
@@ -372,7 +382,7 @@
   .person-jaar.empty { color: var(--gray-light); }
 
   .person-name {
-    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-family: var(--font-display);
     font-size: 1.35rem;
     font-weight: 500;
     color: var(--ink);
@@ -399,7 +409,7 @@
   }
 
   .person-jaar-pill {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.7rem;
     color: var(--gray);
     text-align: right;
@@ -447,7 +457,7 @@
   }
 
   .detail-section h3 {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.65rem;
     letter-spacing: 0.25em;
     text-transform: uppercase;
@@ -462,7 +472,7 @@
 
   .detail-section h3::before {
     content: '§';
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-display);
     font-style: italic;
     font-size: 1rem;
     color: var(--gold);
@@ -478,7 +488,7 @@
   }
 
   .detail-label {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.7rem;
     color: var(--gray);
     letter-spacing: 0.05em;
@@ -503,7 +513,7 @@
 
   .source-tag {
     display: inline-block;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.6rem;
     color: var(--gray-light);
     margin-left: 0.5rem;
@@ -522,7 +532,7 @@
 
   .deceased-badge {
     display: inline-block;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.6rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
@@ -540,7 +550,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 1rem 2rem;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.65rem;
     color: var(--gray);
     letter-spacing: 0.05em;
@@ -553,7 +563,7 @@
   }
 
   .empty-state .icon {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-display);
     font-style: italic;
     font-size: 4rem;
     color: var(--gold-soft);
@@ -561,7 +571,7 @@
   }
 
   .empty-state p {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-display);
     font-style: italic;
     font-size: 1.3rem;
   }
@@ -572,7 +582,7 @@
     padding-top: 2rem;
     border-top: 2px solid var(--ink);
     text-align: center;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.65rem;
     letter-spacing: 0.2em;
     text-transform: uppercase;
@@ -580,7 +590,7 @@
   }
 
   footer .ornament-text {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-display);
     font-style: italic;
     font-size: 1.1rem;
     text-transform: none;
@@ -610,7 +620,7 @@
   .alpha-btn {
     width: 1.8rem; height: 1.8rem;
     display: flex; align-items: center; justify-content: center;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.75rem;
     color: var(--gray);
     background: transparent;
@@ -642,7 +652,7 @@
   .change-request { margin-top: 1.25rem; }
   .change-toggle-btn {
     background: transparent; border: 1px dashed var(--burgundy); color: var(--burgundy);
-    padding: 0.6rem 1.2rem; font-family: 'JetBrains Mono', monospace;
+    padding: 0.6rem 1.2rem; font-family: var(--font-mono);
     font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase;
     cursor: pointer; transition: all 0.2s;
     display: inline-flex; align-items: center; gap: 0.6rem;
@@ -657,11 +667,11 @@
   }
   .change-form.open { display: block; }
   .change-form h4 {
-    font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.4rem;
+    font-family: var(--font-display); font-size: 1.4rem;
     font-weight: 600; color: var(--burgundy); margin-bottom: 0.3rem;
   }
   .change-form p.intro {
-    font-family: 'Lora', Georgia, serif; font-style: italic;
+    font-family: var(--font-body); font-style: italic;
     color: var(--gray); font-size: 0.9rem; margin-bottom: 1.25rem; line-height: 1.5;
   }
 
@@ -674,12 +684,12 @@
   .form-field { display: flex; flex-direction: column; gap: 0.35rem; }
   .form-field.full { grid-column: 1 / -1; }
   .form-field label {
-    font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+    font-family: var(--font-mono); font-size: 0.65rem;
     letter-spacing: 0.15em; text-transform: uppercase; color: var(--gray);
   }
   .form-field input, .form-field select, .form-field textarea {
     background: var(--paper-warm); border: 1px solid var(--line);
-    padding: 0.6rem 0.75rem; font-family: 'Lora', Georgia, serif;
+    padding: 0.6rem 0.75rem; font-family: var(--font-body);
     font-size: 0.95rem; color: var(--ink); outline: none;
     transition: border-color 0.2s; width: 100%;
   }
@@ -695,7 +705,7 @@
   }
   .submit-btn {
     background: var(--burgundy); color: var(--paper); border: 1px solid var(--burgundy);
-    padding: 0.7rem 1.5rem; font-family: 'JetBrains Mono', monospace;
+    padding: 0.7rem 1.5rem; font-family: var(--font-mono);
     font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase;
     cursor: pointer; transition: all 0.2s;
   }
@@ -704,14 +714,14 @@
 
   .cancel-btn {
     background: transparent; color: var(--gray); border: 1px solid var(--line);
-    padding: 0.7rem 1.2rem; font-family: 'JetBrains Mono', monospace;
+    padding: 0.7rem 1.2rem; font-family: var(--font-mono);
     font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase;
     cursor: pointer; transition: all 0.2s;
   }
   .cancel-btn:hover { color: var(--ink); border-color: var(--ink); }
 
   .form-status {
-    font-family: 'Lora', Georgia, serif; font-style: italic;
+    font-family: var(--font-body); font-style: italic;
     font-size: 0.9rem; margin-left: auto;
   }
   .form-status.success { color: var(--moss); }
@@ -720,7 +730,7 @@
 
   .form-success { text-align: center; padding: 2rem 1rem; }
   .form-success .icon {
-    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-family: var(--font-display); font-style: italic;
     font-size: 3rem; color: var(--moss); margin-bottom: 0.5rem;
   }
   .form-success h4 { color: var(--moss); margin-bottom: 0.5rem; }
@@ -741,7 +751,7 @@
     border: none;
     border-bottom: 3px solid transparent;
     padding: 0.85rem 1.5rem;
-    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-family: var(--font-display);
     font-size: 1.15rem;
     font-weight: 500;
     color: var(--gray);
@@ -771,7 +781,7 @@
     color: var(--paper);
     border: none;
     padding: 0.6rem 1.1rem;
-    font-family: 'Lora', serif;
+    font-family: var(--font-body);
     font-size: 0.85rem;
     font-weight: 500;
     letter-spacing: 0.04em;
@@ -803,7 +813,7 @@
     border: 1px solid var(--line);
     color: var(--gray);
     padding: 0.4rem 0.75rem;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.7rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -843,7 +853,7 @@
     border-radius: 2px;
   }
   .attendance-section h4 {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-display);
     font-size: 1rem;
     font-weight: 600;
     margin-bottom: 0.5rem;
@@ -865,7 +875,7 @@
     background: transparent;
     border: 1px solid var(--line);
     padding: 0.45rem 0.85rem;
-    font-family: 'Lora', serif;
+    font-family: var(--font-body);
     font-size: 0.85rem;
     cursor: pointer;
     border-radius: 2px;
@@ -899,7 +909,7 @@
     margin-bottom: 2rem;
   }
   .agenda-header h2 {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-display);
     font-size: 2rem;
     font-weight: 600;
   }
@@ -908,7 +918,7 @@
     color: var(--paper);
     border: none;
     padding: 0.6rem 1.1rem;
-    font-family: 'Lora', serif;
+    font-family: var(--font-body);
     font-size: 0.9rem;
     cursor: pointer;
     border-radius: 2px;
@@ -931,7 +941,7 @@
   }
   .event-form label {
     display: block;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.7rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -943,7 +953,7 @@
     padding: 0.55rem 0.7rem;
     border: 1px solid var(--line);
     background: var(--paper);
-    font-family: 'Lora', serif;
+    font-family: var(--font-body);
     font-size: 0.95rem;
     border-radius: 2px;
   }
@@ -960,7 +970,7 @@
     padding: 0.55rem 1rem;
     border: none;
     cursor: pointer;
-    font-family: 'Lora', serif;
+    font-family: var(--font-body);
     font-size: 0.9rem;
     border-radius: 2px;
   }
@@ -1005,14 +1015,14 @@
     padding-right: 1rem;
   }
   .event-date .day {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-display);
     font-size: 2rem;
     font-weight: 600;
     line-height: 1;
     color: var(--burgundy);
   }
   .event-date .month {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.15em;
@@ -1025,7 +1035,7 @@
     margin-top: 0.15rem;
   }
   .event-info h3 {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-display);
     font-size: 1.35rem;
     font-weight: 600;
     margin-bottom: 0.2rem;
@@ -1034,7 +1044,7 @@
     display: inline-block;
     background: var(--gold);
     color: white;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.65rem;
     letter-spacing: 0.12em;
     padding: 0.15rem 0.5rem;
@@ -1062,7 +1072,7 @@
   .event-stats {
     font-size: 0.8rem;
     color: var(--gray);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     letter-spacing: 0.05em;
   }
   .event-delete {
@@ -1086,7 +1096,7 @@
     font-size: 0.75rem;
     cursor: pointer;
     border-radius: 2px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     letter-spacing: 0.05em;
   }
   .event-lijst-toggle:hover { border-color: var(--burgundy); color: var(--burgundy); }
@@ -1098,7 +1108,7 @@
     font-size: 0.75rem;
     cursor: pointer;
     border-radius: 2px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     letter-spacing: 0.05em;
   }
   .event-export-btn:hover { background: var(--burgundy-deep); border-color: var(--burgundy-deep); }
@@ -1112,7 +1122,7 @@
   }
   .event-deelnemers.open { display: block; }
   .event-deelnemers-header {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.65rem;
     letter-spacing: 0.2em;
     text-transform: uppercase;
@@ -1133,7 +1143,7 @@
     font-size: 0.88rem;
   }
   .deelnemers-table th {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.62rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -1154,7 +1164,7 @@
   .deelnemers-table tr.status-no td { background: rgba(168,158,142,0.06); }
   .deelnemers-badge {
     display: inline-block;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.62rem;
     letter-spacing: 0.06em;
     padding: 0.1rem 0.4rem;
@@ -1191,7 +1201,7 @@
     line-height: 1;
   }
   .contact-card h3 {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-display);
     font-size: 1.5rem;
     font-weight: 600;
     margin-bottom: 0.25rem;
@@ -1204,7 +1214,7 @@
     line-height: 1.4;
   }
   .contact-card .contact-name {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-display);
     font-size: 1.25rem;
     font-weight: 500;
     color: var(--burgundy);
@@ -1231,7 +1241,7 @@
     font-size: 0.8rem;
     cursor: pointer;
     border-radius: 2px;
-    font-family: 'Lora', serif;
+    font-family: var(--font-body);
     color: var(--gray);
   }
   .contact-card .edit-btn:hover {
@@ -1249,7 +1259,7 @@
   .desc-textarea {
     width: 100%; padding: 0.5rem 0.6rem;
     border: 1px solid var(--burgundy); background: var(--paper);
-    font-family: 'Lora', serif; font-size: 0.85rem;
+    font-family: var(--font-body); font-size: 0.85rem;
     color: var(--ink); resize: vertical; border-radius: 2px;
     font-style: italic;
   }
@@ -1273,7 +1283,7 @@
     padding: 0.5rem;
     border: 1px solid var(--line);
     background: var(--paper-warm);
-    font-family: 'Lora', serif;
+    font-family: var(--font-body);
     font-size: 0.9rem;
     margin-bottom: 0.5rem;
     border-radius: 2px;
@@ -1289,7 +1299,7 @@
     cursor: pointer;
     font-size: 0.85rem;
     border-radius: 2px;
-    font-family: 'Lora', serif;
+    font-family: var(--font-body);
   }
   .contact-edit-form .save-btn { background: var(--burgundy); color: var(--paper); }
   .contact-edit-form .cancel-btn {
@@ -1305,7 +1315,7 @@
     line-height: 1.8;
   }
   .history-content h2 {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-display);
     font-size: 2.5rem;
     font-weight: 600;
     text-align: center;
@@ -1318,10 +1328,10 @@
     color: var(--gray);
     font-size: 1.1rem;
     margin-bottom: 2.5rem;
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-display);
   }
   .history-content h3 {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-display);
     font-size: 1.6rem;
     font-weight: 600;
     margin-top: 2.5rem;
@@ -1336,7 +1346,7 @@
     hyphens: auto;
   }
   .history-content .pull-quote {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-display);
     font-style: italic;
     font-size: 1.4rem;
     text-align: center;
@@ -1368,7 +1378,7 @@
     border: 2px solid var(--paper);
   }
   .history-content .timeline-year {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.85rem;
     color: var(--burgundy);
     font-weight: 500;
@@ -1394,7 +1404,7 @@
     font-size: 0.8rem;
     font-style: italic;
     color: var(--gray);
-    font-family: 'Lora', serif;
+    font-family: var(--font-body);
     text-align: center;
   }
   .history-figure-row {
@@ -1419,7 +1429,7 @@
     font-size: 0.9rem;
   }
   .history-table th {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.65rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
@@ -1439,7 +1449,7 @@
     background: transparent;
     border: 1px solid var(--line);
     padding: 0.5rem 1rem;
-    font-family: 'Lora', serif;
+    font-family: var(--font-body);
     font-size: 0.85rem;
     color: var(--gray);
     cursor: pointer;
@@ -1458,7 +1468,7 @@
     width: 100%;
     min-height: 500px;
     padding: 1rem;
-    font-family: 'Lora', serif;
+    font-family: var(--font-body);
     font-size: 0.95rem;
     border: 1px solid var(--line);
     background: var(--paper-warm);
@@ -1536,14 +1546,14 @@
     background: var(--burgundy); color: var(--paper);
     padding: 0.6rem 1.25rem;
     display: none; align-items: center; justify-content: space-between;
-    font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.1em;
+    font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.1em;
     margin-bottom: 1.5rem;
   }
   .admin-bar.visible { display: flex; }
   .admin-bar button {
     background: rgba(255,255,255,0.15); color: var(--paper);
     border: 1px solid rgba(255,255,255,0.3);
-    padding: 0.35rem 0.75rem; font-family: 'JetBrains Mono', monospace;
+    padding: 0.35rem 0.75rem; font-family: var(--font-mono);
     font-size: 0.68rem; letter-spacing: 0.1em; cursor: pointer;
   }
   .admin-bar button:hover { background: rgba(255,255,255,0.28); }
@@ -1578,7 +1588,7 @@
   }
   .theme-popover.open { display: flex; }
   .theme-popover .theme-title {
-    font-family: 'Lora', serif; font-size: 0.78rem;
+    font-family: var(--font-body); font-size: 0.78rem;
     color: var(--gray); text-transform: uppercase;
     letter-spacing: 0.1em; margin-bottom: 0.4rem;
   }
@@ -1586,7 +1596,7 @@
     display: flex; align-items: center; gap: 0.7rem;
     padding: 0.5rem 0.6rem; cursor: pointer;
     background: transparent; border: 1px solid transparent;
-    font-family: 'Lora', serif; font-size: 0.93rem;
+    font-family: var(--font-body); font-size: 0.93rem;
     color: var(--ink); text-align: left;
     transition: background 0.15s;
   }
@@ -1601,8 +1611,8 @@
     flex-shrink: 0;
   }
   .theme-swatch-delft    { background: linear-gradient(135deg, #2c5d8f 50%, #faf6ec 50%); }
-  .theme-swatch-bordeaux { background: linear-gradient(135deg, #6b1d2c 50%, #f7efde 50%); }
-  .theme-swatch-forest   { background: linear-gradient(135deg, #2d5538 50%, #f4eeda 50%); }
+  .theme-swatch-marine   { background: linear-gradient(135deg, #14365d 50%, #f6f1e2 50%); }
+  .theme-swatch-sapphire { background: linear-gradient(135deg, #0d3a6c 50%, #ece9da 50%); }
   .modal-overlay {
     position: fixed; inset: 0;
     background: rgba(26,24,18,0.65);
@@ -1617,7 +1627,7 @@
   }
   .modal-box.wide { max-width: 680px; max-height: 92vh; overflow-y: auto; }
   .modal-box h3 {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: var(--font-display);
     font-size: 1.9rem; font-weight: 600; color: var(--burgundy); margin-bottom: 0.25rem;
   }
   .modal-sub { font-style: italic; color: var(--gray); font-size: 0.9rem; margin-bottom: 1.5rem; }
@@ -1627,7 +1637,7 @@
   }
   .modal-close:hover { color: var(--ink); }
   .mf-section {
-    font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
+    font-family: var(--font-mono); font-size: 0.62rem;
     letter-spacing: 0.25em; text-transform: uppercase; color: var(--burgundy);
     margin: 1.25rem 0 0.6rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--gold);
   }
@@ -1637,12 +1647,12 @@
   .mf-field.span2 { grid-column: span 2; }
   @media(max-width:500px){.mf-field.span2{grid-column:span 1;}}
   .mf-field label {
-    font-family: 'JetBrains Mono', monospace; font-size: 0.63rem;
+    font-family: var(--font-mono); font-size: 0.63rem;
     letter-spacing: 0.12em; text-transform: uppercase; color: var(--gray);
   }
   .mf-field input, .mf-field select {
     background: var(--paper-warm); border: 1px solid var(--line);
-    padding: 0.52rem 0.7rem; font-family: 'Lora', serif;
+    padding: 0.52rem 0.7rem; font-family: var(--font-body);
     font-size: 0.95rem; color: var(--ink); outline: none; width: 100%;
     transition: border-color 0.2s;
   }
@@ -1652,7 +1662,7 @@
   .mf-actions { display: flex; gap: 0.6rem; margin-top: 1.5rem; }
   .mf-save {
     background: var(--burgundy); color: var(--paper); border: none;
-    padding: 0.65rem 1.4rem; font-family: 'JetBrains Mono', monospace;
+    padding: 0.65rem 1.4rem; font-family: var(--font-mono);
     font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer;
     flex: 1;
   }
@@ -1660,7 +1670,7 @@
   .mf-save:disabled { opacity: 0.5; cursor: not-allowed; }
   .mf-cancel {
     background: transparent; color: var(--gray); border: 1px solid var(--line);
-    padding: 0.65rem 1rem; font-family: 'JetBrains Mono', monospace;
+    padding: 0.65rem 1rem; font-family: var(--font-mono);
     font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer;
   }
   .mf-cancel:hover { color: var(--ink); border-color: var(--ink); }
@@ -1670,30 +1680,30 @@
   }
   .admin-edit-btn {
     background: var(--burgundy); color: var(--paper); border: none;
-    padding: 0.42rem 0.9rem; font-family: 'JetBrains Mono', monospace;
+    padding: 0.42rem 0.9rem; font-family: var(--font-mono);
     font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
   }
   .admin-edit-btn:hover { background: var(--burgundy-deep); }
   .admin-delete-btn {
     background: transparent; color: #c0392b; border: 1px solid #c0392b;
-    padding: 0.42rem 0.9rem; font-family: 'JetBrains Mono', monospace;
+    padding: 0.42rem 0.9rem; font-family: var(--font-mono);
     font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
   }
   .admin-delete-btn:hover { background: #c0392b; color: white; }
   .login-field { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.9rem; }
   .login-field label {
-    font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
+    font-family: var(--font-mono); font-size: 0.68rem;
     letter-spacing: 0.12em; text-transform: uppercase; color: var(--gray);
   }
   .login-field input {
     background: var(--paper-warm); border: 1px solid var(--line);
-    padding: 0.65rem 0.8rem; font-family: 'Lora', serif;
+    padding: 0.65rem 0.8rem; font-family: var(--font-body);
     font-size: 1rem; color: var(--ink); outline: none; width: 100%;
   }
   .login-field input:focus { border-color: var(--burgundy); background: var(--paper); }
   .login-btn {
     width: 100%; background: var(--burgundy); color: var(--paper); border: none;
-    padding: 0.75rem; font-family: 'JetBrains Mono', monospace;
+    padding: 0.75rem; font-family: var(--font-mono);
     font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer; margin-top: 0.5rem;
   }
   .login-btn:hover { background: var(--burgundy-deep); }
@@ -1713,7 +1723,7 @@
   /* ==================== CONTACT PICKER ==================== */
   .picker-label {
     display: block;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.65rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
@@ -1726,14 +1736,14 @@
     border: 1px solid var(--burgundy);
     border-left: 3px solid var(--burgundy);
     padding: 0.6rem 0.75rem;
-    font-family: 'Lora', Georgia, serif;
+    font-family: var(--font-body);
     font-size: 0.95rem;
     color: var(--ink);
     cursor: pointer;
     margin-bottom: 0.75rem;
   }
   .picker-or {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.65rem;
     letter-spacing: 0.15em;
     color: var(--gray-light);
@@ -1746,7 +1756,7 @@
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap;
 }
-.wijz-header h2 { margin: 0; font-size: 1.4rem; color: var(--burgundy); font-family: 'Lora', serif; font-weight: normal; }
+.wijz-header h2 { margin: 0; font-size: 1.4rem; color: var(--burgundy); font-family: var(--font-body); font-weight: normal; }
 .wijz-controls { display: flex; gap: 0.5rem; }
 .wijz-list { display: flex; flex-direction: column; gap: 1rem; }
 .wijz-card {
@@ -1768,7 +1778,7 @@
 .wijz-actions { margin-top: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .wijz-check-label { display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; user-select: none; font-size: 0.9rem; }
 .wijz-check-label input { width: 18px; height: 18px; cursor: pointer; }
-.wijz-delete-btn { background: transparent; border: 1px solid var(--line); color: var(--gray); padding: 0.4rem 0.8rem; cursor: pointer; font-family: 'Lora', serif; font-size: 0.82rem; border-radius: 2px; }
+.wijz-delete-btn { background: transparent; border: 1px solid var(--line); color: var(--gray); padding: 0.4rem 0.8rem; cursor: pointer; font-family: var(--font-body); font-size: 0.82rem; border-radius: 2px; }
 .wijz-delete-btn:hover { background: #c14040; color: white; border-color: #c14040; }
 .wijz-empty { text-align: center; padding: 3rem 1rem; color: var(--gray); font-style: italic; }
 .tab-badge {
@@ -1792,7 +1802,7 @@
   color: var(--paper);
   border: none;
   padding: 0.55rem 1.1rem;
-  font-family: 'Lora', serif;
+  font-family: var(--font-body);
   font-size: 0.9rem;
   cursor: pointer;
   border-radius: 2px;
@@ -1805,7 +1815,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  font-family: 'Lora', serif;
+  font-family: var(--font-body);
   font-size: 0.95rem;
   color: var(--burgundy);
   cursor: pointer;
@@ -1815,7 +1825,7 @@
 }
 .breadcrumb-back:hover { text-decoration: underline; }
 #fotos-breadcrumb h2 {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: var(--font-display);
   font-size: 1.8rem;
   font-weight: 600;
   color: var(--ink);
@@ -1872,14 +1882,14 @@
   padding: 0.75rem 0.9rem 0.9rem;
 }
 .album-name {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: var(--font-display);
   font-size: 1.15rem;
   font-weight: 600;
   color: var(--ink);
   margin: 0 0 0.2rem;
 }
 .album-beschrijving {
-  font-family: 'Lora', serif;
+  font-family: var(--font-body);
   font-size: 0.82rem;
   color: var(--gray);
   font-style: italic;
@@ -1889,7 +1899,7 @@
   text-overflow: ellipsis;
 }
 .album-count {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   color: var(--gray);
@@ -1947,7 +1957,7 @@
 }
 .foto-item:hover img { opacity: 0.88; }
 .foto-caption {
-  font-family: 'Lora', serif;
+  font-family: var(--font-body);
   font-size: 0.78rem;
   color: var(--gray);
   font-style: italic;
@@ -2005,7 +2015,7 @@
   box-shadow: 0 8px 40px rgba(0,0,0,0.6);
 }
 .foto-lightbox-caption {
-  font-family: 'Lora', serif;
+  font-family: var(--font-body);
   font-size: 0.9rem;
   color: rgba(255,255,255,0.75);
   font-style: italic;
@@ -2047,7 +2057,7 @@
 .foto-lightbox-prev { left: 0.75rem; }
 .foto-lightbox-next { right: 0.75rem; }
 .foto-lightbox-counter {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   color: rgba(255,255,255,0.5);
   letter-spacing: 0.1em;
@@ -2069,7 +2079,7 @@
   cursor: pointer;
   transition: background 0.15s;
   color: var(--gray);
-  font-family: 'Lora', serif;
+  font-family: var(--font-body);
   font-size: 0.9rem;
   font-style: italic;
 }
@@ -2082,7 +2092,7 @@
 .foto-upload-icon { font-size: 2rem; margin-bottom: 0.5rem; color: var(--burgundy); opacity: 0.6; }
 .foto-upload-progress {
   margin-top: 0.75rem;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.78rem;
   color: var(--gray);
   letter-spacing: 0.05em;
@@ -2109,7 +2119,7 @@
   box-shadow: 0 8px 32px rgba(0,0,0,0.18);
 }
 .album-form-box h3 {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: var(--font-display);
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0 0 1.25rem;
@@ -2117,7 +2127,7 @@
 }
 .album-form-box label {
   display: block;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.68rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2128,7 +2138,7 @@
 .album-form-box textarea {
   width: 100%;
   box-sizing: border-box;
-  font-family: 'Lora', serif;
+  font-family: var(--font-body);
   font-size: 0.9rem;
   color: var(--ink);
   background: var(--paper-warm);
@@ -2150,7 +2160,7 @@
   border: 1px solid var(--burgundy);
   color: var(--burgundy);
   padding: 0.45rem 0.9rem;
-  font-family: 'Lora', serif;
+  font-family: var(--font-body);
   font-size: 0.85rem;
   cursor: pointer;
   border-radius: 2px;
@@ -2280,7 +2290,7 @@
 <!-- ==================== TAB: CONTACTEN ==================== -->
 <div class="tab-panel" id="panel-contacten">
   <div style="text-align:center; margin-bottom:2rem;">
-    <h2 style="font-family:'Cormorant Garamond',serif; font-size:2.2rem; font-weight:600; margin-bottom:0.3rem;">Contactpersonen</h2>
+    <h2 style="font-family:var(--font-display); font-size:2.2rem; font-weight:600; margin-bottom:0.3rem;">Contactpersonen</h2>
     <p style="color:var(--gray); font-style:italic;">Voor vragen, klusjes en bodega-zaken</p>
   </div>
   <div class="contacts-grid" id="contacts-grid"></div>
@@ -2294,9 +2304,9 @@
     <p class="editor-help">Tip: gebruik dubbele regelafstand voor nieuwe paragrafen. Begin een regel met <code>## Titel</code> voor een kop, of <code>&gt; quote</code> voor een uitgelichte zin.</p>
     <textarea id="history-textarea"></textarea>
     <div class="editor-buttons">
-      <button class="save-btn" id="history-save" style="background:var(--burgundy); color:var(--paper); padding:0.5rem 1rem; border:none; cursor:pointer; border-radius:2px; font-family:'Lora',serif;">Opslaan</button>
-      <button class="cancel-btn" id="history-cancel" style="background:transparent; border:1px solid var(--line); color:var(--gray); padding:0.5rem 1rem; cursor:pointer; border-radius:2px; font-family:'Lora',serif;">Annuleren</button>
-      <button class="reset-btn" id="history-reset" style="background:transparent; border:1px solid var(--line); color:var(--gray); padding:0.5rem 1rem; cursor:pointer; border-radius:2px; font-family:'Lora',serif; margin-left:auto;">Standaardtekst herstellen</button>
+      <button class="save-btn" id="history-save" style="background:var(--burgundy); color:var(--paper); padding:0.5rem 1rem; border:none; cursor:pointer; border-radius:2px; font-family:var(--font-body);">Opslaan</button>
+      <button class="cancel-btn" id="history-cancel" style="background:transparent; border:1px solid var(--line); color:var(--gray); padding:0.5rem 1rem; cursor:pointer; border-radius:2px; font-family:var(--font-body);">Annuleren</button>
+      <button class="reset-btn" id="history-reset" style="background:transparent; border:1px solid var(--line); color:var(--gray); padding:0.5rem 1rem; cursor:pointer; border-radius:2px; font-family:var(--font-body); margin-left:auto;">Standaardtekst herstellen</button>
     </div>
   </div>
 </div><!-- /panel-geschiedenis -->
@@ -4448,7 +4458,7 @@ function renderAlbumGrid() {
   if (btn) btn.onclick = showAlbumForm;
 
   const bc = document.getElementById('fotos-breadcrumb');
-  if (bc) bc.innerHTML = '<h2 style="font-family:\'Cormorant Garamond\',serif;font-size:1.8rem;font-weight:600;margin:0;color:var(--ink);">Foto\'s</h2>';
+  if (bc) bc.innerHTML = '<h2 style="font-family:var(--font-display);font-size:1.8rem;font-weight:600;margin:0;color:var(--ink);">Foto\'s</h2>';
 
   const content = document.getElementById('fotos-content');
   if (!content) return;
@@ -4830,8 +4840,8 @@ function showAlbumForm() {
       <label>Beschrijving (optioneel)</label>
       <textarea id="album-form-beschrijving" placeholder="Korte omschrijving van het album…"></textarea>
       <div class="album-form-actions">
-        <button class="cancel-btn" onclick="closeAlbumForm()" style="background:transparent;border:1px solid var(--line);color:var(--gray);padding:0.5rem 1rem;cursor:pointer;border-radius:2px;font-family:'Lora',serif;">Annuleren</button>
-        <button class="save-btn" onclick="submitAlbumForm()" style="background:var(--burgundy);color:var(--paper);padding:0.5rem 1.1rem;border:none;cursor:pointer;border-radius:2px;font-family:'Lora',serif;">Opslaan</button>
+        <button class="cancel-btn" onclick="closeAlbumForm()" style="background:transparent;border:1px solid var(--line);color:var(--gray);padding:0.5rem 1rem;cursor:pointer;border-radius:2px;font-family:var(--font-body);">Annuleren</button>
+        <button class="save-btn" onclick="submitAlbumForm()" style="background:var(--burgundy);color:var(--paper);padding:0.5rem 1.1rem;border:none;cursor:pointer;border-radius:2px;font-family:var(--font-body);">Opslaan</button>
       </div>
     </div>`;
   overlay.addEventListener('click', e => { if (e.target === overlay) closeAlbumForm(); });
@@ -4874,15 +4884,24 @@ async function submitAlbumForm() {
   <div class="theme-title">Thema</div>
   <button class="theme-option" data-theme-choice="delft">
     <div class="theme-swatch theme-swatch-delft"></div>
-    <span>Delfts Blauw</span>
+    <div>
+      <div style="font-family:'Cormorant Garamond',serif;font-weight:600">Delfts Klassiek</div>
+      <div style="font-size:0.72rem;color:var(--gray)">Cormorant + Lora</div>
+    </div>
   </button>
-  <button class="theme-option" data-theme-choice="bordeaux">
-    <div class="theme-swatch theme-swatch-bordeaux"></div>
-    <span>Bordeaux</span>
+  <button class="theme-option" data-theme-choice="marine">
+    <div class="theme-swatch theme-swatch-marine"></div>
+    <div>
+      <div style="font-family:'Playfair Display',serif;font-weight:600">Marine</div>
+      <div style="font-size:0.72rem;color:var(--gray)">Playfair + Source Serif</div>
+    </div>
   </button>
-  <button class="theme-option" data-theme-choice="forest">
-    <div class="theme-swatch theme-swatch-forest"></div>
-    <span>Smaragd</span>
+  <button class="theme-option" data-theme-choice="sapphire">
+    <div class="theme-swatch theme-swatch-sapphire"></div>
+    <div>
+      <div style="font-family:'Bodoni Moda',serif;font-weight:600">Saffier</div>
+      <div style="font-size:0.72rem;color:var(--gray)">Bodoni + EB Garamond</div>
+    </div>
   </button>
 </div>
 
@@ -5048,7 +5067,7 @@ async function submitAlbumForm() {
 // ==================== THEME PICKER ====================
 (function() {
   const THEME_KEY = 'od35_theme';
-  const valid = ['delft', 'bordeaux', 'forest'];
+  const valid = ['delft', 'marine', 'sapphire'];
   function applyTheme(name) {
     if (!valid.includes(name)) name = 'delft';
     document.documentElement.setAttribute('data-theme', name);
