@@ -1588,6 +1588,22 @@
   .admin-fab:hover { background: var(--burgundy-deep); }
   .admin-fab.logged-in { background: var(--burgundy); }
 
+  /* Hero actie-knop (Wijziging indienen) */
+  .hero-action-btn {
+    background: var(--burgundy); color: var(--paper);
+    border: none; cursor: pointer;
+    padding: 0.85rem 1.8rem;
+    font-family: var(--font-display); font-size: 1rem;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .hero-action-btn:hover {
+    background: var(--burgundy-deep);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+  }
+
   /* Share buttons (mail/whatsapp/sms/copy) */
   .share-btn {
     display: inline-flex; align-items: center; gap: 0.4rem;
@@ -2393,6 +2409,9 @@
   <h1>Oud-Huisgenoten</h1>
   <p class="subtitle">Het adresboek van alle oud-huisgenoten van Oude Delft 35</p>
   <div class="stats" id="stats"></div>
+  <div style="display:flex; justify-content:center; gap:0.7rem; flex-wrap:wrap; margin-top:1.2rem;">
+    <button id="global-wijziging-btn" class="hero-action-btn">✎ Wijziging indienen</button>
+  </div>
 </header>
 
 <div id="admin-bar" class="admin-bar">
@@ -3638,6 +3657,77 @@ list.addEventListener('submit', async e => {
     submitBtn.disabled = false;
     cancelBtn.disabled = false;
   }
+});
+
+// ==================== GLOBALE WIJZIGING-INDIENEN MODAL ====================
+function populateGlobalWijzPersoonSelect() {
+  const sel = document.getElementById('gwz-persoon');
+  if (!sel || !Array.isArray(PEOPLE)) return;
+  sel.innerHTML = '<option value="">— kies een persoon —</option>';
+  const sorted = PEOPLE.slice().sort((a, b) => {
+    const ya = Number(a['Aankomstjaar']) || 0, yb = Number(b['Aankomstjaar']) || 0;
+    if (ya !== yb) return yb - ya;
+    return (a['Achternaam'] || '').localeCompare(b['Achternaam'] || '');
+  });
+  sorted.forEach(p => {
+    const naam = [p['Voorletters'], p['Tussenvoegsel'], p['Achternaam']].filter(Boolean).join(' ').trim();
+    const opt = document.createElement('option');
+    opt.value = String(p._id);
+    opt.textContent = `${naam}${p['Aankomstjaar'] ? ' ('+p['Aankomstjaar']+')' : ''}`;
+    sel.appendChild(opt);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('global-wijziging-btn').addEventListener('click', () => {
+    populateGlobalWijzPersoonSelect();
+    document.getElementById('gwz-persoon').value = '';
+    document.getElementById('gwz-aanvrager-naam').value = '';
+    document.getElementById('gwz-aanvrager-email').value = '';
+    document.getElementById('gwz-veld').value = '';
+    document.getElementById('gwz-wijziging').value = '';
+    document.getElementById('gwz-toelichting').value = '';
+    document.getElementById('gwz-error').textContent = '';
+    document.getElementById('gwz-result').innerHTML = '';
+    document.getElementById('gwz-submit').disabled = false;
+    document.getElementById('gwz-submit').textContent = 'Verzoek versturen';
+    document.getElementById('global-wijz-modal').classList.remove('hidden');
+  });
+  document.getElementById('close-global-wijz-modal').addEventListener('click', () => {
+    document.getElementById('global-wijz-modal').classList.add('hidden');
+  });
+  document.getElementById('global-wijz-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const err = document.getElementById('gwz-error');
+    const result = document.getElementById('gwz-result');
+    const btn = document.getElementById('gwz-submit');
+    err.textContent = '';
+    const personId = document.getElementById('gwz-persoon').value;
+    const p = PEOPLE.find(x => String(x._id) === personId);
+    if (!p) { err.textContent = 'Kies eerst een persoon.'; return; }
+    const naam = [p['Voorletters'], p['Tussenvoegsel'], p['Achternaam']].filter(Boolean).join(' ').trim();
+    const persoonLabel = `${naam}${p['Aankomstjaar'] ? ' ('+p['Aankomstjaar']+')' : ''}`;
+    const payload = {
+      persoon: persoonLabel,
+      aanvrager_naam: document.getElementById('gwz-aanvrager-naam').value.trim(),
+      aanvrager_email: document.getElementById('gwz-aanvrager-email').value.trim(),
+      veld: document.getElementById('gwz-veld').value,
+      wijziging: document.getElementById('gwz-wijziging').value.trim(),
+      toelichting: document.getElementById('gwz-toelichting').value.trim() || null,
+    };
+    btn.disabled = true; btn.textContent = 'Versturen…';
+    try {
+      const { error } = await db.from('wijzigingsverzoeken').insert(payload);
+      if (error) throw error;
+      result.innerHTML = `<div style="color:#4a8c4a; padding:1rem; background:var(--paper-warm); margin-top:0.5rem;"><strong>✓ Verzoek verstuurd.</strong> We controleren je aanvraag.</div>`;
+      btn.textContent = 'Verstuurd';
+      // Auto-sluit modal na 2s
+      setTimeout(() => document.getElementById('global-wijz-modal').classList.add('hidden'), 2000);
+    } catch (e2) {
+      err.textContent = 'Versturen mislukt: ' + (e2.message || e2);
+      btn.disabled = false; btn.textContent = 'Verzoek versturen';
+    }
+  });
 });
 
 // ==================== TABS ====================
@@ -5871,6 +5961,53 @@ async function submitAlbumForm() {
       <div style="font-size:0.72rem;color:var(--gray);font-family:Inter,sans-serif">modern hotel · staalblauw</div>
     </div>
   </button>
+</div>
+
+<!-- Globale Wijziging-indienen modal -->
+<div class="modal-overlay hidden" id="global-wijz-modal">
+  <div class="modal-box wide">
+    <button class="modal-close" id="close-global-wijz-modal">✕</button>
+    <h3>Wijziging indienen</h3>
+    <p class="modal-sub">Geef hieronder aan welke informatie aangepast moet worden. Een admin controleert je verzoek voordat het wordt doorgevoerd.</p>
+    <form id="global-wijz-form">
+      <div class="login-field">
+        <label>Welke persoon betreft het? *</label>
+        <select id="gwz-persoon" required style="width:100%; padding:0.55rem 0.65rem; border:1px solid var(--line); background:var(--paper); font-family:var(--font-body); font-size:0.95rem;">
+          <option value="">— kies een persoon —</option>
+        </select>
+      </div>
+      <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:0.7rem;">
+        <div class="login-field"><label>Jouw naam *</label><input type="text" id="gwz-aanvrager-naam" required></div>
+        <div class="login-field"><label>Jouw e-mail *</label><input type="email" id="gwz-aanvrager-email" required></div>
+      </div>
+      <div class="login-field">
+        <label>Wat moet er aangepast worden? *</label>
+        <select id="gwz-veld" required style="width:100%; padding:0.55rem 0.65rem; border:1px solid var(--line); background:var(--paper); font-family:var(--font-body); font-size:0.95rem;">
+          <option value="">— selecteer —</option>
+          <option value="E-mailadres">E-mailadres</option>
+          <option value="Mobiel nummer">Mobiel nummer</option>
+          <option value="Vaste telefoon">Vaste telefoon</option>
+          <option value="Adres">Adres</option>
+          <option value="Naam (achternaam, voorletters, etc.)">Naam (achternaam, voorletters, etc.)</option>
+          <option value="Aankomstjaar">Aankomstjaar</option>
+          <option value="Status (overleden melden)">Status (overleden melden)</option>
+          <option value="Persoon verwijderen">Persoon verwijderen uit lijst</option>
+          <option value="Anders / meerdere zaken">Anders / meerdere zaken</option>
+        </select>
+      </div>
+      <div class="login-field">
+        <label>Wijziging / nieuwe waarde *</label>
+        <textarea id="gwz-wijziging" required rows="3" style="width:100%; padding:0.55rem 0.65rem; border:1px solid var(--line); background:var(--paper); font-family:var(--font-body); font-size:0.95rem; resize:vertical;" placeholder="Bijvoorbeeld: nieuw e-mailadres = jansen@nieuwadres.nl"></textarea>
+      </div>
+      <div class="login-field">
+        <label>Toelichting (optioneel)</label>
+        <textarea id="gwz-toelichting" rows="2" style="width:100%; padding:0.55rem 0.65rem; border:1px solid var(--line); background:var(--paper); font-family:var(--font-body); font-size:0.95rem; resize:vertical;"></textarea>
+      </div>
+      <button type="submit" class="login-btn" id="gwz-submit">Verzoek versturen</button>
+      <div class="login-error" id="gwz-error"></div>
+      <div id="gwz-result" style="margin-top:0.5rem;"></div>
+    </form>
+  </div>
 </div>
 
 <!-- Mail-versturen modal -->
