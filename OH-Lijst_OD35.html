@@ -1588,6 +1588,21 @@
   .admin-fab:hover { background: var(--burgundy-deep); }
   .admin-fab.logged-in { background: var(--burgundy); }
 
+  /* Share buttons (mail/whatsapp/sms/copy) */
+  .share-btn {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.6rem 1rem; border: 1px solid var(--line);
+    background: var(--paper); color: var(--ink);
+    text-decoration: none; cursor: pointer;
+    font-family: var(--font-body); font-size: 0.9rem;
+    transition: all 0.15s; justify-content: center;
+  }
+  .share-btn:hover { border-color: var(--burgundy); background: var(--paper-warm); }
+  .share-btn-mail:hover { background: #e3eef9; border-color: #2a4d82; color: #2a4d82; }
+  .share-btn-wa:hover { background: #dbf5dd; border-color: #25d366; color: #128c7e; }
+  .share-btn-sms:hover { background: #e6e6f0; border-color: #5e6478; color: #2a3045; }
+  .share-btn-copy:hover { background: var(--paper-warm); }
+
   /* Mail modal */
   .mail-modal-box { max-width: 720px; }
   .mail-section { margin-bottom: 1.2rem; }
@@ -3684,11 +3699,50 @@ function renderAdmins() {
         <div class="wijz-row"><div class="label">Wachtwoord</div><div class="value">${pwHtml}</div></div>
         ${!isHa ? `
         <div class="wijz-actions" style="gap:0.5rem;flex-wrap:wrap;">
-          <button class="wijz-delete-btn" data-action="mail-credentials" data-email="${escapeHtml(a.email)}" data-pw="${escapeHtml(a.wachtwoord||'')}">Stuur inloggegevens via mail</button>
+          <button class="wijz-delete-btn" data-action="share-credentials" data-email="${escapeHtml(a.email)}" data-pw="${escapeHtml(a.wachtwoord||'')}">Deel inloggegevens (mail/WhatsApp/SMS)</button>
           <button class="wijz-delete-btn" data-action="remove-admin" data-email="${escapeHtml(a.email)}">Verwijder admin</button>
         </div>` : ''}
       </div>`;
   }).join('');
+}
+
+// Globale handler voor copy-share-text knoppen (werkt overal)
+document.addEventListener('click', async e => {
+  const btn = e.target.closest('[data-action="copy-share-text"], .share-btn-copy');
+  if (!btn || !btn.dataset.shareText) return;
+  try {
+    await navigator.clipboard.writeText(btn.dataset.shareText);
+    const orig = btn.textContent;
+    btn.textContent = '✓ Gekopieerd';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  } catch {
+    alert('Kopiëren mislukt — selecteer en kopieer handmatig.');
+  }
+});
+
+function openShareDialog(email, pw) {
+  const loginUrl = window.location.origin + '/';
+  const text = `Hi,\n\nHier zijn je inloggegevens voor de OD35 ledenlijst.\n\nLink: ${loginUrl}\nE-mail: ${email}\nWachtwoord: ${pw}\n\nKlik rechtsonder op het tandwiel-icoon om in te loggen.\n\nGroet`;
+  const subj = encodeURIComponent('Inloggegevens OD35 Ledenlijst');
+  const body = encodeURIComponent(text);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:440px;">
+      <button class="modal-close" data-close-share>✕</button>
+      <h3>Inloggegevens delen</h3>
+      <p class="modal-sub">Voor <strong>${escapeHtml(email)}</strong></p>
+      <div style="display:flex; flex-direction:column; gap:0.6rem; margin-top:1rem;">
+        <a href="mailto:${encodeURIComponent(email)}?subject=${subj}&body=${body}" class="share-btn share-btn-mail">📧 Open in mailprogramma</a>
+        <a href="https://wa.me/?text=${body}" target="_blank" rel="noopener" class="share-btn share-btn-wa">💬 Deel via WhatsApp</a>
+        <a href="sms:?body=${body}" class="share-btn share-btn-sms">📱 Deel via SMS</a>
+        <button type="button" class="share-btn share-btn-copy" data-action="copy-share-text" data-share-text="${escapeHtml(text)}">📋 Kopieer tekst</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay || e.target.matches('[data-close-share]')) overlay.remove();
+  });
 }
 
 function genPassword(len = 12) {
@@ -3832,23 +3886,16 @@ document.addEventListener('DOMContentLoaded', () => {
       // Bouw mailto link
       const loginUrl = window.location.origin + '/';
       const subject = encodeURIComponent('Je bent admin geworden van Oude Delft 35');
-      const body = encodeURIComponent(
-`Hi${naam ? ' ' + naam : ''},
-
-Je hebt admin-rechten gekregen voor de OD35 ledenlijst.
-
-Inloglink: ${loginUrl}
-E-mail: ${email}
-Wachtwoord: ${wachtwoord}
-
-Klik rechtsonder op het tandwiel-icoon om in te loggen.
-
-Met vriendelijke groet,
-${adminUser?.email || 'Hoofdadmin'}`
-      );
-      result.innerHTML = `<div style="color:#4a8c4a; font-size:0.9rem;">
-        <strong>✓ Admin aangemaakt.</strong><br>
-        <a href="mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}" style="display:inline-block; margin-top:0.5rem; background:var(--burgundy); color:var(--paper); padding:0.5rem 1rem; text-decoration:none;">Open mail met inloggegevens</a>
+      const plainText = `Hi${naam ? ' ' + naam : ''},\n\nJe hebt admin-rechten gekregen voor de OD35 ledenlijst.\n\nInloglink: ${loginUrl}\nE-mail: ${email}\nWachtwoord: ${wachtwoord}\n\nKlik rechtsonder op het tandwiel-icoon om in te loggen.\n\nMet vriendelijke groet,\n${adminUser?.email || 'Hoofdadmin'}`;
+      const body = encodeURIComponent(plainText);
+      result.innerHTML = `<div style="font-size:0.9rem;">
+        <div style="color:#4a8c4a;margin-bottom:0.6rem;"><strong>✓ Admin aangemaakt.</strong> Deel de inloggegevens via:</div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <a href="mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}" class="share-btn share-btn-mail">📧 Mail</a>
+          <a href="https://wa.me/?text=${body}" target="_blank" rel="noopener" class="share-btn share-btn-wa">💬 WhatsApp</a>
+          <a href="sms:?body=${body}" class="share-btn share-btn-sms">📱 SMS</a>
+          <button type="button" class="share-btn share-btn-copy" data-share-text="${escapeHtml(plainText)}">📋 Kopieer tekst</button>
+        </div>
       </div>`;
       btn.textContent = 'Klaar';
     } catch (e2) {
@@ -3875,14 +3922,19 @@ ${adminUser?.email || 'Hoofdadmin'}`
       } catch (err2) { alert('Fout: ' + err2.message); }
       return;
     }
-    if (e.target.matches('[data-action="mail-credentials"]')) {
+    if (e.target.matches('[data-action="share-credentials"]')) {
       const email = e.target.dataset.email;
       const pw = e.target.dataset.pw;
       if (!pw) { alert('Geen wachtwoord opgeslagen voor deze admin. Reset zelf het wachtwoord in Supabase.'); return; }
-      const loginUrl = window.location.origin + '/';
-      const subject = encodeURIComponent('Inloggegevens OD35 Ledenlijst');
-      const body = encodeURIComponent(`Hi,\n\nHier zijn je inloggegevens voor de OD35 ledenlijst.\n\nLink: ${loginUrl}\nE-mail: ${email}\nWachtwoord: ${pw}\n\nKlik rechtsonder op het tandwiel-icoon om in te loggen.\n\nGroet`);
-      window.location.href = `mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}`;
+      openShareDialog(email, pw);
+      return;
+    }
+    if (e.target.matches('[data-action="copy-share-text"]')) {
+      const text = e.target.dataset.shareText || e.target.closest('.share-btn-copy')?.dataset.shareText;
+      if (text) {
+        try { await navigator.clipboard.writeText(text); e.target.textContent = '✓ Gekopieerd'; setTimeout(()=>{e.target.textContent='📋 Kopieer tekst';}, 1500); }
+        catch { alert('Kopiëren mislukt — selecteer en kopieer handmatig.'); }
+      }
       return;
     }
   });
