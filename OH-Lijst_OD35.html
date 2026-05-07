@@ -2895,16 +2895,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const created = await saveNewPerson(personData);
         created._searchText = buildSearchText(created);
         PEOPLE.unshift(created);
-        // Als deze save voortkomt uit een inschrijving, markeer die als goedgekeurd
+        // Als deze save voortkomt uit een inschrijving: verwijder hem volledig
+        // (persoon is nu toegevoegd aan ledenlijst, dus inschrijving is overbodig)
         if (window._pendingInschrijvingId) {
           const pendingId = window._pendingInschrijvingId;
           window._pendingInschrijvingId = null;
           try {
-            await db.from('wijzigingsverzoeken').update({ afgehandeld: true }).eq('id', pendingId);
-            const ins = inschrijvingenList.find(x => x.id === pendingId);
-            if (ins) { ins.afgehandeld = true; ins.status = 'goedgekeurd'; }
+            await db.from('wijzigingsverzoeken').delete().eq('id', pendingId);
+            inschrijvingenList = inschrijvingenList.filter(x => x.id !== pendingId);
             updateWijzigingenBadge();
-          } catch(e) { console.warn('Kon inschrijving niet als goedgekeurd markeren:', e); }
+          } catch(e) { console.warn('Kon inschrijving niet verwijderen:', e); }
         }
       }
       document.getElementById('person-modal').classList.add('hidden');
