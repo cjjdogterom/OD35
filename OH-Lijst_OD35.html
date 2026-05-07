@@ -2294,6 +2294,80 @@
   <div class="pw-error" id="pw-error">Onjuist wachtwoord</div>
 </div>
 
+<!-- Publiek inschrijfscherm — bereikbaar via ?inschrijven=1 zonder wachtwoord -->
+<div id="ins-screen" style="display:none; min-height:100vh; padding:2rem 1rem; background:var(--paper);">
+  <div style="max-width:760px; margin:0 auto;">
+    <div style="text-align:center; margin-bottom:1.5rem;">
+      <img src="logo_od35.png" alt="OD35" style="max-height:70px; opacity:0.9; margin-bottom:1rem;">
+      <h1 style="font-family:var(--font-display); color:var(--burgundy); font-size:1.8rem; margin:0;">Inschrijven oud-huisgenotenlijst</h1>
+      <p style="color:var(--gray); font-style:italic; margin-top:0.4rem;">Oude Delft 35 — voor oud-bewoners van het corpshuis</p>
+    </div>
+
+    <div id="ins-success" style="display:none; padding:2rem; background:var(--paper-warm); border-left:4px solid var(--burgundy); text-align:center;">
+      <div style="font-size:2.5rem; color:var(--burgundy); margin-bottom:0.5rem;">✓</div>
+      <h2 style="font-family:var(--font-display); margin:0 0 0.5rem;">Bedankt voor je inschrijving!</h2>
+      <p style="color:var(--gray);">We controleren je gegevens en nemen contact op zodra je in de lijst staat.</p>
+    </div>
+
+    <form id="ins-form" style="background:var(--paper-warm); padding:1.5rem; border:1px solid var(--line);">
+      <p style="font-size:0.92rem; color:var(--gray); margin-bottom:1.2rem;">
+        Vul zoveel mogelijk informatie in. Velden met * zijn verplicht.
+      </p>
+
+      <div class="mf-section">Naam</div>
+      <div class="mf-grid">
+        <div class="mf-field"><label>Achternaam *</label><input type="text" id="ins-achternaam" required></div>
+        <div class="mf-field"><label>Tussenvoegsel</label><input type="text" id="ins-tussenvoegsel" placeholder="van, de, …"></div>
+        <div class="mf-field"><label>Voorletters *</label><input type="text" id="ins-voorletters" required placeholder="J.P."></div>
+        <div class="mf-field"><label>Voornaam</label><input type="text" id="ins-voornaam"></div>
+        <div class="mf-field"><label>Roepnaam</label><input type="text" id="ins-roepnaam"></div>
+        <div class="mf-field"><label>Titel</label><input type="text" id="ins-titel" placeholder="Drs., Ir., …"></div>
+      </div>
+
+      <div class="mf-section">OD35-tijd</div>
+      <div class="mf-grid">
+        <div class="mf-field"><label>Aankomstjaar *</label><input type="number" id="ins-aankomstjaar" required min="1880" max="2100" placeholder="2018"></div>
+      </div>
+
+      <div class="mf-section">Geboorte</div>
+      <div class="mf-grid">
+        <div class="mf-field"><label>Geboortejaar</label><input type="number" id="ins-geboortejaar" min="1900" max="2100" placeholder="1995"></div>
+        <div class="mf-field"><label>Geboortemaand</label><input type="number" id="ins-geboortemaand" min="1" max="12" placeholder="3"></div>
+        <div class="mf-field"><label>Geboortedag</label><input type="number" id="ins-geboortedag" min="1" max="31" placeholder="15"></div>
+        <div class="mf-field"><label>Plaats van herkomst</label><input type="text" id="ins-herkomst"></div>
+      </div>
+
+      <div class="mf-section">Adres</div>
+      <div class="mf-grid">
+        <div class="mf-field span2"><label>Straat + huisnummer</label><input type="text" id="ins-adres1"></div>
+        <div class="mf-field"><label>Postcode</label><input type="text" id="ins-postcode"></div>
+        <div class="mf-field"><label>Plaats</label><input type="text" id="ins-plaats"></div>
+        <div class="mf-field"><label>Land</label><input type="text" id="ins-land" value="Nederland"></div>
+      </div>
+
+      <div class="mf-section">Contact</div>
+      <div class="mf-grid">
+        <div class="mf-field"><label>E-mail *</label><input type="email" id="ins-email1" required></div>
+        <div class="mf-field"><label>Tweede e-mail</label><input type="email" id="ins-email2"></div>
+        <div class="mf-field"><label>Mobiel</label><input type="tel" id="ins-mobiel1" placeholder="06-12345678"></div>
+        <div class="mf-field"><label>Tweede mobiel</label><input type="tel" id="ins-mobiel2"></div>
+      </div>
+
+      <div class="mf-section">Opmerkingen</div>
+      <div class="mf-grid">
+        <div class="mf-field span2"><label>Eventuele aanvullingen / toelichting</label>
+          <textarea id="ins-opmerking" rows="3" style="width:100%; padding:0.55rem 0.65rem; border:1px solid var(--line); background:var(--paper); font-family:var(--font-body); font-size:0.95rem; color:var(--ink); resize:vertical;"></textarea>
+        </div>
+      </div>
+
+      <div style="margin-top:1.5rem; display:flex; gap:0.7rem; align-items:center; flex-wrap:wrap;">
+        <button type="submit" id="ins-submit" style="background:var(--burgundy); color:var(--paper); padding:0.8rem 1.5rem; border:none; cursor:pointer; font-family:var(--font-display); font-size:1rem; letter-spacing:0.04em;">Inschrijving versturen</button>
+        <span id="ins-status" style="font-size:0.88rem; color:var(--gray);"></span>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div id="main-content" style="display:none">
 <div class="container">
 
@@ -2597,7 +2671,9 @@ function openPersonModal(existingPerson) {
   const title = document.getElementById('person-modal-title');
   const saveBtn = document.getElementById('person-save-btn');
 
-  title.textContent = existingPerson ? 'Persoon bewerken' : 'Persoon toevoegen';
+  title.textContent = window._pendingInschrijvingId
+    ? 'Inschrijving goedkeuren'
+    : (existingPerson && existingPerson._id ? 'Persoon bewerken' : 'Persoon toevoegen');
   form.reset();
 
   // Pre-fill if editing
@@ -2686,14 +2762,19 @@ document.addEventListener('DOMContentLoaded', () => {
     render();
   });
 
-  document.getElementById('add-person-btn').addEventListener('click', () => openPersonModal(null));
+  document.getElementById('add-person-btn').addEventListener('click', () => {
+    window._pendingInschrijvingId = null;
+    openPersonModal(null);
+  });
 
   // Person modal
   document.getElementById('close-person-modal').addEventListener('click', () => {
+    window._pendingInschrijvingId = null;
     document.getElementById('person-modal').classList.add('hidden');
   });
 
   document.getElementById('cancel-person-btn').addEventListener('click', () => {
+    window._pendingInschrijvingId = null;
     document.getElementById('person-modal').classList.add('hidden');
   });
 
@@ -2744,6 +2825,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const created = await saveNewPerson(personData);
         created._searchText = buildSearchText(created);
         PEOPLE.unshift(created);
+        // Als deze save voortkomt uit een inschrijving, markeer die als goedgekeurd
+        if (window._pendingInschrijvingId) {
+          const pendingId = window._pendingInschrijvingId;
+          window._pendingInschrijvingId = null;
+          try {
+            await db.from('inschrijvingen').update({ afgehandeld: true, status: 'goedgekeurd' }).eq('id', pendingId);
+            const ins = inschrijvingenList.find(x => x.id === pendingId);
+            if (ins) { ins.afgehandeld = true; ins.status = 'goedgekeurd'; }
+            updateWijzigingenBadge();
+          } catch(e) { console.warn('Kon inschrijving niet als goedgekeurd markeren:', e); }
+        }
       }
       document.getElementById('person-modal').classList.add('hidden');
       render();
@@ -3492,19 +3584,23 @@ document.getElementById('tab-nav').addEventListener('click', e => {
   if (tab === 'wijzigingen') { loadWijzigingen(); }
 });
 
-// ==================== WIJZIGINGSVERZOEKEN ====================
+// ==================== WIJZIGINGSVERZOEKEN + INSCHRIJVINGEN ====================
 let wijzigingenList = [];
+let inschrijvingenList = [];
 
 async function loadWijzigingen() {
   if (!isAdmin()) return;
   const list = document.getElementById('wijz-list');
   if (list) list.innerHTML = '<div class="wijz-empty">Laden…</div>';
   try {
-    const { data, error } = await db.from('wijzigingsverzoeken')
-      .select('*')
-      .order('aangemaakt_op', { ascending: false });
-    if (error) throw error;
-    wijzigingenList = data || [];
+    const [{ data: wd, error: we }, { data: id, error: ie }] = await Promise.all([
+      db.from('wijzigingsverzoeken').select('*').order('aangemaakt_op', { ascending: false }),
+      db.from('inschrijvingen').select('*').order('aangemaakt_op', { ascending: false })
+    ]);
+    if (we) throw we;
+    if (ie && !ie.message?.includes('does not exist')) throw ie;
+    wijzigingenList = wd || [];
+    inschrijvingenList = id || [];
     renderWijzigingen();
     updateWijzigingenBadge();
   } catch (e) {
@@ -3515,7 +3611,8 @@ async function loadWijzigingen() {
 function updateWijzigingenBadge() {
   const badge = document.getElementById('wijzigingen-badge');
   if (!badge) return;
-  const open = wijzigingenList.filter(w => !w.afgehandeld).length;
+  const open = wijzigingenList.filter(w => !w.afgehandeld).length
+    + inschrijvingenList.filter(i => !i.afgehandeld).length;
   badge.textContent = open > 0 ? open : '';
 }
 
@@ -3524,39 +3621,83 @@ function renderWijzigingen() {
   const filter = document.getElementById('wijz-filter')?.value || 'open';
   if (!list) return;
 
-  let filtered = wijzigingenList;
-  if (filter === 'open') filtered = filtered.filter(w => !w.afgehandeld);
-  else if (filter === 'afgehandeld') filtered = filtered.filter(w => w.afgehandeld);
+  // Combineer wijzigingen + inschrijvingen
+  const items = [
+    ...wijzigingenList.map(w => ({ kind: 'wijziging', ...w })),
+    ...inschrijvingenList.map(i => ({ kind: 'inschrijving', ...i }))
+  ];
+  // Sorteer op datum desc
+  items.sort((a,b) => new Date(b.aangemaakt_op||0) - new Date(a.aangemaakt_op||0));
+
+  let filtered = items;
+  if (filter === 'open') filtered = filtered.filter(x => !x.afgehandeld);
+  else if (filter === 'afgehandeld') filtered = filtered.filter(x => x.afgehandeld);
 
   if (filtered.length === 0) {
-    list.innerHTML = `<div class="wijz-empty">Geen ${filter === 'afgehandeld' ? 'afgehandelde' : filter === 'open' ? 'openstaande' : ''} wijzigingsverzoeken.</div>`;
+    list.innerHTML = `<div class="wijz-empty">Geen ${filter === 'afgehandeld' ? 'afgehandelde' : filter === 'open' ? 'openstaande' : ''} verzoeken.</div>`;
     return;
   }
 
-  list.innerHTML = filtered.map(w => {
-    const datum = w.aangemaakt_op ? new Date(w.aangemaakt_op).toLocaleString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-    return `
-      <div class="wijz-card ${w.afgehandeld ? 'afgehandeld' : ''}" data-id="${escapeHtml(w.id)}">
-        <div class="wijz-card-head">
-          <div class="wijz-card-persoon">${escapeHtml(w.persoon || '')}</div>
-          <div class="wijz-card-datum">${escapeHtml(datum)}</div>
-        </div>
-        <div class="wijz-card-aanvrager">
-          Aangevraagd door <strong>${escapeHtml(w.aanvrager_naam || '')}</strong>
-          ${w.aanvrager_email ? ` &middot; <a href="mailto:${escapeHtml(w.aanvrager_email)}">${escapeHtml(w.aanvrager_email)}</a>` : ''}
-        </div>
-        <div class="wijz-row"><div class="label">Veld</div><div class="value">${escapeHtml(w.veld || '')}</div></div>
-        <div class="wijz-row"><div class="label">Wijziging</div><div class="value">${escapeHtml(w.wijziging || '')}</div></div>
-        ${w.toelichting ? `<div class="wijz-row"><div class="label">Toelichting</div><div class="value">${escapeHtml(w.toelichting)}</div></div>` : ''}
-        <div class="wijz-actions">
-          <label class="wijz-check-label">
-            <input type="checkbox" data-action="toggle-afgehandeld" data-id="${escapeHtml(w.id)}" ${w.afgehandeld ? 'checked' : ''}>
-            <span>Afgehandeld</span>
-          </label>
-          <button class="wijz-delete-btn" data-action="delete-wijziging" data-id="${escapeHtml(w.id)}">Verwijderen</button>
-        </div>
-      </div>`;
-  }).join('');
+  list.innerHTML = filtered.map(x => x.kind === 'inschrijving' ? renderInschrijvingCard(x) : renderWijzigingCard(x)).join('');
+}
+
+function renderWijzigingCard(w) {
+  const datum = w.aangemaakt_op ? new Date(w.aangemaakt_op).toLocaleString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+  return `
+    <div class="wijz-card ${w.afgehandeld ? 'afgehandeld' : ''}" data-id="${escapeHtml(w.id)}">
+      <div class="wijz-card-head">
+        <div class="wijz-card-persoon"><span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray);margin-right:0.5rem;">Wijziging</span>${escapeHtml(w.persoon || '')}</div>
+        <div class="wijz-card-datum">${escapeHtml(datum)}</div>
+      </div>
+      <div class="wijz-card-aanvrager">
+        Aangevraagd door <strong>${escapeHtml(w.aanvrager_naam || '')}</strong>
+        ${w.aanvrager_email ? ` &middot; <a href="mailto:${escapeHtml(w.aanvrager_email)}">${escapeHtml(w.aanvrager_email)}</a>` : ''}
+      </div>
+      <div class="wijz-row"><div class="label">Veld</div><div class="value">${escapeHtml(w.veld || '')}</div></div>
+      <div class="wijz-row"><div class="label">Wijziging</div><div class="value">${escapeHtml(w.wijziging || '')}</div></div>
+      ${w.toelichting ? `<div class="wijz-row"><div class="label">Toelichting</div><div class="value">${escapeHtml(w.toelichting)}</div></div>` : ''}
+      <div class="wijz-actions">
+        <label class="wijz-check-label">
+          <input type="checkbox" data-action="toggle-afgehandeld" data-id="${escapeHtml(w.id)}" ${w.afgehandeld ? 'checked' : ''}>
+          <span>Afgehandeld</span>
+        </label>
+        <button class="wijz-delete-btn" data-action="delete-wijziging" data-id="${escapeHtml(w.id)}">Verwijderen</button>
+      </div>
+    </div>`;
+}
+
+function renderInschrijvingCard(i) {
+  const datum = i.aangemaakt_op ? new Date(i.aangemaakt_op).toLocaleString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+  const d = i.data || {};
+  const naam = [d.voorletters, d.tussenvoegsel, d.achternaam].filter(Boolean).join(' ').trim() || '(geen naam)';
+  const status = i.status || (i.afgehandeld ? 'afgehandeld' : 'open');
+  const statusBadge = status === 'goedgekeurd' ? `<span style="background:#4a8c4a;color:white;padding:1px 8px;font-size:0.7rem;border-radius:9px;margin-left:0.5rem;">GOEDGEKEURD</span>`
+    : status === 'afgekeurd' ? `<span style="background:#c14040;color:white;padding:1px 8px;font-size:0.7rem;border-radius:9px;margin-left:0.5rem;">AFGEKEURD</span>` : '';
+  const fields = [
+    ['Voornaam', d.voornaam], ['Roepnaam', d.roepnaam], ['Titel', d.titel],
+    ['Aankomstjaar', d.aankomstjaar],
+    ['Geboorte', [d.geboortedag, d.geboortemaand, d.geboortejaar].filter(Boolean).join('-')],
+    ['Plaats van herkomst', d.plaats_van_herkomst],
+    ['Adres', [d.adres_1, d.postcode, d.plaats, d.land].filter(Boolean).join(', ')],
+    ['E-mail', [d.email_1, d.email_2].filter(Boolean).join(' / ')],
+    ['Mobiel', [d.mobiel_1, d.mobiel_2].filter(Boolean).join(' / ')],
+    ['Opmerking', d.opmerking],
+  ].filter(([_, v]) => v);
+  return `
+    <div class="wijz-card ${i.afgehandeld ? 'afgehandeld' : ''}" data-ins-id="${escapeHtml(i.id)}" style="border-left-color:#5b8cb5;">
+      <div class="wijz-card-head">
+        <div class="wijz-card-persoon"><span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:#5b8cb5;margin-right:0.5rem;">Inschrijving</span>${escapeHtml(naam)}${statusBadge}</div>
+        <div class="wijz-card-datum">${escapeHtml(datum)}</div>
+      </div>
+      ${fields.map(([k, v]) => `<div class="wijz-row"><div class="label">${escapeHtml(k)}</div><div class="value">${escapeHtml(String(v))}</div></div>`).join('')}
+      <div class="wijz-actions" style="gap:0.5rem;flex-wrap:wrap;">
+        ${!i.afgehandeld ? `
+          <button class="wijz-delete-btn" style="border-color:#4a8c4a;color:#4a8c4a;" data-action="approve-ins" data-id="${escapeHtml(i.id)}">✓ Goedkeuren / wijzigen</button>
+          <button class="wijz-delete-btn" data-action="reject-ins" data-id="${escapeHtml(i.id)}">✗ Afkeuren</button>
+        ` : ''}
+        <button class="wijz-delete-btn" data-action="delete-ins" data-id="${escapeHtml(i.id)}">Verwijderen</button>
+      </div>
+    </div>`;
 }
 
 document.getElementById('wijz-filter').addEventListener('change', renderWijzigingen);
@@ -3582,19 +3723,89 @@ document.getElementById('wijz-list').addEventListener('change', async e => {
 });
 
 document.getElementById('wijz-list').addEventListener('click', async e => {
-  if (!e.target.matches('[data-action="delete-wijziging"]')) return;
-  const id = e.target.dataset.id;
-  if (!confirm('Dit verzoek definitief verwijderen?')) return;
-  try {
-    const { error } = await db.from('wijzigingsverzoeken').delete().eq('id', id);
-    if (error) throw error;
-    wijzigingenList = wijzigingenList.filter(x => x.id !== id);
-    renderWijzigingen();
-    updateWijzigingenBadge();
-  } catch (err) {
-    alert('Verwijderen mislukt: ' + err.message);
+  // Wijzigingen verwijderen
+  if (e.target.matches('[data-action="delete-wijziging"]')) {
+    const id = e.target.dataset.id;
+    if (!confirm('Dit verzoek definitief verwijderen?')) return;
+    try {
+      const { error } = await db.from('wijzigingsverzoeken').delete().eq('id', id);
+      if (error) throw error;
+      wijzigingenList = wijzigingenList.filter(x => x.id !== id);
+      renderWijzigingen(); updateWijzigingenBadge();
+    } catch (err) { alert('Verwijderen mislukt: ' + err.message); }
+    return;
+  }
+  // Inschrijving goedkeuren — open persoon-modal pre-filled
+  if (e.target.matches('[data-action="approve-ins"]')) {
+    const id = e.target.dataset.id;
+    const ins = inschrijvingenList.find(x => x.id === id);
+    if (!ins) return;
+    openPersonModalFromInschrijving(ins);
+    return;
+  }
+  // Inschrijving afkeuren
+  if (e.target.matches('[data-action="reject-ins"]')) {
+    const id = e.target.dataset.id;
+    if (!confirm('Deze inschrijving afkeuren?')) return;
+    try {
+      const { error } = await db.from('inschrijvingen').update({ afgehandeld: true, status: 'afgekeurd' }).eq('id', id);
+      if (error) throw error;
+      const i = inschrijvingenList.find(x => x.id === id);
+      if (i) { i.afgehandeld = true; i.status = 'afgekeurd'; }
+      renderWijzigingen(); updateWijzigingenBadge();
+    } catch (err) { alert('Fout: ' + err.message); }
+    return;
+  }
+  // Inschrijving verwijderen
+  if (e.target.matches('[data-action="delete-ins"]')) {
+    const id = e.target.dataset.id;
+    if (!confirm('Deze inschrijving definitief verwijderen?')) return;
+    try {
+      const { error } = await db.from('inschrijvingen').delete().eq('id', id);
+      if (error) throw error;
+      inschrijvingenList = inschrijvingenList.filter(x => x.id !== id);
+      renderWijzigingen(); updateWijzigingenBadge();
+    } catch (err) { alert('Verwijderen mislukt: ' + err.message); }
+    return;
   }
 });
+
+// Open persoon-modal voorgevuld met inschrijvings-data; bij opslaan markeer inschrijving goedgekeurd
+function openPersonModalFromInschrijving(ins) {
+  const d = ins.data || {};
+  // Map veldnamen naar form-IDs (zelfde structuur als bestaand persoon-modal)
+  const fakePerson = {
+    'Achternaam': d.achternaam || '',
+    'Tussenvoegsel': d.tussenvoegsel || '',
+    'Voorletters': d.voorletters || '',
+    'Voornaam': d.voornaam || '',
+    'Roepnaam': d.roepnaam || '',
+    'Titel': d.titel || '',
+    'Aankomstjaar': d.aankomstjaar || null,
+    'Geboortejaar': d.geboortejaar || null,
+    'Geboortemaand': d.geboortemaand || null,
+    'Geboortedag': d.geboortedag || null,
+    'Plaats van herkomst': d.plaats_van_herkomst || '',
+    'Adres 1': d.adres_1 || '',
+    'Postcode': d.postcode || '',
+    'Plaats': d.plaats || '',
+    'Land': d.land || '',
+    'E-mail 1': d.email_1 || '',
+    'E-mail 2': d.email_2 || '',
+    'Mobiel 1': d.mobiel_1 || '',
+    'Mobiel 2': d.mobiel_2 || '',
+  };
+  // Stash inschrijving-id zodat na save de status wordt bijgewerkt
+  window._pendingInschrijvingId = ins.id;
+  openPersonModal(fakePerson);
+  // Kondig in modal aan
+  const subEl = document.querySelector('#person-modal .modal-sub');
+  if (subEl) subEl.textContent = 'Inschrijving controleren en eventueel aanpassen. Bij opslaan wordt de persoon toegevoegd en de inschrijving goedgekeurd.';
+  if (d.opmerking) {
+    const subEl2 = document.querySelector('#person-modal .modal-sub');
+    if (subEl2) subEl2.innerHTML += `<br><em style="color:var(--gray);">Opmerking aanvrager: ${escapeHtml(d.opmerking)}</em>`;
+  }
+}
 
 // ==================== AGENDA ====================
 function formatEventDate(dateStr, short = false) {
@@ -5541,9 +5752,19 @@ Met vriendelijke groet,"></textarea>
   const KEY = 'od35_toegang';
   const screen = document.getElementById('pw-screen');
   const main   = document.getElementById('main-content');
+  const ins    = document.getElementById('ins-screen');
   const input  = document.getElementById('pw-input');
   const btn    = document.getElementById('pw-btn');
   const error  = document.getElementById('pw-error');
+
+  // Publiek inschrijfformulier — bypass wachtwoord via ?inschrijven=1
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('inschrijven')) {
+    screen.style.display = 'none';
+    if (main) main.style.display = 'none';
+    if (ins) ins.style.display = 'block';
+    return;
+  }
 
   function unlock() {
     sessionStorage.setItem(KEY, '1');
@@ -5559,6 +5780,65 @@ Met vriendelijke groet,"></textarea>
   });
   input.addEventListener('keydown', e => { if (e.key === 'Enter') btn.click(); });
   input.focus();
+})();
+
+// Inschrijfformulier submit
+(function() {
+  const form = document.getElementById('ins-form');
+  if (!form) return;
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const submitBtn = document.getElementById('ins-submit');
+    const status = document.getElementById('ins-status');
+    const success = document.getElementById('ins-success');
+    submitBtn.disabled = true; submitBtn.textContent = 'Versturen…';
+    status.textContent = '';
+
+    const g = id => (document.getElementById(id)?.value || '').trim();
+    const num = id => { const v = g(id); return v ? Number(v) : null; };
+    const data = {
+      achternaam: g('ins-achternaam'),
+      tussenvoegsel: g('ins-tussenvoegsel'),
+      voorletters: g('ins-voorletters'),
+      voornaam: g('ins-voornaam'),
+      roepnaam: g('ins-roepnaam'),
+      titel: g('ins-titel'),
+      aankomstjaar: num('ins-aankomstjaar'),
+      geboortejaar: num('ins-geboortejaar'),
+      geboortemaand: num('ins-geboortemaand'),
+      geboortedag: num('ins-geboortedag'),
+      plaats_van_herkomst: g('ins-herkomst'),
+      adres_1: g('ins-adres1'),
+      postcode: g('ins-postcode'),
+      plaats: g('ins-plaats'),
+      land: g('ins-land'),
+      email_1: g('ins-email1'),
+      email_2: g('ins-email2'),
+      mobiel_1: g('ins-mobiel1'),
+      mobiel_2: g('ins-mobiel2'),
+      opmerking: g('ins-opmerking'),
+    };
+
+    try {
+      const SUPABASE_URL = 'https://mxbtmbcgycjqapjzulrp.supabase.co';
+      const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14YnRtYmNneWNqcWFwanp1bHJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MDQ4MzgsImV4cCI6MjA5MzQ4MDgzOH0.6Qowa_mqhH7YtrljF5fZnQzUaG_u4N5TodcnLzRhYSM';
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/inschrijvingen`, {
+        method: 'POST',
+        headers: { 'apikey': ANON, 'Authorization': `Bearer ${ANON}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ data })
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err);
+      }
+      form.style.display = 'none';
+      success.style.display = 'block';
+    } catch (err) {
+      submitBtn.disabled = false; submitBtn.textContent = 'Inschrijving versturen';
+      status.textContent = 'Versturen mislukt: ' + (err.message || err);
+      status.style.color = '#c14040';
+    }
+  });
 })();
 </script>
 
