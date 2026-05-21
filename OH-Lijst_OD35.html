@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://mxbtmbcgycjqapjzulrp.supabase.co blob:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://mxbtmbcgycjqapjzulrp.supabase.co wss://mxbtmbcgycjqapjzulrp.supabase.co https://api.resend.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
 <title>Oude Delft 35 — Oud-Huisgenoten</title>
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
@@ -6854,7 +6857,10 @@ Met vriendelijke groet,"></textarea>
 })();
 
 (function() {
-  const PW = 'OmegaKsi35';
+  // SHA-256 hash van 'OmegaKsi35' — daadwerkelijk wachtwoord staat niet in de source.
+  // Let op: client-side check blijft te omzeilen via DevTools; voor echte
+  // bescherming staat RLS op de Supabase-tabellen aan (zie SECURITY.md).
+  const PW_HASH = '86967edd971fb490904869f32ffe3383db9c19315ba08513e8288f1b3a11e295';
   const KEY = 'od35_toegang';
   const screen = document.getElementById('pw-screen');
   const main   = document.getElementById('main-content');
@@ -6872,6 +6878,12 @@ Met vriendelijke groet,"></textarea>
     return;
   }
 
+  async function sha256(text) {
+    const buf = new TextEncoder().encode(text);
+    const hash = await crypto.subtle.digest('SHA-256', buf);
+    return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
   function unlock() {
     sessionStorage.setItem(KEY, '1');
     screen.style.display = 'none';
@@ -6880,12 +6892,20 @@ Met vriendelijke groet,"></textarea>
 
   if (sessionStorage.getItem(KEY) === '1') { unlock(); return; }
 
-  btn.addEventListener('click', () => {
-    if (input.value === PW) { unlock(); }
+  async function tryUnlock() {
+    const h = await sha256(input.value);
+    if (h === PW_HASH) { unlock(); }
     else { error.style.display = 'block'; input.value = ''; input.focus(); }
-  });
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') btn.click(); });
+  }
+  btn.addEventListener('click', tryUnlock);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
   input.focus();
+
+  // Anti self-XSS — waarschuwing in DevTools console
+  if (window.console && window.console.log) {
+    console.log('%cStop!', 'color:#c14040; font-size:48px; font-weight:bold;');
+    console.log('%cDit is een ontwikkelaarsvenster. Plak hier geen code die anderen je hebben gegeven — daarmee kunnen ze je account overnemen.', 'color:#1a1812; font-size:14px;');
+  }
 })();
 
 // Inschrijfformulier submit

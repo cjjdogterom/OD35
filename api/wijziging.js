@@ -1,11 +1,21 @@
 const { Resend } = require('resend');
 
+const ALLOWED_ORIGINS = [
+  'https://oudedelft35.com',
+  'https://www.oudedelft35.com',
+  'https://od-35.vercel.app',
+];
+
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin || '';
+  const isAllowed = ALLOWED_ORIGINS.includes(origin);
+  res.setHeader('Access-Control-Allow-Origin', isAllowed ? origin : ALLOWED_ORIGINS[0]);
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!isAllowed) return res.status(403).json({ error: 'Origin not allowed' });
 
   const { persoon, aanvrager_naam, aanvrager_email, veld, wijziging, toelichting, adminEmails } = req.body;
 
