@@ -14,26 +14,72 @@ Datum: 2026-05-21
 - **Site-password gehashed** (SHA-256) i.p.v. plaintext in JS-source. `View Source` levert nu alleen de hash op, niet het wachtwoord `OmegaKsi35`.
 - **Anti-self-XSS console-waarschuwing**: gebruikers die DevTools openen krijgen een groot **STOP!** te zien — voorkomt social-engineering trucs ("plak dit in de console").
 
-## Wat JIJ moet doen (vereist Supabase-toegang)
+## Wat JIJ moet doen — VIEWER ACCOUNT INRICHTEN
 
-### 🔴 KRITIEK — RLS op `personen` tabel verstrakken
+De code voor viewer-only toegang staat klaar. Doe deze 3 stappen, dan is alles dicht.
 
-**Probleem**: iedereen die de site-URL kent kan met de publieke anon-key álle personeelsdata scrapen (e-mails, mobiele nummers, adressen) zonder ooit het site-wachtwoord in te vullen. Test:
-```bash
-curl "https://mxbtmbcgycjqapjzulrp.supabase.co/rest/v1/personen?select=*" \
-  -H "apikey: <anon-key uit HTML>"
-# → 200 OK met alle 399 records
-```
+### A. Maak het viewer-account in Supabase Auth
+1. Supabase dashboard → **Authentication → Users → Add user → Create new user**
+2. Vul in:
+   - E-mail: `viewer@oudedelft35.local` (mag fake zijn — geen mail nodig)
+   - Wachtwoord: **genereer een lange random string** (32 chars) — bv via [passwordsgenerator.net](https://passwordsgenerator.net)
+   - **Auto Confirm User** ✓ aanvinken
+   - Create user
 
-**Oplossing A (snel, beperkt)**: maak SELECT alleen voor admins toegankelijk. Nadeel: niet-admins kunnen de site niet meer gebruiken.
+### B. Zet 2 env-vars in Vercel
+Voor élk Vercel-project (`od-35`, `od-35-oh-lijst`, `od-35-5jju`):
+- **Settings → Environment Variables → Add New** (× 2)
+- `VIEWER_EMAIL` = `viewer@oudedelft35.local`
+- `VIEWER_PASSWORD` = (de random string uit stap A)
+- Environments: **Production** ✓
+- **Redeploy** triggeren via Deployments tab (3 puntjes op laatste deploy → Redeploy)
+
+### C. RLS aanscherpen in Supabase SQL Editor
 ```sql
+-- 1. Drop bestaande anon SELECT policies (namen kunnen variëren — check Table Editor)
 DROP POLICY IF EXISTS "anon mag personen lezen" ON personen;
-CREATE POLICY "auth mag personen lezen" ON personen FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable read access for all users" ON personen;
+DROP POLICY IF EXISTS "Public read" ON personen;
+
+-- 2. Voeg authenticated SELECT toe (viewer + admins)
+CREATE POLICY "Auth mag personen lezen"
+  ON personen FOR SELECT TO authenticated USING (true);
+
+-- 3. Doe hetzelfde voor evenementen, contactpersonen, huis_oudste,
+--    aanwezigheid, albums, fotos, admin_emails:
+DROP POLICY IF EXISTS "anon read" ON evenementen;
+CREATE POLICY "Auth read" ON evenementen FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "anon read" ON contactpersonen;
+CREATE POLICY "Auth read" ON contactpersonen FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "anon read" ON huis_oudste;
+CREATE POLICY "Auth read" ON huis_oudste FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "anon read" ON aanwezigheid;
+CREATE POLICY "Auth read" ON aanwezigheid FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "anon read" ON albums;
+CREATE POLICY "Auth read" ON albums FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "anon read" ON fotos;
+CREATE POLICY "Auth read" ON fotos FOR SELECT TO authenticated USING (true);
+
+-- 4. Behoud anon INSERT op wijzigingsverzoeken — voor publiek inschrijfformulier!
+-- (Deze policy bestaat al, niet droppen)
+
+-- 5. Schemarefresh
+NOTIFY pgrst, 'reload schema';
 ```
 
-**Oplossing B (aanbevolen)**: maak een gedeeld "viewer"-account in Supabase Auth, sla het wachtwoord op in een Vercel env var, en log automatisch in als die viewer na het site-wachtwoord. Vereist code-aanpassing — zeg het als je dit wilt, dan bouw ik het.
-
-**Oplossing C (zwaarder)**: geef elk lid een eigen Supabase Auth account. Meer onderhoud maar volledig veilig.
+### Verificatie
+Na deze 3 stappen test je:
+```bash
+# Mag NIET meer werken (404 of 401)
+curl "https://mxbtmbcgycjqapjzulrp.supabase.co/rest/v1/personen?select=*" \
+  -H "apikey: <anon-key>"
+```
+En in de browser: ververs de site → vul site-wachtwoord in → leden zouden zichtbaar moeten zijn. Als data niet laadt: check je Vercel env vars + dat viewer-account de juiste creds heeft.
 
 ### 🟠 HOOG — Plaintext wachtwoorden in `admins.wachtwoord`
 

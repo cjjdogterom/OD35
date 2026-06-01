@@ -2832,6 +2832,13 @@ async function deletePerson(id) {
 // ── Admin state ───────────────────────────────────────────────────────────────
 let adminUser = null;
 const HOOFDADMIN_EMAIL = 'cjj.dogterom@gmail.com';
+// Viewer-account herkennen: behandelt als 'niet-admin' ook al is er een Supabase session
+const VIEWER_EMAIL_DOMAIN_HINT = 'viewer';
+function isViewerSession(user) {
+  if (!user || !user.email) return false;
+  const e = user.email.toLowerCase();
+  return e.startsWith('viewer@') || e.includes(VIEWER_EMAIL_DOMAIN_HINT);
+}
 function isAdmin() { return !!adminUser; }
 function isHoofdadmin() { return !!adminUser && (adminUser.email || '').toLowerCase() === HOOFDADMIN_EMAIL.toLowerCase(); }
 
@@ -2920,12 +2927,29 @@ function openPersonModal(existingPerson) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Helper: na admin-logout opnieuw inloggen als gedeelde viewer
+  async function reloginAsViewer() {
+    try {
+      // We hebben het site-pwd niet meer; gebruik PW_HASH die we al kennen
+      const PW_HASH = '86967edd971fb490904869f32ffe3383db9c19315ba08513e8288f1b3a11e295';
+      const res = await fetch('/api/viewer-login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pwd_hash: PW_HASH })
+      });
+      if (!res.ok) return false;
+      const { access_token, refresh_token } = await res.json();
+      await db.auth.setSession({ access_token, refresh_token });
+      return true;
+    } catch { return false; }
+  }
+
   // Login modal
   document.getElementById('admin-fab').addEventListener('click', async () => {
     if (adminUser) {
-      if (confirm('Uitloggen als admin?')) {
+      if (confirm('Uitloggen als admin? Je blijft de site bekijken als gewone gebruiker.')) {
         await db.auth.signOut();
         adminUser = null;
+        await reloginAsViewer(); // herstel data-toegang
         updateAdminUI();
         render();
       }
@@ -2958,6 +2982,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('admin-logout-btn').addEventListener('click', async () => {
     await db.auth.signOut();
     adminUser = null;
+    await reloginAsViewer();
     updateAdminUI();
     render();
   });
@@ -5645,15 +5670,20 @@ function refreshMailSummary() {
   const sumEl = document.getElementById('mail-summary');
   const btn = document.getElementById('mail-send-btn');
   const copyBtn = document.getElementById('mail-copy-btn');
+  const gmailBtn = document.getElementById('mail-gmail-btn');
   const personCount = mailMode === 'all'
     ? getPersonsWithEmail().length
     : mailMode === 'years'
       ? getPersonsWithEmail().filter(p => mailSelectedYears.has(String(p['Aankomstjaar']))).length
       : mailSelectedIds.size;
   sumEl.innerHTML = `<strong>${emails.length}</strong> uniek e-mailadres${emails.length === 1 ? '' : 'sen'} bij <strong>${personCount}</strong> ${personCount === 1 ? 'persoon' : 'personen'}.`;
-  btn.textContent = `Open in mailprogramma (${emails.length})`;
+  btn.textContent = `Open mailprogramma (${emails.length})`;
   btn.disabled = emails.length === 0;
   if (copyBtn) copyBtn.disabled = emails.length === 0;
+  if (gmailBtn) {
+    gmailBtn.textContent = `📨 Direct via Gmail (${emails.length})`;
+    gmailBtn.disabled = emails.length === 0;
+  }
 }
 
 function renderMailRecipientArea() {
@@ -5843,6 +5873,67 @@ document.getElementById('mail-form').addEventListener('submit', e => {
   window.location.href = mailtoUrl;
 });
 
+// Direct versturen via Gmail (admin only) — gebruikt /api/gmail-send
+document.getElementById('mail-gmail-btn').addEventListener('click', async () => {
+  if (!isAdmin()) { alert('Alleen admins kunnen direct vanuit Gmail versturen.'); return; }
+  const recipients = computeMailRecipients();
+  if (recipients.length === 0) return;
+  const subject = document.getElementById('mail-subject').value.trim();
+  const html = document.getElementById('mail-html').value.trim();
+  if (!subject || !html) {
+    const s = document.getElementById('mail-status');
+    s.className = 'mail-status error';
+    s.textContent = 'Onderwerp en bericht zijn verplicht voor directe verzending.';
+    return;
+  }
+  if (!confirm(`${recipients.length} mail${recipients.length===1?'':'s'} direct versturen via Gmail vanaf jouw account?`)) return;
+
+  const btn = document.getElementById('mail-gmail-btn');
+  const status = document.getElementById('mail-status');
+  btn.disabled = true; btn.textContent = '📨 Versturen…';
+  status.className = 'mail-status'; status.textContent = `Bezig met versturen via Gmail…`;
+
+  try {
+    // Pak access token van Supabase voor admin-check
+    const { data: { session } } = await db.auth.getSession();
+    const token = session?.access_token;
+    if (!token) throw new Error('Geen actieve sessie — log opnieuw in');
+
+    const res = await fetch('/api/gmail-send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        subject,
+        html: html.replace(/\n/g, '<br>'),
+        text: html.replace(/<[^>]+>/g, ''),
+        recipients,
+        replyTo: adminUser?.email || null,
+        fromName: 'Oude Delft 35',
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      status.className = 'mail-status error';
+      status.textContent = data.error || 'Versturen mislukt.';
+    } else {
+      status.className = 'mail-status success';
+      status.innerHTML = `<strong>✓ Verstuurd.</strong> ${data.ok} ok, ${data.failed} mislukt (totaal ${data.total}). Vanaf <em>${escapeHtml(data.from || '')}</em>.`;
+      if (data.errors?.length) {
+        status.innerHTML += `<br><small style="color:var(--gray);">Eerste fouten: ${data.errors.map(e=>`${e.email}: ${e.message}`).join(' / ')}</small>`;
+      }
+    }
+  } catch (err) {
+    status.className = 'mail-status error';
+    status.textContent = 'Netwerkfout: ' + err.message;
+  } finally {
+    refreshMailSummary();
+    btn.disabled = false;
+  }
+});
+
 // Kopieer adressen naar klembord
 document.getElementById('mail-copy-btn').addEventListener('click', async () => {
   const recipients = computeMailRecipients();
@@ -5982,9 +6073,9 @@ document.getElementById('export-excel').addEventListener('click', () => {
 // ── Initialisatie ────────────────────────────────────────────────────────────
 async function init() {
 
-  // Herstel admin sessie als die nog actief is
+  // Sessie kan viewer ÓF admin zijn. Alleen echte admin-users zetten we als adminUser.
   const { data: { user } } = await db.auth.getUser();
-  adminUser = user;
+  adminUser = (user && !isViewerSession(user)) ? user : null;
   updateAdminUI();
 
   try {
@@ -6644,10 +6735,11 @@ async function submitAlbumForm() {
 Met vriendelijke groet,"></textarea>
       </div>
       <p style="font-size:0.82rem; color:var(--gray); margin-bottom:0.7rem;">
-        De adressen worden als <strong>BCC</strong> ingevuld zodat niemand elkaars adres ziet. Je mail wordt geopend in jouw eigen mailprogramma.
+        Verstuur direct via Gmail vanaf jouw account (alleen admin), of open in je eigen mailprogramma met BCC.
       </p>
       <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-        <button type="submit" class="mail-send-btn" id="mail-send-btn" style="flex:2;">Open in mailprogramma (0)</button>
+        <button type="button" class="mail-send-btn admin-only" id="mail-gmail-btn" style="flex:2; background:#1a73e8; display:none;">📨 Direct versturen via Gmail (0)</button>
+        <button type="submit" class="mail-send-btn" id="mail-send-btn" style="flex:1;">Open mailprogramma (0)</button>
         <button type="button" class="mail-send-btn" id="mail-copy-btn" style="flex:1; background:transparent; color:var(--burgundy); border:1px solid var(--burgundy);">Kopieer adressen</button>
       </div>
       <div class="mail-status" id="mail-status"></div>
@@ -6857,9 +6949,8 @@ Met vriendelijke groet,"></textarea>
 })();
 
 (function() {
-  // SHA-256 hash van 'OmegaKsi35' — daadwerkelijk wachtwoord staat niet in de source.
-  // Let op: client-side check blijft te omzeilen via DevTools; voor echte
-  // bescherming staat RLS op de Supabase-tabellen aan (zie SECURITY.md).
+  // Client-side hash blijft als instant feedback; server doet daadwerkelijke validatie
+  // én logt in als gedeelde viewer-account (RLS staat anon SELECT op personen niet meer toe).
   const PW_HASH = '86967edd971fb490904869f32ffe3383db9c19315ba08513e8288f1b3a11e295';
   const KEY = 'od35_toegang';
   const screen = document.getElementById('pw-screen');
@@ -6884,18 +6975,72 @@ Met vriendelijke groet,"></textarea>
     return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2,'0')).join('');
   }
 
+  // Vraag viewer-tokens van server en zet sessie op
+  async function obtainViewerSession(pwdHash) {
+    try {
+      const res = await fetch('/api/viewer-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pwd_hash: pwdHash }),
+      });
+      if (!res.ok) return { ok: false, status: res.status };
+      const { access_token, refresh_token } = await res.json();
+      // Wacht tot Supabase client bestaat (script-volgorde)
+      if (typeof db === 'undefined' || !db?.auth) {
+        await new Promise(r => setTimeout(r, 200));
+      }
+      await db.auth.setSession({ access_token, refresh_token });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, status: 0, error: e.message };
+    }
+  }
+
   function unlock() {
     sessionStorage.setItem(KEY, '1');
     screen.style.display = 'none';
     main.style.display = '';
   }
 
-  if (sessionStorage.getItem(KEY) === '1') { unlock(); return; }
+  // Bestaande sessie aanwezig? Dan kunnen we direct unlocken zonder server-call.
+  async function checkExistingSession() {
+    if (typeof db === 'undefined' || !db?.auth) return false;
+    try {
+      const { data } = await db.auth.getSession();
+      return !!data?.session;
+    } catch { return false; }
+  }
+
+  (async () => {
+    // Als sessionStorage-flag staat én er is een geldige Supabase-sessie, direct door
+    if (sessionStorage.getItem(KEY) === '1') {
+      const hasSession = await checkExistingSession();
+      if (hasSession) { unlock(); return; }
+      // sessionStorage flag was er wel maar sessie verlopen → forceer opnieuw inloggen
+      sessionStorage.removeItem(KEY);
+    }
+  })();
 
   async function tryUnlock() {
+    error.style.display = 'none';
     const h = await sha256(input.value);
-    if (h === PW_HASH) { unlock(); }
-    else { error.style.display = 'block'; input.value = ''; input.focus(); }
+    if (h !== PW_HASH) {
+      error.style.display = 'block';
+      error.textContent = 'Onjuist wachtwoord';
+      input.value = ''; input.focus();
+      return;
+    }
+    btn.disabled = true; btn.textContent = 'Laden…';
+    const r = await obtainViewerSession(h);
+    btn.disabled = false; btn.textContent = 'Open';
+    if (!r.ok) {
+      error.style.display = 'block';
+      error.textContent = r.status === 401 ? 'Onjuist wachtwoord (server)'
+                       : r.status === 429 ? 'Te veel pogingen — wacht even'
+                       : 'Server niet bereikbaar; probeer opnieuw';
+      return;
+    }
+    unlock();
   }
   btn.addEventListener('click', tryUnlock);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
