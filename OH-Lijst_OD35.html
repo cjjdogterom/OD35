@@ -6977,25 +6977,23 @@ Met vriendelijke groet,"></textarea>
 
   // Vraag viewer-tokens van server en zet sessie op
   async function obtainViewerSession(pwdHash) {
+    // Probeer server-side viewer sessie; val terug op client-only als server niet bereikbaar
     try {
       const res = await fetch('/api/viewer-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pwd_hash: pwdHash }),
       });
-      if (!res.ok) return { ok: false, status: res.status };
+      if (!res.ok) return { ok: true }; // server fout → gewoon doorgaan
       const data = await res.json();
-      // Fallback: viewer env vars nog niet ingesteld — ga door zonder sessie
-      if (data.fallback) return { ok: true };
-      const { access_token, refresh_token } = data;
-      if (!access_token) return { ok: true }; // lege response, accepteer
+      if (data.fallback || !data.access_token) return { ok: true };
       if (typeof db === 'undefined' || !db?.auth) {
         await new Promise(r => setTimeout(r, 200));
       }
-      await db.auth.setSession({ access_token, refresh_token });
+      await db.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
       return { ok: true };
     } catch (e) {
-      return { ok: false, status: 0, error: e.message };
+      return { ok: true }; // netwerk fout → toch doorgaan
     }
   }
 
