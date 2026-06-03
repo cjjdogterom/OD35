@@ -6976,51 +6976,13 @@ Met vriendelijke groet,"></textarea>
   }
 
   // Vraag viewer-tokens van server en zet sessie op
-  async function obtainViewerSession(pwdHash) {
-    // Probeer server-side viewer sessie; val terug op client-only als server niet bereikbaar
-    try {
-      const res = await fetch('/api/viewer-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pwd_hash: pwdHash }),
-      });
-      if (!res.ok) return { ok: true }; // server fout → gewoon doorgaan
-      const data = await res.json();
-      if (data.fallback || !data.access_token) return { ok: true };
-      if (typeof db === 'undefined' || !db?.auth) {
-        await new Promise(r => setTimeout(r, 200));
-      }
-      await db.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
-      return { ok: true };
-    } catch (e) {
-      return { ok: true }; // netwerk fout → toch doorgaan
-    }
-  }
-
   function unlock() {
     sessionStorage.setItem(KEY, '1');
     screen.style.display = 'none';
     main.style.display = '';
   }
 
-  // Bestaande sessie aanwezig? Dan kunnen we direct unlocken zonder server-call.
-  async function checkExistingSession() {
-    if (typeof db === 'undefined' || !db?.auth) return false;
-    try {
-      const { data } = await db.auth.getSession();
-      return !!data?.session;
-    } catch { return false; }
-  }
-
-  (async () => {
-    // Als sessionStorage-flag staat én er is een geldige Supabase-sessie, direct door
-    if (sessionStorage.getItem(KEY) === '1') {
-      const hasSession = await checkExistingSession();
-      if (hasSession) { unlock(); return; }
-      // sessionStorage flag was er wel maar sessie verlopen → forceer opnieuw inloggen
-      sessionStorage.removeItem(KEY);
-    }
-  })();
+  if (sessionStorage.getItem(KEY) === '1') { unlock(); return; }
 
   async function tryUnlock() {
     error.style.display = 'none';
@@ -7029,16 +6991,6 @@ Met vriendelijke groet,"></textarea>
       error.style.display = 'block';
       error.textContent = 'Onjuist wachtwoord';
       input.value = ''; input.focus();
-      return;
-    }
-    btn.disabled = true; btn.textContent = 'Laden…';
-    const r = await obtainViewerSession(h);
-    btn.disabled = false; btn.textContent = 'Open';
-    if (!r.ok) {
-      error.style.display = 'block';
-      error.textContent = r.status === 401 ? 'Onjuist wachtwoord (server)'
-                       : r.status === 429 ? 'Te veel pogingen — wacht even'
-                       : 'Server niet bereikbaar; probeer opnieuw';
       return;
     }
     unlock();
