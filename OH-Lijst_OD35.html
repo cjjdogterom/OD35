@@ -6984,8 +6984,11 @@ Met vriendelijke groet,"></textarea>
         body: JSON.stringify({ pwd_hash: pwdHash }),
       });
       if (!res.ok) return { ok: false, status: res.status };
-      const { access_token, refresh_token } = await res.json();
-      // Wacht tot Supabase client bestaat (script-volgorde)
+      const data = await res.json();
+      // Fallback: viewer env vars nog niet ingesteld — ga door zonder sessie
+      if (data.fallback) return { ok: true };
+      const { access_token, refresh_token } = data;
+      if (!access_token) return { ok: true }; // lege response, accepteer
       if (typeof db === 'undefined' || !db?.auth) {
         await new Promise(r => setTimeout(r, 200));
       }

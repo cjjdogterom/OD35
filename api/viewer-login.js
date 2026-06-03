@@ -45,7 +45,9 @@ module.exports = async function handler(req, res) {
   const VIEWER_EMAIL = process.env.VIEWER_EMAIL;
   const VIEWER_PASSWORD = process.env.VIEWER_PASSWORD;
   if (!VIEWER_EMAIL || !VIEWER_PASSWORD) {
-    return res.status(500).json({ error: 'Viewer-account niet geconfigureerd. Zet VIEWER_EMAIL en VIEWER_PASSWORD in Vercel env vars.' });
+    // Env vars nog niet ingesteld — geef een lege OK terug zodat de site
+    // op de oude manier (sessionStorage-only) blijft werken.
+    return res.status(200).json({ ok: true, fallback: true });
   }
 
   const supabase = createClient(
