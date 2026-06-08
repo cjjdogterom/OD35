@@ -93,8 +93,8 @@ html[data-ui="atlas"] .tab-nav::before {
   height: 72px;
   margin: 0 1.25rem 1.5rem;
   background: url('logo_od35.png') center / contain no-repeat;
-  filter: brightness(1.15);
-  opacity: 0.92;
+  filter: brightness(0) invert(1);
+  opacity: 0.95;
 }
 
 html[data-ui="atlas"] .tab-btn {
