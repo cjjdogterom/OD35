@@ -357,6 +357,10 @@
   }
 
   /* PERSON LIST */
+  .person-list-header {
+    display: none;
+  }
+
   .person-list {
     display: flex;
     flex-direction: column;
@@ -2626,6 +2630,12 @@
 <div class="alphabet" id="alphabet"></div>
 
 <div class="results-count" id="results-count"></div>
+
+<div class="person-list-header" aria-hidden="true">
+  <span>Jaar</span>
+  <span>Naam</span>
+  <span></span>
+</div>
 
 <div class="person-list" id="person-list"></div>
 
@@ -6792,7 +6802,7 @@ async function submitAlbumForm() {
     <div class="ui-swatch ui-swatch-atlas"></div>
     <div>
       <div style="font-weight:600;font-size:1.02rem">Atlas</div>
-      <div class="ui-option-desc">Sidebar · kaarten · gradient</div>
+      <div class="ui-option-desc">Sidebar · rijen · gradient</div>
     </div>
   </button>
   <button class="ui-option" data-ui-choice="register">
