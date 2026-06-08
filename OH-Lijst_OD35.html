@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://mxbtmbcgycjqapjzulrp.supabase.co blob:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://mxbtmbcgycjqapjzulrp.supabase.co wss://mxbtmbcgycjqapjzulrp.supabase.co https://api.resend.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
@@ -2458,6 +2458,98 @@
     max-height: min(85vh, 560px);
     overflow-y: auto;
     min-width: 290px;
+  }
+
+  /* ── Mobiel (alle weergaven) ── */
+  @media (max-width: 600px) {
+    .modal-overlay {
+      padding: 0;
+      align-items: flex-end;
+    }
+
+    .modal-box,
+    .modal-box.wide,
+    .mail-modal-box {
+      width: 100%;
+      max-width: 100%;
+      max-height: 92dvh;
+      margin: 0;
+      border-radius: 14px 14px 0 0;
+      padding: 1.25rem 1rem;
+      padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .modal-box h3 {
+      font-size: 1.45rem;
+      padding-right: 2rem;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      float: none;
+      margin: 0;
+      width: 2.5rem;
+      height: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay .modal-box {
+      position: relative;
+    }
+
+    .admin-fab,
+    .theme-fab {
+      width: 3rem;
+      height: 3rem;
+      bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .theme-fab.settings-fab {
+      right: calc(4.25rem + env(safe-area-inset-right, 0px));
+    }
+
+    .admin-fab {
+      right: calc(1rem + env(safe-area-inset-right, 0px));
+    }
+
+    .settings-popover {
+      left: 0.75rem;
+      right: 0.75rem;
+      bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+      min-width: 0;
+      max-width: none;
+      max-height: min(70dvh, 520px);
+    }
+
+    .search-input,
+    .mail-person-search,
+    .mail-form-field input,
+    .mail-form-field textarea,
+    .mf-field input,
+    .mf-field select,
+    .mf-field textarea,
+    #pw-screen input[type="password"] {
+      font-size: 16px;
+    }
+
+    .share-btn {
+      width: 100%;
+    }
+
+    .form-actions {
+      flex-wrap: wrap;
+    }
+
+    .submit-btn,
+    .cancel-btn {
+      min-height: 2.75rem;
+    }
   }
 
 </style>
@@ -6802,7 +6894,7 @@ async function submitAlbumForm() {
     <div class="ui-swatch ui-swatch-atlas"></div>
     <div>
       <div style="font-weight:600;font-size:1.02rem">Atlas</div>
-      <div class="ui-option-desc">Sidebar · rijen · gradient</div>
+      <div class="ui-option-desc">Marineblauw · rijen · sidebar</div>
     </div>
   </button>
   <button class="ui-option" data-ui-choice="register">
