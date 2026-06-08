@@ -1,0 +1,284 @@
+/**
+ * Register — brutalist redactie / lustrumkrant
+ * Zwart-wit, dikke lijnen, grote koppen, horizontale nadruk
+ */
+html[data-ui="register"] {
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'Lora', Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --ink: #0a0a0a;
+  --paper: #f7f4ed;
+  --paper-warm: #ebe6da;
+  --burgundy: #c41e3a;
+  --burgundy-deep: #8b0000;
+  --gold: #0a0a0a;
+  --gray: #4a4a4a;
+  --gray-light: #8a8a8a;
+  --line: #0a0a0a;
+  --line-soft: rgba(10, 10, 10, 0.12);
+  --highlight: #ebe6da;
+}
+
+html[data-ui="register"] body {
+  background: var(--paper);
+  font-size: 17px;
+}
+
+html[data-ui="register"] body::before { display: none; }
+
+html[data-ui="register"] .container {
+  max-width: 1100px;
+  padding: 0 1.5rem 4rem;
+  border-left: 4px solid var(--ink);
+  border-right: 4px solid var(--ink);
+  margin-top: 0;
+}
+
+html[data-ui="register"] header {
+  border-bottom: 6px double var(--ink);
+  padding: 2.5rem 0 2rem;
+  text-align: center;
+  position: relative;
+}
+
+html[data-ui="register"] header::before {
+  content: 'LUSTRUMREGISTER';
+  position: absolute;
+  top: 0.75rem;
+  left: 0;
+  right: 0;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.45em;
+  color: var(--burgundy);
+}
+
+html[data-ui="register"] .house-logo {
+  height: 64px;
+  filter: grayscale(1) contrast(1.2);
+}
+
+html[data-ui="register"] .eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.35em;
+  color: var(--ink);
+}
+
+html[data-ui="register"] header h1 {
+  font-size: clamp(3rem, 10vw, 5.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+  text-transform: uppercase;
+  border-top: 3px solid var(--ink);
+  border-bottom: 3px solid var(--ink);
+  padding: 0.5rem 0;
+  margin: 1rem 0 0.75rem;
+}
+
+html[data-ui="register"] .subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gray);
+}
+
+html[data-ui="register"] .hero-action-btn {
+  border-radius: 0;
+  border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+html[data-ui="register"] #invite-member-btn.hero-action-btn {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+html[data-ui="register"] .hero-action-btn:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+html[data-ui="register"] .tab-nav {
+  border-bottom: 4px solid var(--ink);
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+html[data-ui="register"] .tab-btn {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border: 3px solid var(--ink);
+  border-bottom: none;
+  margin-right: -3px;
+  margin-bottom: -4px;
+  padding: 0.85rem 1.25rem;
+  border-radius: 0;
+  background: var(--paper-warm);
+}
+
+html[data-ui="register"] .tab-btn.active {
+  background: var(--ink);
+  color: var(--paper);
+  border-bottom-color: var(--ink);
+}
+
+html[data-ui="register"] .controls {
+  border: 3px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+  border-radius: 0;
+  background: #fff;
+}
+
+html[data-ui="register"] .search-input,
+html[data-ui="register"] .filter-select {
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+html[data-ui="register"] .reset-btn,
+html[data-ui="register"] .export-btn {
+  border-radius: 0;
+  border: 2px solid var(--ink);
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+
+html[data-ui="register"] .export-btn {
+  background: var(--burgundy);
+  border-color: var(--burgundy);
+}
+
+html[data-ui="register"] .export-btn::before { content: none; }
+
+html[data-ui="register"] .alphabet {
+  border: 2px solid var(--ink);
+  padding: 0.5rem;
+  background: var(--paper-warm);
+}
+
+html[data-ui="register"] .alpha-btn {
+  border-radius: 0;
+  border: 1px solid var(--ink);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+html[data-ui="register"] .alpha-btn.active {
+  background: var(--burgundy);
+  border-color: var(--burgundy);
+  color: #fff;
+}
+
+html[data-ui="register"] .person-list {
+  border-top: 4px solid var(--ink);
+}
+
+html[data-ui="register"] .person {
+  border-bottom: 2px solid var(--ink);
+}
+
+html[data-ui="register"] .person:nth-child(even) {
+  background: var(--paper-warm);
+}
+
+html[data-ui="register"] .person.expanded {
+  background: #fff;
+  outline: 4px solid var(--burgundy);
+  outline-offset: -4px;
+}
+
+html[data-ui="register"] .person-jaar {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--burgundy);
+}
+
+html[data-ui="register"] .person-name {
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+html[data-ui="register"] .results-count {
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-left: 4px solid var(--burgundy);
+  padding-left: 0.75rem;
+}
+
+html[data-ui="register"] .admin-bar {
+  background: var(--ink);
+  font-family: var(--font-mono);
+}
+
+html[data-ui="register"] .modal-box {
+  border-radius: 0;
+  border: 4px solid var(--ink);
+  box-shadow: 8px 8px 0 var(--ink);
+}
+
+html[data-ui="register"] .event-card,
+html[data-ui="register"] .contact-card {
+  border: 3px solid var(--ink);
+  border-radius: 0;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+html[data-ui="register"] #pw-screen {
+  background: var(--ink);
+}
+
+html[data-ui="register"] #pw-screen h1 {
+  color: #fff;
+  font-size: 2.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+html[data-ui="register"] #pw-screen p { color: #aaa; }
+
+html[data-ui="register"] #pw-screen input,
+html[data-ui="register"] #pw-screen button {
+  border-radius: 0;
+  border: 2px solid #fff;
+}
+
+html[data-ui="register"] #pw-screen button {
+  background: var(--burgundy);
+  border-color: var(--burgundy);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+html[data-ui="register"] .admin-fab {
+  border-radius: 0;
+  border: 2px solid var(--ink);
+}
+
+html[data-ui="register"] .theme-fab.settings-fab {
+  border-radius: 0;
+  border: 2px solid var(--ink);
+}
+
+html[data-ui="register"] .ui-swatch-register {
+  background: linear-gradient(90deg, #0a0a0a 50%, #c41e3a 50%);
+}
