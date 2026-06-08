@@ -1,0 +1,640 @@
+/**
+ * OD35 Atlas — radicale nieuwe weergave
+ * Donkere sidebar · kaart-layout · editorial typografie
+ * Alleen actief bij html[data-ui="atlas"]
+ */
+
+html[data-ui="atlas"] {
+  --atlas-sidebar: #0e1424;
+  --atlas-sidebar-hover: #1a2438;
+  --atlas-sidebar-text: #c8cdd8;
+  --atlas-sidebar-muted: #7a8499;
+  --atlas-accent: #c9924a;
+  --atlas-accent-soft: #e8c88a;
+  --atlas-surface: #f6f2eb;
+  --atlas-card: #ffffff;
+  --atlas-ink: #141820;
+  --atlas-muted: #5c6478;
+  --atlas-border: rgba(20, 24, 32, 0.08);
+  --atlas-radius: 14px;
+  --atlas-radius-sm: 8px;
+  --font-display: 'Fraunces', 'Playfair Display', Georgia, serif;
+  --font-body: 'Source Serif 4', 'Lora', Georgia, serif;
+  --font-mono: 'Source Serif 4', Georgia, serif;
+  --ink: var(--atlas-ink);
+  --paper: var(--atlas-surface);
+  --paper-warm: #ece6da;
+  --burgundy: #8b3a2a;
+  --burgundy-deep: #6b2a1e;
+  --gold: var(--atlas-accent);
+  --gold-soft: var(--atlas-accent-soft);
+  --gray: var(--atlas-muted);
+  --gray-light: #949aab;
+  --line: var(--atlas-border);
+  --line-soft: rgba(20, 24, 32, 0.04);
+  --highlight: #ece6da;
+}
+
+html[data-ui="atlas"] body {
+  background: var(--atlas-surface);
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+html[data-ui="atlas"] body::before {
+  display: none;
+}
+
+/* ── Alleen Atlas tonen; origineel blijft zonder data-ui ── */
+html[data-ui="atlas"] #main-content {
+  min-height: 100vh;
+}
+
+html[data-ui="atlas"] .container {
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr;
+  grid-template-areas:
+    "sidebar header"
+    "sidebar admin"
+    "sidebar main";
+  max-width: none;
+  width: 100%;
+  min-height: 100vh;
+  padding: 0;
+  margin: 0;
+  gap: 0;
+}
+
+/* ── Sidebar navigatie ── */
+html[data-ui="atlas"] .tab-nav {
+  grid-area: sidebar;
+  flex-direction: column;
+  align-items: stretch;
+  border: none;
+  margin: 0;
+  padding: 1.75rem 0 2rem;
+  background: var(--atlas-sidebar);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  gap: 0.15rem;
+}
+
+html[data-ui="atlas"] .tab-nav::before {
+  content: '';
+  display: block;
+  height: 72px;
+  margin: 0 1.25rem 1.5rem;
+  background: url('logo_od35.png') center / contain no-repeat;
+  filter: brightness(1.15);
+  opacity: 0.92;
+}
+
+html[data-ui="atlas"] .tab-btn {
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--atlas-sidebar-text);
+  border: none;
+  border-left: 3px solid transparent;
+  border-radius: 0;
+  margin: 0;
+  padding: 0.95rem 1.5rem;
+  text-align: left;
+  letter-spacing: 0.01em;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+html[data-ui="atlas"] .tab-btn:hover {
+  background: var(--atlas-sidebar-hover);
+  color: #fff;
+}
+
+html[data-ui="atlas"] .tab-btn.active {
+  background: var(--atlas-sidebar-hover);
+  color: #fff;
+  border-left-color: var(--atlas-accent);
+  border-bottom: none;
+  font-weight: 600;
+}
+
+html[data-ui="atlas"] .tab-badge {
+  background: var(--atlas-accent);
+  color: var(--atlas-sidebar);
+  font-size: 0.72rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  margin-left: 0.35rem;
+}
+
+/* ── Header — compacte banner ── */
+html[data-ui="atlas"] header {
+  grid-area: header;
+  text-align: left;
+  border: none;
+  margin: 0;
+  padding: 2rem 2.5rem 1.25rem;
+  background: linear-gradient(135deg, #8b3a2a 0%, #5c2418 55%, #0e1424 100%);
+  color: #f6f2eb;
+  position: relative;
+  overflow: hidden;
+}
+
+html[data-ui="atlas"] header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 85% 20%, rgba(201, 146, 74, 0.25) 0%, transparent 45%);
+  pointer-events: none;
+}
+
+html[data-ui="atlas"] header > * {
+  position: relative;
+  z-index: 1;
+}
+
+html[data-ui="atlas"] .house-logo {
+  display: none;
+}
+
+html[data-ui="atlas"] .eyebrow {
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  letter-spacing: 0.14em;
+  color: var(--atlas-accent-soft);
+  margin-bottom: 0.5rem;
+}
+
+html[data-ui="atlas"] header h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  color: #fff;
+  line-height: 1.1;
+  margin-bottom: 0.35rem;
+}
+
+html[data-ui="atlas"] .subtitle {
+  font-size: 1.05rem;
+  color: rgba(246, 242, 235, 0.82);
+  font-style: normal;
+  max-width: 32rem;
+}
+
+html[data-ui="atlas"] .stats {
+  margin-top: 1rem;
+}
+
+html[data-ui="atlas"] .stat-line {
+  color: rgba(246, 242, 235, 0.75);
+  font-size: 0.95rem;
+  font-style: normal;
+}
+
+html[data-ui="atlas"] .stat-line strong {
+  color: var(--atlas-accent-soft);
+}
+
+html[data-ui="atlas"] header > div:last-child {
+  justify-content: flex-start !important;
+  margin-top: 1.25rem !important;
+}
+
+html[data-ui="atlas"] .hero-action-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  backdrop-filter: blur(6px);
+  font-size: 0.95rem;
+  padding: 0.75rem 1.4rem;
+  box-shadow: none;
+}
+
+html[data-ui="atlas"] .hero-action-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: none;
+}
+
+html[data-ui="atlas"] #invite-member-btn.hero-action-btn {
+  background: var(--atlas-accent);
+  border-color: var(--atlas-accent);
+  color: var(--atlas-sidebar);
+  font-weight: 600;
+}
+
+/* ── Admin bar ── */
+html[data-ui="atlas"] .admin-bar {
+  grid-area: admin;
+  margin: 0;
+  background: #1a2438;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  letter-spacing: 0;
+  padding: 0.65rem 2.5rem;
+}
+
+html[data-ui="atlas"] .admin-bar button {
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  letter-spacing: 0;
+}
+
+/* ── Main content panels ── */
+html[data-ui="atlas"] .tab-panel {
+  grid-area: main;
+  padding: 0 2.5rem 3rem;
+  animation: atlasFade 0.35s ease;
+}
+
+html[data-ui="atlas"] .tab-panel.active {
+  display: block;
+}
+
+@keyframes atlasFade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Zoek & filters ── */
+html[data-ui="atlas"] .controls {
+  background: var(--atlas-card);
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--atlas-radius);
+  box-shadow: 0 4px 24px rgba(14, 20, 36, 0.06);
+  padding: 1.25rem 1.5rem;
+  margin: 1.5rem 0 1.25rem;
+  grid-template-columns: 1fr auto auto auto auto auto;
+}
+
+html[data-ui="atlas"] .search-input {
+  border-radius: 999px;
+  border: 2px solid var(--atlas-border);
+  font-size: 1.05rem;
+  padding: 0.85rem 1rem 0.85rem 2.75rem;
+  background: var(--atlas-surface);
+}
+
+html[data-ui="atlas"] .search-input:focus {
+  border-color: var(--atlas-accent);
+  box-shadow: 0 0 0 3px rgba(201, 146, 74, 0.2);
+}
+
+html[data-ui="atlas"] .filter-select,
+html[data-ui="atlas"] .reset-btn {
+  border-radius: var(--atlas-radius-sm);
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  letter-spacing: 0;
+  text-transform: none;
+  border: 2px solid var(--atlas-border);
+}
+
+html[data-ui="atlas"] .reset-btn {
+  background: var(--atlas-ink);
+}
+
+html[data-ui="atlas"] .export-btn {
+  border-radius: var(--atlas-radius-sm);
+  background: var(--atlas-accent);
+  color: var(--atlas-sidebar);
+  font-weight: 600;
+}
+
+html[data-ui="atlas"] .export-btn::before {
+  content: none;
+}
+
+html[data-ui="atlas"] .export-btn:hover {
+  background: #b8823f;
+}
+
+html[data-ui="atlas"] .results-count {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  letter-spacing: 0;
+  color: var(--atlas-muted);
+}
+
+/* ── Alfabet ── */
+html[data-ui="atlas"] .alphabet {
+  background: var(--atlas-card);
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--atlas-radius);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+html[data-ui="atlas"] .alpha-btn {
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  border: 1px solid transparent;
+}
+
+html[data-ui="atlas"] .alpha-btn.active {
+  background: var(--atlas-sidebar);
+  color: #fff;
+}
+
+/* ── Personen — kaarten ── */
+html[data-ui="atlas"] .person-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  border: none;
+}
+
+html[data-ui="atlas"] .person {
+  background: var(--atlas-card);
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--atlas-radius);
+  box-shadow: 0 2px 16px rgba(14, 20, 36, 0.05);
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+html[data-ui="atlas"] .person:hover {
+  box-shadow: 0 8px 28px rgba(14, 20, 36, 0.1);
+  transform: translateY(-2px);
+}
+
+html[data-ui="atlas"] .person.expanded {
+  grid-column: 1 / -1;
+  border-color: var(--atlas-accent);
+  box-shadow: 0 8px 32px rgba(14, 20, 36, 0.12);
+  transform: none;
+}
+
+html[data-ui="atlas"] .person.deceased {
+  opacity: 0.72;
+}
+
+html[data-ui="atlas"] .person-summary {
+  grid-template-columns: 3.5rem 1fr 1.75rem;
+  padding: 1.15rem 1.25rem;
+  gap: 0.85rem;
+}
+
+html[data-ui="atlas"] .person-jaar {
+  background: var(--atlas-surface);
+  border-radius: var(--atlas-radius-sm);
+  padding: 0.35rem 0.25rem;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--burgundy);
+}
+
+html[data-ui="atlas"] .person-name {
+  font-size: 1.2rem;
+  line-height: 1.3;
+}
+
+html[data-ui="atlas"] .person-details {
+  padding: 0 1.25rem 1.5rem;
+  border-top: 1px dashed var(--atlas-border);
+  margin-top: 0;
+}
+
+html[data-ui="atlas"] .details-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+}
+
+html[data-ui="atlas"] .detail-section {
+  background: var(--atlas-surface);
+  border-radius: var(--atlas-radius-sm);
+  padding: 1rem;
+}
+
+/* ── Agenda & contacten ── */
+html[data-ui="atlas"] .agenda-header h2,
+html[data-ui="atlas"] .wijz-header h2 {
+  font-size: 1.75rem;
+  color: var(--atlas-ink);
+  margin-bottom: 0.5rem;
+}
+
+html[data-ui="atlas"] .event-card,
+html[data-ui="atlas"] .contact-card,
+html[data-ui="atlas"] .wijz-card {
+  border-radius: var(--atlas-radius);
+  border: 1px solid var(--atlas-border);
+  box-shadow: 0 2px 12px rgba(14, 20, 36, 0.04);
+  background: var(--atlas-card);
+}
+
+html[data-ui="atlas"] .events-list,
+html[data-ui="atlas"] #contacts-grid {
+  gap: 1.25rem;
+}
+
+html[data-ui="atlas"] .history-content {
+  background: var(--atlas-card);
+  border-radius: var(--atlas-radius);
+  padding: 2rem;
+  border: 1px solid var(--atlas-border);
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
+
+/* ── Modals ── */
+html[data-ui="atlas"] .modal-box {
+  border-radius: var(--atlas-radius);
+  border: none;
+  box-shadow: 0 24px 80px rgba(14, 20, 36, 0.25);
+}
+
+html[data-ui="atlas"] .modal-box h3 {
+  font-size: 1.85rem;
+  color: var(--burgundy);
+}
+
+html[data-ui="atlas"] .mf-section {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0;
+  text-transform: none;
+  border-bottom-color: var(--atlas-accent);
+}
+
+html[data-ui="atlas"] .mf-field label,
+html[data-ui="atlas"] .login-field label {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 600;
+}
+
+html[data-ui="atlas"] .mf-save,
+html[data-ui="atlas"] .login-btn {
+  background: var(--burgundy);
+  border-radius: var(--atlas-radius-sm);
+  font-family: var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ── Wachtwoordscherm ── */
+html[data-ui="atlas"] #pw-screen {
+  background: var(--atlas-sidebar);
+}
+
+html[data-ui="atlas"] #pw-screen h1 {
+  color: #fff;
+  font-size: 2.2rem;
+}
+
+html[data-ui="atlas"] #pw-screen p {
+  color: var(--atlas-sidebar-text);
+}
+
+html[data-ui="atlas"] #pw-screen .pw-form {
+  max-width: 400px;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+html[data-ui="atlas"] #pw-screen input[type="password"] {
+  border-radius: var(--atlas-radius-sm);
+  border: none;
+  font-size: 1.1rem;
+  padding: 1rem;
+}
+
+html[data-ui="atlas"] #pw-screen button {
+  border-radius: var(--atlas-radius-sm);
+  background: var(--atlas-accent);
+  color: var(--atlas-sidebar);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 600;
+  padding: 1rem;
+}
+
+html[data-ui="atlas"] #pw-screen .pw-ornament {
+  background: var(--atlas-accent);
+}
+
+/* ── FABs ── */
+html[data-ui="atlas"] .admin-fab {
+  background: var(--atlas-sidebar);
+  bottom: 1.5rem;
+  right: 1.5rem;
+  width: 3rem;
+  height: 3rem;
+}
+
+html[data-ui="atlas"] .admin-fab.logged-in {
+  background: var(--burgundy);
+}
+
+html[data-ui="atlas"] .theme-fab.settings-fab {
+  bottom: 1.5rem;
+  right: 5rem;
+  background: var(--atlas-card);
+  border: 2px solid var(--atlas-border);
+  color: var(--atlas-ink);
+}
+
+html[data-ui="atlas"] .settings-popover {
+  border-radius: var(--atlas-radius);
+  border: 1px solid var(--atlas-border);
+  box-shadow: 0 16px 48px rgba(14, 20, 36, 0.18);
+}
+
+html[data-ui="atlas"] .ui-swatch-atlas {
+  background: linear-gradient(135deg, #0e1424 50%, #c9924a 50%);
+}
+
+/* ── Foto's grid ── */
+html[data-ui="atlas"] .album-grid {
+  gap: 1.25rem;
+}
+
+html[data-ui="atlas"] .album-card {
+  border-radius: var(--atlas-radius);
+  overflow: hidden;
+}
+
+/* ── Mobiel: sidebar onderaan ── */
+@media (max-width: 900px) {
+  html[data-ui="atlas"] .container {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr auto;
+    grid-template-areas:
+      "header"
+      "admin"
+      "main"
+      "sidebar";
+  }
+
+  html[data-ui="atlas"] .tab-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 0.5rem;
+    z-index: 900;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  html[data-ui="atlas"] .tab-nav::before {
+    display: none;
+  }
+
+  html[data-ui="atlas"] .tab-btn {
+    flex: 0 0 auto;
+    padding: 0.65rem 1rem;
+    font-size: 0.88rem;
+    border-left: none;
+    border-top: 3px solid transparent;
+    white-space: nowrap;
+  }
+
+  html[data-ui="atlas"] .tab-btn.active {
+    border-left: none;
+    border-top-color: var(--atlas-accent);
+  }
+
+  html[data-ui="atlas"] header {
+    padding: 1.5rem 1.25rem 1rem;
+  }
+
+  html[data-ui="atlas"] .tab-panel {
+    padding: 0 1.25rem 5rem;
+  }
+
+  html[data-ui="atlas"] .controls {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-ui="atlas"] .person-list {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-ui="atlas"] .admin-fab {
+    bottom: 4.5rem;
+  }
+
+  html[data-ui="atlas"] .theme-fab.settings-fab {
+    bottom: 4.5rem;
+    right: 4.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui="atlas"] .person:hover {
+    transform: none;
+  }
+  html[data-ui="atlas"] * {
+    animation-duration: 0.01ms !important;
+  }
+}

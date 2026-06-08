@@ -15,7 +15,7 @@
 <meta name="theme-color" content="#2a4d82">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Cinzel:wght@400;500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=DM+Serif+Display:ital,wght@0,400;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=DM+Mono:wght@400;500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Cinzel:wght@400;500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=DM+Serif+Display:ital,wght@0,400;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=DM+Mono:wght@400;500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root, [data-theme="bibliotheca"] {
@@ -2435,23 +2435,24 @@
   .ui-swatch-original {
     background: linear-gradient(135deg, #2a4d82 40%, #f4f1e8 40%);
   }
-  .ui-swatch-heritage {
-    background: linear-gradient(135deg, #6b2337 40%, #faf5ec 40%);
+  .ui-swatch-atlas {
+    background: linear-gradient(135deg, #0e1424 50%, #c9924a 50%);
   }
   .theme-fab.settings-fab { right: 5rem; }
   .settings-popover { bottom: 5.2rem; right: 5rem; }
 
 </style>
-<link rel="stylesheet" href="ui-heritage.css">
+<link rel="stylesheet" href="ui-atlas.css">
 <script>
 (function(){
-  var UI_KEY='od35_ui_version', VALID=['original','heritage'];
+  var UI_KEY='od35_ui_version', VALID=['original','atlas'];
   var p=new URLSearchParams(location.search).get('ui');
-  var ui=(p&&VALID.indexOf(p)>=0)?p:(localStorage.getItem(UI_KEY)||'heritage');
-  if(VALID.indexOf(ui)<0) ui='heritage';
+  var ui=(p&&VALID.indexOf(p)>=0)?p:(localStorage.getItem(UI_KEY)||'atlas');
+  if(VALID.indexOf(ui)<0) ui='atlas';
   document.documentElement.setAttribute('data-ui', ui);
   var theme=localStorage.getItem('od35_theme')||'bibliotheca';
   document.documentElement.setAttribute('data-theme', theme);
+  if(ui==='atlas') document.querySelector('meta[name="theme-color"]')?.setAttribute('content','#0e1424');
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -6765,11 +6766,11 @@ async function submitAlbumForm() {
   <div class="settings-section-title">
     <span class="settings-main-label">Weergave</span>
   </div>
-  <button class="ui-option" data-ui-choice="heritage">
-    <div class="ui-swatch ui-swatch-heritage"></div>
+  <button class="ui-option" data-ui-choice="atlas">
+    <div class="ui-swatch ui-swatch-atlas"></div>
     <div>
-      <div style="font-family:var(--font-display);font-weight:600;font-size:1.05rem">Klassiek (nieuw)</div>
-      <div class="ui-option-desc">Groot, leesbaar — aanbevolen</div>
+      <div style="font-family:var(--font-display);font-weight:600;font-size:1.05rem">Atlas</div>
+      <div class="ui-option-desc">Nieuwe weergave — sidebar &amp; kaarten</div>
     </div>
   </button>
   <button class="ui-option" data-ui-choice="original">
@@ -7093,7 +7094,7 @@ Met vriendelijke groet,"></textarea>
   const THEME_KEY = 'od35_theme';
   const UI_KEY = 'od35_ui_version';
   const validThemes = ['bibliotheca', 'gatsby', 'atelier'];
-  const validUi = ['original', 'heritage'];
+  const validUi = ['original', 'atlas'];
 
   // Migreer oude theme-namen
   const oldKey = localStorage.getItem('od35_theme');
@@ -7112,21 +7113,23 @@ Met vriendelijke groet,"></textarea>
   }
 
   function applyUi(name) {
-    if (!validUi.includes(name)) name = 'heritage';
+    if (!validUi.includes(name)) name = 'atlas';
     document.documentElement.setAttribute('data-ui', name);
     localStorage.setItem(UI_KEY, name);
     document.querySelectorAll('.ui-option').forEach(b => {
       b.classList.toggle('active', b.dataset.uiChoice === name);
     });
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) metaTheme.setAttribute('content', name === 'atlas' ? '#0e1424' : '#2a4d82');
   }
 
-  // URL-params: ?ui=original of ?ui=heritage
+  // URL-params: ?ui=original of ?ui=atlas
   const params = new URLSearchParams(window.location.search);
   const urlUi = params.get('ui');
   if (urlUi && validUi.includes(urlUi)) {
     applyUi(urlUi);
   } else {
-    applyUi(localStorage.getItem(UI_KEY) || 'heritage');
+    applyUi(localStorage.getItem(UI_KEY) || 'atlas');
   }
 
   const savedTheme = localStorage.getItem(THEME_KEY) || 'bibliotheca';
