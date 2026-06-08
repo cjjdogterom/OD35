@@ -431,6 +431,24 @@
     margin-left: 0.5em;
   }
 
+  .no-email-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-left: 0.45rem;
+    vertical-align: middle;
+    color: var(--gray);
+    opacity: 0.85;
+    flex-shrink: 0;
+  }
+
+  .no-email-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
   .person-jaar-pill {
     font-family: var(--font-mono);
     font-size: 0.7rem;
@@ -2646,6 +2664,8 @@
 
     <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
       <button type="button" id="clean-extract" class="login-btn" style="width:auto;padding:0.5rem 1rem;">Adressen herkennen →</button>
+      <button type="button" id="clean-load-bounces" class="export-btn" style="background:transparent;color:var(--burgundy);border:1px solid var(--burgundy);">Bekende bounces laden (89)</button>
+      <button type="button" id="clean-bounces-api" class="login-btn" style="width:auto;padding:0.5rem 1rem;background:#c14040;">Alle 89 bounces direct verwijderen</button>
     </div>
 
     <div id="clean-preview" style="margin-top:1rem; display:none;">
@@ -3081,6 +3101,14 @@ function getEmails(p) {
   }
   return arr;
 }
+
+function hasAnyEmail(p) {
+  for (let i = 1; i <= 5; i++) {
+    const e = (p[`E-mail ${i}`] || '').trim();
+    if (e && /@/.test(e)) return true;
+  }
+  return false;
+}
 function getMobiel(p) {
   const arr = [];
   for (let i = 1; i <= 4; i++) {
@@ -3146,6 +3174,9 @@ function saveState(key, value) {
 
 // Heineken-style 5-pointed star, dark red — for Huis Oudste marker
 const STAR_SVG = '<svg class="oudste-star" viewBox="0 0 24 24" aria-label="Huis Oudste"><polygon points="12,2 14.9,8.9 22.4,9.5 16.7,14.4 18.5,21.7 12,17.7 5.5,21.7 7.3,14.4 1.6,9.5 9.1,8.9"/></svg>';
+
+// Mailbox met kruis — geen e-mailadres bekend
+const NO_EMAIL_SVG = '<span class="no-email-icon" title="Geen e-mailadres bekend"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5L4 8V6l8 5 8-5v2z"/><path stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M5 5l14 14"/></svg></span>';
 
 // Stable person ID — based on Achternaam + Voorletters + Aankomstjaar (independent of array index)
 function getPersonId(p) {
@@ -3651,7 +3682,7 @@ function render() {
     html += `<div class="person ${expanded ? 'expanded' : ''} ${deceased ? 'deceased' : ''}" data-id="${escapeHtml(personId)}">`;
     html += `<div class="person-summary">`;
     html += `<div class="person-jaar ${jaarClass}">${isHuisOudste(p) ? STAR_SVG : ''}${escapeHtml(String(jaar))}</div>`;
-    html += `<div class="person-name">${fullName(p)}${deceased ? '<span class="deceased-badge">overleden</span>' : ''}</div>`;
+    html += `<div class="person-name">${fullName(p)}${!hasAnyEmail(p) ? NO_EMAIL_SVG : ''}${deceased ? '<span class="deceased-badge">overleden</span>' : ''}</div>`;
     html += `<div class="person-toggle">▾</div>`;
     html += `</div>`;
     if (expanded) {
@@ -3805,6 +3836,74 @@ list.addEventListener('submit', async e => {
 // ==================== ONGELDIGE E-MAILS OPSCHONEN ====================
 let cleanFoundMatches = []; // [{email, persoon, field}]
 
+const BOUNCED_EMAILS_JUN2026 = [
+  'a.de.voogd@planet.nl', 'ae.mackay@inter.nl.net', 'aevmourik@freesurf.ch', 'agp@ghijsen.com',
+  'arnoud.de.beer@essent.nl', 'atlaschirese@gmail.com', 'b.snieders@student.tudelft.nl',
+  'barbarasnieders@hotmail.com', 'blomm290@planet.nl', 'd.muntendam-schreuder@xs4all.nl',
+  'debievre@worldonline.nl', 'dickpost@rubbens.nl', 'donpedro@sonnet.nl', 'drschell@euronet.nl',
+  'dvkappen@wxs.nl', 'e.bunge@12move.nl', 'eibergen@home.nl', 'esther@vanloon-bekking.com',
+  'evzandvoort@casema.nl', 'fwnvjoost@interstate.nl', 'g.meijer30@chello.nl', 'g.oorthuys@ptpbouw.nl',
+  'gerry.lambert@shell.com', 'gpostma@xs4all.nl', 'gustav.schaefer@mgi-management.com',
+  'h.goslings@planet.nl', 'hangelbroek@planet.nl', 'hans_haardt@bigpond.com', 'hdallenga@planet.nl',
+  'heering@heren2.biz', 'heinkolff@gmail.com', 'helger.reitsma@unilever.com', 'herre@vangoolelburg.com',
+  'hessel.polstra@quadtechworld.com', 'hesselpolstra@aol.nl', 'hvdp@sprynet.com', 'j_marsal@wxs.nl',
+  'jap.montijn@planet.nl', 'jd.schepers@royalhaskoning.com', 'jdijckmeester@hetnet.nl', 'jeroen@soer.net',
+  'jhvanderveen@planet.nl', 'jjevers@zonnet.nl', 'kenhgroeneveld@wanadoo.nl', 'kimman88@xs4all.nl',
+  'lex.bordes@cainet.nl', 'locher@home.nl', 'ludo.kooy@me.nl', 'm.bell@bellherrmann.nl',
+  'marcus.ruys@12move.nl', 'maurits.ovwit@ziggo.nl', 'mcdejong1989@hotmail.com', 'mcpbraat@telebyte.nl',
+  'meccocep@wxs.nl', 'nheyning@planet.nl', 'nijhout-jacobs@wxs.nl', 'o.appeldoorn@bma-mosos.nl',
+  'pennink.hattem@hetnet.nl', 'peter@emdeboas.com', 'peterghijsen@kpnmail.com', 'pieter.oomen@yahoo.com',
+  'pjeekel@chello.nl', 'prins@stuartprins.nl', 'r.dallenga@wxs.nl', 'r.geraedts@stolle.nl',
+  'r.hageman@verstigt.nl', 'rikvoorb@wxs.nl', 'rkimman@chimborazo.nl', 'roderik.castell@jocoenen.com',
+  'rudi@3ssen.com', 's.andary@planet.nl', 's.ledeboer@ansa.nl', 'salmarch@tiscali.nl',
+  'schuurman@dialogic.nl', 'steinmetz@appm.nl', 'teltiem@wishmail.net', 'tjhuizer@hotmail.com',
+  'tw.starink@planet.nl', 'usasbeck@aol.com', 'v.ligtelijn@tudelft.nl', 'van.randwyck@freeler.nl',
+  'vfd@vfd.nl', 'vivax-lpp@wanadoo.nl', 'wckentie@planet.nl', 'wevanschaijk@brturbo.com.br',
+  'wilan_hartwig@hotmail.com', 'wiltink@grondwerkplan.com', 'winkel@frg.eur.nl', 'wouter.huygen@booz.com',
+];
+
+function runCleanExtract() {
+  const text = document.getElementById('clean-input').value;
+  if (!text.trim()) { alert('Plak eerst tekst.'); return; }
+  const emails = extractEmailsFromText(text);
+  cleanFoundMatches = [];
+  emails.forEach(em => {
+    for (const p of PEOPLE) {
+      for (let i = 1; i <= 5; i++) {
+        const v = (p[`E-mail ${i}`] || '').trim().toLowerCase();
+        if (v === em) {
+          const naam = [p['Voorletters'], p['Tussenvoegsel'], p['Achternaam']].filter(Boolean).join(' ').trim();
+          cleanFoundMatches.push({
+            email: em,
+            personId: p._id,
+            persoonNaam: naam,
+            aankomstjaar: p['Aankomstjaar'],
+            fieldNumber: i,
+          });
+        }
+      }
+    }
+  });
+  const notFound = emails.filter(em => !cleanFoundMatches.some(m => m.email === em));
+  document.getElementById('clean-stats').innerHTML = `
+    <strong>${emails.length}</strong> uniek adres herkend in plak-tekst ·
+    <strong style="color:#c14040">${cleanFoundMatches.length}</strong> staan in de DB ·
+    <strong>${notFound.length}</strong> niet gevonden in DB`;
+  if (cleanFoundMatches.length === 0) {
+    document.getElementById('clean-list').innerHTML = '<div style="color:var(--gray);font-style:italic;padding:0.5rem;">Geen van deze adressen staat in de ledenlijst — niets te verwijderen.</div>';
+    document.getElementById('clean-execute').style.display = 'none';
+  } else {
+    document.getElementById('clean-execute').style.display = '';
+    document.getElementById('clean-list').innerHTML = cleanFoundMatches.map((m, i) => `
+      <label style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0;border-bottom:1px solid var(--line-soft);">
+        <input type="checkbox" data-clean-idx="${i}" checked>
+        <code style="font-family:var(--font-mono);font-size:0.82rem;color:#c14040;">${escapeHtml(m.email)}</code>
+        <span style="color:var(--gray);font-size:0.82rem;">→ ${escapeHtml(m.persoonNaam)}${m.aankomstjaar ? ' ('+m.aankomstjaar+')' : ''} (E-mail ${m.fieldNumber})</span>
+      </label>`).join('');
+  }
+  document.getElementById('clean-preview').style.display = 'block';
+}
+
 function extractEmailsFromText(text) {
   const re = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
   const found = (text.match(re) || []).map(e => e.toLowerCase());
@@ -3828,47 +3927,44 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('clean-emails-modal').classList.add('hidden');
   });
 
-  document.getElementById('clean-extract').addEventListener('click', () => {
-    const text = document.getElementById('clean-input').value;
-    if (!text.trim()) { alert('Plak eerst tekst.'); return; }
-    const emails = extractEmailsFromText(text);
-    // Filter alleen adressen die in de DB staan
-    cleanFoundMatches = [];
-    emails.forEach(em => {
-      for (const p of PEOPLE) {
-        for (let i = 1; i <= 5; i++) {
-          const v = (p[`E-mail ${i}`] || '').trim().toLowerCase();
-          if (v === em) {
-            const naam = [p['Voorletters'], p['Tussenvoegsel'], p['Achternaam']].filter(Boolean).join(' ').trim();
-            cleanFoundMatches.push({
-              email: em,
-              personId: p._id,
-              persoonNaam: naam,
-              aankomstjaar: p['Aankomstjaar'],
-              fieldNumber: i,
-            });
-          }
-        }
-      }
-    });
-    const notFound = emails.filter(em => !cleanFoundMatches.some(m => m.email === em));
-    document.getElementById('clean-stats').innerHTML = `
-      <strong>${emails.length}</strong> uniek adres herkend in plak-tekst ·
-      <strong style="color:#c14040">${cleanFoundMatches.length}</strong> staan in de DB ·
-      <strong>${notFound.length}</strong> niet gevonden in DB`;
-    if (cleanFoundMatches.length === 0) {
-      document.getElementById('clean-list').innerHTML = '<div style="color:var(--gray);font-style:italic;padding:0.5rem;">Geen van deze adressen staat in de ledenlijst — niets te verwijderen.</div>';
-      document.getElementById('clean-execute').style.display = 'none';
-    } else {
-      document.getElementById('clean-execute').style.display = '';
-      document.getElementById('clean-list').innerHTML = cleanFoundMatches.map((m, i) => `
-        <label style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0;border-bottom:1px solid var(--line-soft);">
-          <input type="checkbox" data-clean-idx="${i}" checked>
-          <code style="font-family:var(--font-mono);font-size:0.82rem;color:#c14040;">${escapeHtml(m.email)}</code>
-          <span style="color:var(--gray);font-size:0.82rem;">→ ${escapeHtml(m.persoonNaam)}${m.aankomstjaar ? ' ('+m.aankomstjaar+')' : ''} (E-mail ${m.fieldNumber})</span>
-        </label>`).join('');
+  document.getElementById('clean-extract').addEventListener('click', runCleanExtract);
+
+  document.getElementById('clean-load-bounces').addEventListener('click', () => {
+    document.getElementById('clean-input').value = BOUNCED_EMAILS_JUN2026.join('\n');
+    runCleanExtract();
+  });
+
+  document.getElementById('clean-bounces-api').addEventListener('click', async () => {
+    if (!isAdmin()) { alert('Log eerst in als admin.'); return; }
+    if (!confirm(`Alle ${BOUNCED_EMAILS_JUN2026.length} bekende bounce-adressen definitief uit de ledenlijst verwijderen?`)) return;
+    const btn = document.getElementById('clean-bounces-api');
+    const result = document.getElementById('clean-result');
+    btn.disabled = true;
+    btn.textContent = 'Bezig…';
+    result.innerHTML = '';
+    try {
+      const { data: { session } } = await db.auth.getSession();
+      if (!session?.access_token) throw new Error('Geen actieve admin-sessie');
+      const res = await fetch('/api/clean-bounced-emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Verwijderen mislukt');
+      PEOPLE = await loadFromSupabase();
+      PEOPLE.forEach(p => { p._searchText = buildSearchText(p); });
+      render();
+      result.innerHTML = `<span style="color:#4a8c4a;"><strong>✓ Klaar.</strong> ${data.removed} adres${data.removed === 1 ? '' : 'sen'} verwijderd bij ${data.persons} personen.${data.notInDb?.length ? ` ${data.notInDb.length} stonden niet in de DB.` : ''}</span>`;
+      document.getElementById('clean-preview').style.display = 'none';
+    } catch (err) {
+      result.innerHTML = `<span style="color:#c14040;">${escapeHtml(err.message || String(err))}</span>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Alle 89 bounces direct verwijderen';
     }
-    document.getElementById('clean-preview').style.display = 'block';
   });
 
   document.getElementById('clean-execute').addEventListener('click', async () => {
