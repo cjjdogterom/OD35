@@ -1,0 +1,462 @@
+/**
+ * Venster — strak SaaS-dashboard
+ * Compact, tabelachtig, Inter, blauw accent
+ */
+html[data-ui="venster"] {
+  --font-display: 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'Inter', system-ui, sans-serif;
+  --ink: #0f172a;
+  --paper: #f1f5f9;
+  --paper-warm: #ffffff;
+  --burgundy: #2563eb;
+  --burgundy-deep: #1d4ed8;
+  --gold: #64748b;
+  --gray: #64748b;
+  --gray-light: #94a3b8;
+  --line: #e2e8f0;
+  --line-soft: #f1f5f9;
+  --highlight: #eff6ff;
+}
+
+html[data-ui="venster"] body {
+  background: var(--paper);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+html[data-ui="venster"] body::before { display: none; }
+
+html[data-ui="venster"] #main-content {
+  min-height: 100vh;
+}
+
+html[data-ui="venster"] .container {
+  max-width: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Top app bar */
+html[data-ui="venster"] header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 2rem;
+  text-align: left;
+  border: none;
+  margin: 0;
+  padding: 0.85rem 1.5rem;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+html[data-ui="venster"] .house-logo {
+  height: 36px;
+  margin: 0;
+  order: 0;
+}
+
+html[data-ui="venster"] .eyebrow { display: none; }
+
+html[data-ui="venster"] header h1 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+  order: 1;
+  flex: 1;
+  min-width: 140px;
+}
+
+html[data-ui="venster"] .subtitle { display: none; }
+
+html[data-ui="venster"] .stats {
+  order: 2;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+html[data-ui="venster"] .stat-line {
+  font-size: 0.8rem;
+  font-style: normal;
+  color: var(--gray);
+}
+
+html[data-ui="venster"] header > div:last-child {
+  order: 3;
+  margin: 0 !important;
+  gap: 0.5rem !important;
+}
+
+html[data-ui="venster"] .hero-action-btn {
+  padding: 0.45rem 0.9rem;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 500;
+  border-radius: 6px;
+  letter-spacing: 0;
+  box-shadow: none;
+  background: var(--burgundy);
+}
+
+html[data-ui="venster"] #invite-member-btn.hero-action-btn {
+  background: #fff;
+  color: var(--burgundy);
+  border: 1px solid var(--line);
+}
+
+html[data-ui="venster"] .admin-bar {
+  margin: 0;
+  padding: 0.5rem 1.5rem;
+  background: #1e293b;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  letter-spacing: 0;
+}
+
+html[data-ui="venster"] .tab-nav {
+  border: none;
+  border-bottom: 1px solid var(--line);
+  margin: 0;
+  padding: 0 1.5rem;
+  background: #fff;
+  gap: 0;
+}
+
+html[data-ui="venster"] .tab-btn {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin: 0;
+  color: var(--gray);
+  border-radius: 0;
+}
+
+html[data-ui="venster"] .tab-btn.active {
+  color: var(--burgundy);
+  border-bottom-color: var(--burgundy);
+  font-weight: 600;
+  background: transparent;
+}
+
+html[data-ui="venster"] .tab-panel {
+  padding: 1.25rem 1.5rem 3rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+html[data-ui="venster"] .controls {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: none;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  gap: 0.5rem;
+}
+
+html[data-ui="venster"] .search-input {
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  font-size: 0.9rem;
+  padding: 0.55rem 0.75rem 0.55rem 2.25rem;
+  background: var(--paper);
+}
+
+html[data-ui="venster"] .search-wrap::before {
+  font-size: 1rem;
+  left: 0.65rem;
+}
+
+html[data-ui="venster"] .filter-select {
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 0.55rem 0.75rem;
+  background: #fff;
+}
+
+html[data-ui="venster"] .reset-btn {
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 0.55rem 0.9rem;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+html[data-ui="venster"] .export-btn {
+  border-radius: 6px;
+  font-size: 0.82rem;
+  padding: 0.55rem 0.9rem;
+  background: var(--burgundy);
+  font-weight: 500;
+}
+
+html[data-ui="venster"] .export-btn::before { content: none; }
+
+html[data-ui="venster"] .results-count {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  letter-spacing: 0;
+  color: var(--gray);
+  margin-bottom: 0.5rem;
+}
+
+html[data-ui="venster"] .alphabet {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+html[data-ui="venster"] .alpha-btn {
+  border-radius: 4px;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  min-width: 1.75rem;
+  padding: 0.25rem;
+  border: none;
+}
+
+html[data-ui="venster"] .alpha-btn.active {
+  background: var(--highlight);
+  color: var(--burgundy);
+  font-weight: 600;
+}
+
+/* Tabel-stijl personenlijst */
+html[data-ui="venster"] .person-list {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  border-top: none;
+}
+
+html[data-ui="venster"] .person-list::before {
+  content: 'Naam · Jaargang';
+  display: block;
+  padding: 0.6rem 1rem;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray);
+}
+
+html[data-ui="venster"] .person {
+  border-bottom: 1px solid var(--line);
+}
+
+html[data-ui="venster"] .person:last-child {
+  border-bottom: none;
+}
+
+html[data-ui="venster"] .person:nth-child(even) {
+  background: #fafbfc;
+}
+
+html[data-ui="venster"] .person:hover {
+  background: var(--highlight);
+}
+
+html[data-ui="venster"] .person.expanded {
+  background: #fff;
+  box-shadow: inset 3px 0 0 var(--burgundy);
+}
+
+html[data-ui="venster"] .person-summary {
+  grid-template-columns: 3.5rem 1fr 1.5rem;
+  padding: 0.65rem 1rem;
+  gap: 0.75rem;
+}
+
+html[data-ui="venster"] .person-jaar {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--gray);
+  text-align: right;
+}
+
+html[data-ui="venster"] .person-name {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+html[data-ui="venster"] .person-name .voorletters {
+  font-size: 0.85rem;
+  color: var(--gray);
+}
+
+html[data-ui="venster"] .person-toggle {
+  font-size: 0.85rem;
+  color: var(--gray-light);
+}
+
+html[data-ui="venster"] .person-details {
+  padding: 0 1rem 1rem 4.25rem;
+  background: var(--paper);
+  border-top: 1px solid var(--line-soft);
+}
+
+html[data-ui="venster"] .details-grid {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+html[data-ui="venster"] .detail-section {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.88rem;
+}
+
+html[data-ui="venster"] .detail-section h3 {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gray);
+  font-weight: 600;
+}
+
+html[data-ui="venster"] .agenda-header h2,
+html[data-ui="venster"] .wijz-header h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+html[data-ui="venster"] .event-card,
+html[data-ui="venster"] .contact-card,
+html[data-ui="venster"] .wijz-card {
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+html[data-ui="venster"] .history-content {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1.5rem;
+  font-size: 0.95rem;
+}
+
+html[data-ui="venster"] .modal-box {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  box-shadow: 0 25px 50px rgba(15, 23, 42, 0.15);
+}
+
+html[data-ui="venster"] .modal-box h3 {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+html[data-ui="venster"] .mf-section {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gray);
+}
+
+html[data-ui="venster"] .mf-save,
+html[data-ui="venster"] .login-btn {
+  border-radius: 6px;
+  font-family: var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
+}
+
+html[data-ui="venster"] #pw-screen {
+  background: #0f172a;
+}
+
+html[data-ui="venster"] #pw-screen h1 {
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+html[data-ui="venster"] #pw-screen p {
+  color: #94a3b8;
+  font-style: normal;
+}
+
+html[data-ui="venster"] #pw-screen input {
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #fff;
+}
+
+html[data-ui="venster"] #pw-screen button {
+  border-radius: 6px;
+  background: var(--burgundy);
+  font-family: var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
+}
+
+html[data-ui="venster"] .admin-fab {
+  background: #1e293b;
+  border-radius: 8px;
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+html[data-ui="venster"] .theme-fab.settings-fab {
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+html[data-ui="venster"] .ui-swatch-venster {
+  background: linear-gradient(135deg, #2563eb, #f1f5f9);
+}
+
+@media (max-width: 768px) {
+  html[data-ui="venster"] header {
+    padding: 0.75rem 1rem;
+  }
+
+  html[data-ui="venster"] header h1 {
+    font-size: 1rem;
+  }
+
+  html[data-ui="venster"] .tab-nav {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding: 0 0.5rem;
+  }
+
+  html[data-ui="venster"] .tab-btn {
+    white-space: nowrap;
+    font-size: 0.8rem;
+    padding: 0.65rem 0.75rem;
+  }
+}

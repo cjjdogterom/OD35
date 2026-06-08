@@ -1,0 +1,285 @@
+/**
+ * Tuin — organisch, groen, zacht klassiek
+ * Afgerond, warm, centraal — als een oud tuinbriefje
+ */
+html[data-ui="tuin"] {
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Lora', Georgia, serif;
+  --font-mono: 'Lora', Georgia, serif;
+  --ink: #1e3328;
+  --paper: #f8f5ef;
+  --paper-warm: #eef5eb;
+  --burgundy: #2d5a45;
+  --burgundy-deep: #1e3d30;
+  --gold: #8b6914;
+  --gold-soft: #c4a035;
+  --gray: #5a6b5e;
+  --gray-light: #94a899;
+  --line: rgba(45, 90, 69, 0.15);
+  --line-soft: rgba(45, 90, 69, 0.06);
+  --highlight: #e4efe6;
+}
+
+html[data-ui="tuin"] body {
+  background: linear-gradient(180deg, #eef5eb 0%, #f8f5ef 30%, #f8f5ef 100%);
+  font-size: 17px;
+}
+
+html[data-ui="tuin"] body::before { display: none; }
+
+html[data-ui="tuin"] .container {
+  max-width: 880px;
+  padding: 2rem 1.5rem 4rem;
+}
+
+html[data-ui="tuin"] header {
+  border: none;
+  background: #fff;
+  border-radius: 24px;
+  padding: 2.5rem 2rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 32px rgba(45, 90, 69, 0.08);
+  border: 1px solid rgba(45, 90, 69, 0.12);
+}
+
+html[data-ui="tuin"] .house-logo {
+  height: 88px;
+  margin-bottom: 1.25rem;
+}
+
+html[data-ui="tuin"] .eyebrow {
+  color: var(--burgundy);
+  font-style: italic;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+}
+
+html[data-ui="tuin"] header h1 {
+  font-size: clamp(2.2rem, 6vw, 3.2rem);
+  color: var(--burgundy-deep);
+  font-weight: 600;
+}
+
+html[data-ui="tuin"] .subtitle {
+  font-size: 1.1rem;
+  color: var(--gray);
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+html[data-ui="tuin"] .hero-action-btn {
+  border-radius: 999px;
+  padding: 0.85rem 1.75rem;
+  background: var(--burgundy);
+  font-size: 1rem;
+  box-shadow: 0 4px 16px rgba(45, 90, 69, 0.25);
+}
+
+html[data-ui="tuin"] #invite-member-btn.hero-action-btn {
+  background: transparent;
+  border: 2px solid var(--burgundy);
+  color: var(--burgundy);
+  box-shadow: none;
+}
+
+html[data-ui="tuin"] .tab-nav {
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border: none;
+  margin: 0 0 2rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 999px;
+  box-shadow: 0 2px 20px rgba(45, 90, 69, 0.06);
+  backdrop-filter: blur(8px);
+}
+
+html[data-ui="tuin"] .tab-btn {
+  border-radius: 999px;
+  border: none;
+  padding: 0.7rem 1.35rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--gray);
+  margin: 0;
+}
+
+html[data-ui="tuin"] .tab-btn.active {
+  background: var(--burgundy);
+  color: #fff;
+  border-bottom: none;
+  box-shadow: 0 2px 12px rgba(45, 90, 69, 0.3);
+}
+
+html[data-ui="tuin"] .controls {
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  box-shadow: none;
+  background: #fff;
+}
+
+html[data-ui="tuin"] .search-input {
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: var(--paper-warm);
+  font-size: 1.05rem;
+}
+
+html[data-ui="tuin"] .filter-select,
+html[data-ui="tuin"] .reset-btn {
+  border-radius: 999px;
+  font-family: var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+  border: 2px solid var(--line);
+}
+
+html[data-ui="tuin"] .export-btn {
+  border-radius: 999px;
+  background: var(--gold-soft);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+html[data-ui="tuin"] .export-btn::before { content: none; }
+
+html[data-ui="tuin"] .alphabet {
+  background: transparent;
+  border: none;
+  justify-content: center;
+}
+
+html[data-ui="tuin"] .alpha-btn {
+  border-radius: 50%;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 1px solid var(--line);
+  font-family: var(--font-body);
+}
+
+html[data-ui="tuin"] .alpha-btn.active {
+  background: var(--burgundy);
+  color: #fff;
+  border-color: var(--burgundy);
+}
+
+html[data-ui="tuin"] .person-list {
+  border: none;
+  gap: 0.75rem;
+  display: flex;
+  flex-direction: column;
+}
+
+html[data-ui="tuin"] .person {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--burgundy);
+  box-shadow: 0 2px 12px rgba(45, 90, 69, 0.05);
+  overflow: hidden;
+}
+
+html[data-ui="tuin"] .person:hover {
+  box-shadow: 0 6px 24px rgba(45, 90, 69, 0.1);
+}
+
+html[data-ui="tuin"] .person.expanded {
+  border-left-width: 8px;
+  border-left-color: var(--gold-soft);
+}
+
+html[data-ui="tuin"] .person-summary {
+  padding: 1.1rem 1.25rem;
+}
+
+html[data-ui="tuin"] .person-jaar {
+  color: var(--burgundy);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+html[data-ui="tuin"] .person-name {
+  font-size: 1.3rem;
+  color: var(--burgundy-deep);
+}
+
+html[data-ui="tuin"] .person-details {
+  background: var(--paper-warm);
+  padding: 1rem 1.25rem 1.5rem;
+  border-top: 1px dashed var(--line);
+}
+
+html[data-ui="tuin"] .detail-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+html[data-ui="tuin"] .event-card,
+html[data-ui="tuin"] .contact-card {
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+html[data-ui="tuin"] .history-content {
+  background: #fff;
+  border-radius: 20px;
+  padding: 2rem;
+  border: 1px solid var(--line);
+}
+
+html[data-ui="tuin"] .admin-bar {
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  background: var(--burgundy-deep);
+}
+
+html[data-ui="tuin"] .modal-box {
+  border-radius: 24px;
+  border: none;
+  box-shadow: 0 20px 60px rgba(45, 90, 69, 0.2);
+}
+
+html[data-ui="tuin"] #pw-screen {
+  background: linear-gradient(160deg, #1e3d30, #2d5a45);
+}
+
+html[data-ui="tuin"] #pw-screen .pw-logo {
+  filter: brightness(1.2);
+}
+
+html[data-ui="tuin"] #pw-screen h1 { color: #fff; }
+
+html[data-ui="tuin"] #pw-screen p { color: rgba(255,255,255,0.75); }
+
+html[data-ui="tuin"] #pw-screen input {
+  border-radius: 999px;
+  border: none;
+  padding: 1rem 1.25rem;
+}
+
+html[data-ui="tuin"] #pw-screen button {
+  border-radius: 999px;
+  background: var(--gold-soft);
+  color: var(--ink);
+  font-family: var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 600;
+}
+
+html[data-ui="tuin"] .admin-fab,
+html[data-ui="tuin"] .theme-fab.settings-fab {
+  border-radius: 50%;
+  box-shadow: 0 4px 16px rgba(45, 90, 69, 0.2);
+}
+
+html[data-ui="tuin"] .admin-fab {
+  background: var(--burgundy);
+}
+
+html[data-ui="tuin"] .ui-swatch-tuin {
+  background: linear-gradient(135deg, #2d5a45, #eef5eb);
+}
