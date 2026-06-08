@@ -1,21 +1,25 @@
 /**
- * OD35 Atlas — radicale nieuwe weergave
- * Donkere sidebar · kaart-layout · editorial typografie
+ * OD35 Atlas — sidebar · rijlijst · huiskleur marineblauw
  * Alleen actief bij html[data-ui="atlas"]
  */
 
 html[data-ui="atlas"] {
-  --atlas-sidebar: #0e1424;
-  --atlas-sidebar-hover: #1a2438;
-  --atlas-sidebar-text: #c8cdd8;
-  --atlas-sidebar-muted: #7a8499;
+  --atlas-marine: #2a4d82;
+  --atlas-marine-deep: #1d3866;
+  --atlas-marine-mid: #243f6e;
+  --atlas-marine-light: #3a62a0;
+  --atlas-marine-pale: #e3eef9;
+  --atlas-sidebar: var(--atlas-marine);
+  --atlas-sidebar-hover: var(--atlas-marine-deep);
+  --atlas-sidebar-text: #dce6f4;
+  --atlas-sidebar-muted: #9bb0d0;
   --atlas-accent: #c9924a;
   --atlas-accent-soft: #e8c88a;
-  --atlas-surface: #f6f2eb;
+  --atlas-surface: #f4f6fa;
   --atlas-card: #ffffff;
-  --atlas-ink: #141820;
+  --atlas-ink: #1a2438;
   --atlas-muted: #5c6478;
-  --atlas-border: rgba(20, 24, 32, 0.08);
+  --atlas-border: rgba(42, 77, 130, 0.12);
   --atlas-radius: 14px;
   --atlas-radius-sm: 8px;
   --font-display: 'Fraunces', 'Playfair Display', Georgia, serif;
@@ -23,16 +27,16 @@ html[data-ui="atlas"] {
   --font-mono: 'Source Serif 4', Georgia, serif;
   --ink: var(--atlas-ink);
   --paper: var(--atlas-surface);
-  --paper-warm: #ece6da;
-  --burgundy: #8b3a2a;
-  --burgundy-deep: #6b2a1e;
+  --paper-warm: var(--atlas-marine-pale);
+  --burgundy: var(--atlas-marine);
+  --burgundy-deep: var(--atlas-marine-deep);
   --gold: var(--atlas-accent);
   --gold-soft: var(--atlas-accent-soft);
   --gray: var(--atlas-muted);
   --gray-light: #949aab;
   --line: var(--atlas-border);
-  --line-soft: rgba(20, 24, 32, 0.04);
-  --highlight: #ece6da;
+  --line-soft: rgba(42, 77, 130, 0.06);
+  --highlight: var(--atlas-marine-pale);
 }
 
 html[data-ui="atlas"] body {
@@ -116,14 +120,14 @@ html[data-ui="atlas"] .tab-btn:hover {
 html[data-ui="atlas"] .tab-btn.active {
   background: var(--atlas-sidebar-hover);
   color: #fff;
-  border-left-color: var(--atlas-accent);
+  border-left-color: var(--atlas-accent-soft);
   border-bottom: none;
   font-weight: 600;
 }
 
 html[data-ui="atlas"] .tab-badge {
   background: var(--atlas-accent);
-  color: var(--atlas-sidebar);
+  color: var(--atlas-marine-deep);
   font-size: 0.72rem;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
@@ -137,8 +141,8 @@ html[data-ui="atlas"] header {
   border: none;
   margin: 0;
   padding: 2rem 2.5rem 1.25rem;
-  background: linear-gradient(135deg, #8b3a2a 0%, #5c2418 55%, #0e1424 100%);
-  color: #f6f2eb;
+  background: linear-gradient(135deg, var(--atlas-marine-light) 0%, var(--atlas-marine) 50%, var(--atlas-marine-deep) 100%);
+  color: #f4f6fa;
   position: relative;
   overflow: hidden;
 }
@@ -147,7 +151,7 @@ html[data-ui="atlas"] header::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 85% 20%, rgba(201, 146, 74, 0.25) 0%, transparent 45%);
+  background: radial-gradient(circle at 85% 20%, rgba(201, 146, 74, 0.2) 0%, transparent 45%);
   pointer-events: none;
 }
 
@@ -219,7 +223,7 @@ html[data-ui="atlas"] .hero-action-btn:hover {
 html[data-ui="atlas"] #invite-member-btn.hero-action-btn {
   background: var(--atlas-accent);
   border-color: var(--atlas-accent);
-  color: var(--atlas-sidebar);
+  color: var(--atlas-marine-deep);
   font-weight: 600;
 }
 
@@ -227,7 +231,7 @@ html[data-ui="atlas"] #invite-member-btn.hero-action-btn {
 html[data-ui="atlas"] .admin-bar {
   grid-area: admin;
   margin: 0;
-  background: #1a2438;
+  background: var(--atlas-marine-deep);
   font-family: var(--font-body);
   font-size: 0.92rem;
   letter-spacing: 0;
@@ -262,7 +266,7 @@ html[data-ui="atlas"] .controls {
   background: var(--atlas-card);
   border: 1px solid var(--atlas-border);
   border-radius: var(--atlas-radius);
-  box-shadow: 0 4px 24px rgba(14, 20, 36, 0.06);
+  box-shadow: 0 4px 24px rgba(42, 77, 130, 0.08);
   padding: 1.25rem 1.5rem;
   margin: 1.5rem 0 1.25rem;
   grid-template-columns: 1fr auto auto auto auto auto;
@@ -277,8 +281,8 @@ html[data-ui="atlas"] .search-input {
 }
 
 html[data-ui="atlas"] .search-input:focus {
-  border-color: var(--atlas-accent);
-  box-shadow: 0 0 0 3px rgba(201, 146, 74, 0.2);
+  border-color: var(--atlas-marine);
+  box-shadow: 0 0 0 3px rgba(42, 77, 130, 0.18);
 }
 
 html[data-ui="atlas"] .filter-select,
@@ -292,13 +296,13 @@ html[data-ui="atlas"] .reset-btn {
 }
 
 html[data-ui="atlas"] .reset-btn {
-  background: var(--atlas-ink);
+  background: var(--atlas-marine);
 }
 
 html[data-ui="atlas"] .export-btn {
   border-radius: var(--atlas-radius-sm);
-  background: var(--atlas-accent);
-  color: var(--atlas-sidebar);
+  background: var(--atlas-marine);
+  color: #fff;
   font-weight: 600;
 }
 
@@ -307,7 +311,7 @@ html[data-ui="atlas"] .export-btn::before {
 }
 
 html[data-ui="atlas"] .export-btn:hover {
-  background: #b8823f;
+  background: var(--atlas-marine-deep);
 }
 
 html[data-ui="atlas"] .results-count {
@@ -316,6 +320,10 @@ html[data-ui="atlas"] .results-count {
   letter-spacing: 0;
   color: var(--atlas-muted);
   margin: 0 0 0.75rem;
+}
+
+html[data-ui="atlas"] .results-count strong {
+  color: var(--atlas-marine);
 }
 
 /* ── Alfabet ── */
@@ -335,7 +343,7 @@ html[data-ui="atlas"] .alpha-btn {
 }
 
 html[data-ui="atlas"] .alpha-btn.active {
-  background: var(--atlas-sidebar);
+  background: var(--atlas-marine);
   color: #fff;
 }
 
@@ -350,9 +358,10 @@ html[data-ui="atlas"] .person-list-header {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--atlas-muted);
-  background: var(--atlas-card);
+  color: var(--atlas-marine);
+  background: var(--atlas-marine-pale);
   border: 1px solid var(--atlas-border);
+  border-bottom: 2px solid var(--atlas-marine);
   border-radius: var(--atlas-radius-sm) var(--atlas-radius-sm) 0 0;
   position: sticky;
   top: 0;
@@ -382,12 +391,12 @@ html[data-ui="atlas"] .person:last-child {
 }
 
 html[data-ui="atlas"] .person:hover {
-  background: var(--atlas-surface);
+  background: var(--atlas-marine-pale);
 }
 
 html[data-ui="atlas"] .person.expanded {
-  background: var(--atlas-surface);
-  border-left: 3px solid var(--atlas-accent);
+  background: var(--atlas-marine-pale);
+  border-left: 3px solid var(--atlas-marine);
 }
 
 html[data-ui="atlas"] .person.deceased {
@@ -410,7 +419,7 @@ html[data-ui="atlas"] .person-jaar {
   font-family: var(--font-body);
   font-size: 0.92rem;
   font-weight: 700;
-  color: var(--burgundy);
+  color: var(--atlas-marine);
   letter-spacing: 0.04em;
   background: none;
   border-radius: 0;
@@ -439,7 +448,7 @@ html[data-ui="atlas"] .person-toggle {
 }
 
 html[data-ui="atlas"] .person.expanded .person-toggle {
-  color: var(--burgundy);
+  color: var(--atlas-marine);
 }
 
 html[data-ui="atlas"] .deceased-badge {
@@ -457,7 +466,7 @@ html[data-ui="atlas"] .deceased-badge {
 
 html[data-ui="atlas"] .person-details {
   padding: 0 1.25rem 1.5rem 1.25rem;
-  background: var(--atlas-surface);
+  background: var(--atlas-marine-pale);
   border-top: 1px dashed var(--atlas-border);
 }
 
@@ -483,8 +492,8 @@ html[data-ui="atlas"] .detail-section h3 {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--burgundy);
-  border-bottom: 2px solid var(--atlas-accent);
+  color: var(--atlas-marine);
+  border-bottom: 2px solid var(--atlas-marine);
   padding-bottom: 0.35rem;
   margin-bottom: 0.5rem;
 }
@@ -502,7 +511,7 @@ html[data-ui="atlas"] .detail-label {
 }
 
 html[data-ui="atlas"] .detail-value a {
-  border-bottom-color: rgba(139, 58, 42, 0.35);
+  border-bottom-color: rgba(42, 77, 130, 0.35);
 }
 
 html[data-ui="atlas"] .meta-strip {
@@ -514,7 +523,7 @@ html[data-ui="atlas"] .meta-strip {
 }
 
 html[data-ui="atlas"] .match-highlight {
-  background: rgba(201, 146, 74, 0.25);
+  background: rgba(42, 77, 130, 0.15);
   border-radius: 2px;
 }
 
@@ -573,7 +582,7 @@ html[data-ui="atlas"] .mf-section {
   font-size: 1.05rem;
   letter-spacing: 0;
   text-transform: none;
-  border-bottom-color: var(--atlas-accent);
+  border-bottom-color: var(--atlas-marine);
 }
 
 html[data-ui="atlas"] .mf-field label,
@@ -624,7 +633,7 @@ html[data-ui="atlas"] #pw-screen input[type="password"] {
 html[data-ui="atlas"] #pw-screen button {
   border-radius: var(--atlas-radius-sm);
   background: var(--atlas-accent);
-  color: var(--atlas-sidebar);
+  color: var(--atlas-marine-deep);
   font-family: var(--font-body);
   font-size: 1rem;
   letter-spacing: 0;
@@ -665,7 +674,7 @@ html[data-ui="atlas"] .settings-popover {
 }
 
 html[data-ui="atlas"] .ui-swatch-atlas {
-  background: linear-gradient(135deg, #0e1424 50%, #c9924a 50%);
+  background: linear-gradient(135deg, #2a4d82 55%, #c9924a 55%);
 }
 
 /* ── Footer ── */
@@ -721,8 +730,8 @@ html[data-ui="atlas"] .form-field textarea {
 html[data-ui="atlas"] .form-field input:focus,
 html[data-ui="atlas"] .form-field select:focus,
 html[data-ui="atlas"] .form-field textarea:focus {
-  border-color: var(--atlas-accent);
-  box-shadow: 0 0 0 3px rgba(201, 146, 74, 0.15);
+  border-color: var(--atlas-marine);
+  box-shadow: 0 0 0 3px rgba(42, 77, 130, 0.15);
 }
 
 html[data-ui="atlas"] .submit-btn,
@@ -803,7 +812,7 @@ html[data-ui="atlas"] .event-card {
 }
 
 html[data-ui="atlas"] .event-card.next-event {
-  border-left: 3px solid var(--atlas-accent);
+  border-left: 3px solid var(--atlas-marine);
 }
 
 /* ── Wijzigingen & admin ── */
@@ -881,7 +890,7 @@ html[data-ui="atlas"] .vj-month {
 }
 
 html[data-ui="atlas"] .vj-month.current {
-  border-color: var(--atlas-accent);
+  border-color: var(--atlas-marine);
 }
 
 html[data-ui="atlas"] .vj-month-name {
@@ -1048,7 +1057,7 @@ html[data-ui="atlas"] .album-card {
 
   html[data-ui="atlas"] .tab-btn.active {
     border-left: none;
-    border-top-color: var(--atlas-accent);
+    border-top-color: var(--atlas-accent-soft);
   }
 
   html[data-ui="atlas"] header {
