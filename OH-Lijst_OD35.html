@@ -2438,21 +2438,43 @@
   .ui-swatch-atlas {
     background: linear-gradient(135deg, #0e1424 50%, #c9924a 50%);
   }
+  .ui-swatch-register {
+    background: linear-gradient(90deg, #0a0a0a 50%, #c41e3a 50%);
+  }
+  .ui-swatch-tuin {
+    background: linear-gradient(135deg, #2d5a45, #eef5eb);
+  }
+  .ui-swatch-venster {
+    background: linear-gradient(135deg, #2563eb, #f1f5f9);
+  }
   .theme-fab.settings-fab { right: 5rem; }
-  .settings-popover { bottom: 5.2rem; right: 5rem; }
+  .settings-popover {
+    bottom: 5.2rem;
+    right: 5rem;
+    max-height: min(85vh, 560px);
+    overflow-y: auto;
+    min-width: 290px;
+  }
 
 </style>
 <link rel="stylesheet" href="ui-atlas.css">
+<link rel="stylesheet" href="ui-register.css">
+<link rel="stylesheet" href="ui-tuin.css">
+<link rel="stylesheet" href="ui-venster.css">
 <script>
 (function(){
-  var UI_KEY='od35_ui_version', VALID=['original','atlas'];
+  var UI_KEY='od35_ui_version';
+  var VALID=['original','atlas','register','tuin','venster'];
+  var COLORS={atlas:'#0e1424',register:'#0a0a0a',tuin:'#2d5a45',venster:'#2563eb',original:'#2a4d82'};
   var p=new URLSearchParams(location.search).get('ui');
-  var ui=(p&&VALID.indexOf(p)>=0)?p:(localStorage.getItem(UI_KEY)||'atlas');
+  var stored=localStorage.getItem(UI_KEY);
+  if(stored==='heritage'){stored='atlas';localStorage.setItem(UI_KEY,'atlas');}
+  var ui=(p&&VALID.indexOf(p)>=0)?p:(stored||'atlas');
   if(VALID.indexOf(ui)<0) ui='atlas';
   document.documentElement.setAttribute('data-ui', ui);
   var theme=localStorage.getItem('od35_theme')||'bibliotheca';
   document.documentElement.setAttribute('data-theme', theme);
-  if(ui==='atlas') document.querySelector('meta[name="theme-color"]')?.setAttribute('content','#0e1424');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', COLORS[ui]||COLORS.atlas);
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -6769,15 +6791,36 @@ async function submitAlbumForm() {
   <button class="ui-option" data-ui-choice="atlas">
     <div class="ui-swatch ui-swatch-atlas"></div>
     <div>
-      <div style="font-family:var(--font-display);font-weight:600;font-size:1.05rem">Atlas</div>
-      <div class="ui-option-desc">Nieuwe weergave — sidebar &amp; kaarten</div>
+      <div style="font-weight:600;font-size:1.02rem">Atlas</div>
+      <div class="ui-option-desc">Sidebar · kaarten · gradient</div>
+    </div>
+  </button>
+  <button class="ui-option" data-ui-choice="register">
+    <div class="ui-swatch ui-swatch-register"></div>
+    <div>
+      <div style="font-weight:600;font-size:1.02rem">Register</div>
+      <div class="ui-option-desc">Brutalist · krant · zwart-rood</div>
+    </div>
+  </button>
+  <button class="ui-option" data-ui-choice="tuin">
+    <div class="ui-swatch ui-swatch-tuin"></div>
+    <div>
+      <div style="font-weight:600;font-size:1.02rem">Tuin</div>
+      <div class="ui-option-desc">Organisch · groen · afgerond</div>
+    </div>
+  </button>
+  <button class="ui-option" data-ui-choice="venster">
+    <div class="ui-swatch ui-swatch-venster"></div>
+    <div>
+      <div style="font-weight:600;font-size:1.02rem">Venster</div>
+      <div class="ui-option-desc">Dashboard · tabel · blauw</div>
     </div>
   </button>
   <button class="ui-option" data-ui-choice="original">
     <div class="ui-swatch ui-swatch-original"></div>
     <div>
-      <div style="font-family:var(--font-display);font-weight:600;font-size:1.05rem">Origineel</div>
-      <div class="ui-option-desc">De vorige weergave</div>
+      <div style="font-weight:600;font-size:1.02rem">Origineel</div>
+      <div class="ui-option-desc">De allereerste weergave</div>
     </div>
   </button>
 
@@ -7094,7 +7137,14 @@ Met vriendelijke groet,"></textarea>
   const THEME_KEY = 'od35_theme';
   const UI_KEY = 'od35_ui_version';
   const validThemes = ['bibliotheca', 'gatsby', 'atelier'];
-  const validUi = ['original', 'atlas'];
+  const validUi = ['original', 'atlas', 'register', 'tuin', 'venster'];
+  const uiThemeColors = {
+    atlas: '#0e1424',
+    register: '#0a0a0a',
+    tuin: '#2d5a45',
+    venster: '#2563eb',
+    original: '#2a4d82',
+  };
 
   // Migreer oude theme-namen
   const oldKey = localStorage.getItem('od35_theme');
@@ -7120,8 +7170,12 @@ Met vriendelijke groet,"></textarea>
       b.classList.toggle('active', b.dataset.uiChoice === name);
     });
     const metaTheme = document.querySelector('meta[name="theme-color"]');
-    if (metaTheme) metaTheme.setAttribute('content', name === 'atlas' ? '#0e1424' : '#2a4d82');
+    if (metaTheme) metaTheme.setAttribute('content', uiThemeColors[name] || uiThemeColors.atlas);
   }
+
+  // Migreer oude 'heritage' keuze naar atlas
+  const storedUi = localStorage.getItem(UI_KEY);
+  if (storedUi === 'heritage') localStorage.setItem(UI_KEY, 'atlas');
 
   // URL-params: ?ui=original of ?ui=atlas
   const params = new URLSearchParams(window.location.search);
