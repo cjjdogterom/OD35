@@ -6,6 +6,8 @@ const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const ALLOWED_ORIGINS = [
   'https://oudedelft35.com',
   'https://www.oudedelft35.com',
+  'https://oudedelft35.nl',
+  'https://www.oudedelft35.nl',
 ];
 // Sta ook alle Vercel-deploys van dit project toe (*.vercel.app)
 function originAllowed(origin) {
@@ -13,7 +15,9 @@ function originAllowed(origin) {
   if (ALLOWED_ORIGINS.includes(origin)) return true;
   try {
     const host = new URL(origin).hostname;
-    return host.endsWith('.vercel.app');
+    return host.endsWith('.vercel.app')
+        || host === 'oudedelft35.com' || host === 'www.oudedelft35.com'
+        || host === 'oudedelft35.nl'  || host === 'www.oudedelft35.nl';
   } catch (_) { return false; }
 }
 

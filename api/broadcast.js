@@ -3,6 +3,8 @@ const { Resend } = require('resend');
 const ALLOWED_ORIGINS = [
   'https://oudedelft35.com',
   'https://www.oudedelft35.com',
+  'https://oudedelft35.nl',
+  'https://www.oudedelft35.nl',
   'https://od-35.vercel.app',
 ];
 
@@ -18,7 +20,7 @@ function rateLimited(ip) {
 
 module.exports = async function handler(req, res) {
   const origin = req.headers.origin || '';
-  const isAllowed = ALLOWED_ORIGINS.includes(origin);
+  const isAllowed = ALLOWED_ORIGINS.includes(origin) || /\.vercel\.app$/.test((origin||'').replace(/^https?:\/\//,''));
   res.setHeader('Access-Control-Allow-Origin', isAllowed ? origin : ALLOWED_ORIGINS[0]);
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');

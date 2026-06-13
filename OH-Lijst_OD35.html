@@ -219,6 +219,11 @@
   #pw-screen .login-msg.error { color: #c0392b; }
   #pw-screen .login-msg.ok { color: #2e7d32; }
   #pw-screen .login-sent-to { font-weight: 600; color: var(--ink); }
+  #pw-screen .login-help {
+    margin-top: 1.3rem; text-align: center;
+    font-family: var(--font-body); font-size: 0.95rem; color: var(--gray);
+  }
+  #pw-screen .login-help a { color: var(--burgundy); font-weight: 600; }
 
   html { scroll-behavior: smooth; }
   html, body {
@@ -2703,7 +2708,9 @@
 
     <div class="login-msg" id="login-msg"></div>
 
-    <div class="login-links" style="margin-top:1.5rem;">
+    <p class="login-help">Lukt inloggen niet? Mail naar <a href="mailto:omegaksiod35@gmail.com">omegaksiod35@gmail.com</a></p>
+
+    <div class="login-links" style="margin-top:1.2rem;">
       <button type="button" class="login-link muted" id="login-admin-link">Beheerder inloggen met wachtwoord</button>
     </div>
   </div>
