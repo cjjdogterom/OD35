@@ -57,16 +57,17 @@ module.exports = async function handler(req, res) {
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
           || req.socket?.remoteAddress || 'onbekend';
 
-  // Provincie bepalen via gratis IP-geolocatie (best effort)
-  let provincie = 'Onbekend', land = 'Onbekend';
+  // Provincie + gemeente bepalen via gratis IP-geolocatie (best effort)
+  let provincie = 'Onbekend', gemeente = 'Onbekend', land = 'Onbekend';
   try {
-    const geo = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,countryCode,regionName`);
+    const geo = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,countryCode,regionName,city`);
     if (geo.ok) {
       const g = await geo.json();
       if (g.status === 'success') {
-        land = (g.countryCode === 'NL') ? 'Nederland' : (g.country || 'Onbekend');
-        provincie = (g.countryCode === 'NL')
-          ? normalizeProvince(g.regionName) : (g.regionName || 'Buitenland');
+        const isNL = g.countryCode === 'NL';
+        land = isNL ? 'Nederland' : (g.country || 'Onbekend');
+        provincie = isNL ? normalizeProvince(g.regionName) : (g.regionName || 'Buitenland');
+        gemeente = isNL ? (g.city || 'Onbekend') : (g.city || 'Buitenland');
       }
     }
   } catch (_) { /* geolocatie niet kritiek */ }
@@ -76,7 +77,7 @@ module.exports = async function handler(req, res) {
   const admin = createClient(SUPABASE_URL, SERVICE, { auth: { autoRefreshToken: false, persistSession: false } });
 
   try {
-    await admin.from('bezoeken').insert({ email, ip, provincie, land });
+    await admin.from('bezoeken').insert({ email, ip, provincie, gemeente, land });
   } catch (e) {
     return res.status(500).json({ error: 'Opslaan mislukt' });
   }
