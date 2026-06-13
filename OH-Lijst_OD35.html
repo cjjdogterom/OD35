@@ -2288,6 +2288,37 @@
 }
 .tab-badge:empty { display: none; }
 
+/* ==================== BEZOEKERS-DASHBOARD ==================== */
+.bezoekers-stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.bezoek-stat {
+  flex: 1; min-width: 140px; background: var(--paper-warm);
+  border: 1px solid var(--line); border-top: 3px solid var(--burgundy);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+  padding: 1.1rem 1.2rem; text-align: center;
+}
+.bezoek-stat-num { font-family: var(--font-display); font-size: 2.2rem; font-weight: 600; color: var(--burgundy); line-height: 1; }
+.bezoek-stat-lbl { font-size: 0.82rem; color: var(--gray); margin-top: 0.35rem; }
+.bezoekers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 760px) { .bezoekers-grid { grid-template-columns: 1fr; } }
+.bezoekers-subtitle { font-family: var(--font-display); font-size: 1.15rem; color: var(--ink); margin-bottom: 0.8rem; }
+.nl-map {
+  display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 1fr;
+  gap: 0.4rem; aspect-ratio: 4 / 5; max-width: 360px;
+}
+.nl-tile {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 0.3rem; text-align: center; transition: transform 0.12s var(--ease);
+}
+.nl-tile:hover { transform: scale(1.04); }
+.nl-tile-prov { font-size: 0.6rem; line-height: 1.1; opacity: 0.9; }
+.nl-tile-num { font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; }
+.nl-map-extra { margin-top: 0.7rem; font-size: 0.85rem; color: var(--gray); }
+.bezoekers-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.bezoekers-table th { text-align: left; font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gray); border-bottom: 1px solid var(--line); padding: 0.4rem 0.5rem; }
+.bezoekers-table td { padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--line-soft); }
+.bezoekers-table .center { text-align: center; }
+
 /* ==================== FOTO'S TAB ==================== */
 .fotos-header {
   display: flex;
@@ -2847,6 +2878,7 @@
       <button class="tab-btn admin-only" data-tab="wijzigingen" style="display:none">Verzoeken <span id="wijzigingen-badge" class="tab-badge"></span></button>
       <button class="tab-btn admin-only" data-tab="verjaardagen" style="display:none">Verjaardagen</button>
       <button class="tab-btn hoofdadmin-only" data-tab="adminbeheer" style="display:none">Admin-beheer</button>
+      <button class="tab-btn hoofdadmin-only" data-tab="bezoekers" style="display:none">Bezoekers</button>
     </nav>
   </div>
 </div>
@@ -2986,6 +3018,28 @@
     Hier zie je alle admins en kun je nieuwe admins toevoegen. Alleen jij als <strong>hoofdadmin</strong> hebt toegang tot deze pagina.
   </p>
   <div id="admin-list" class="wijz-list"></div>
+</div>
+
+<!-- ==================== TAB: BEZOEKERS (hoofdadmin only) ==================== -->
+<div class="tab-panel" id="panel-bezoekers">
+  <div class="wijz-header">
+    <h2>Bezoekers</h2>
+    <button id="bezoekers-refresh" class="export-btn" style="background:transparent; color:var(--burgundy); border:1px solid var(--burgundy);">↻ Vernieuwen</button>
+  </div>
+  <p style="color:var(--gray); font-size:0.88rem; margin-bottom:1rem;">
+    Overzicht van wie er heeft ingelogd en vanuit welke provincie. Alleen zichtbaar voor de hoofdadmin.
+  </p>
+  <div id="bezoekers-stats" class="bezoekers-stats"></div>
+  <div class="bezoekers-grid">
+    <div class="bezoekers-map-wrap">
+      <h3 class="bezoekers-subtitle">Bezoekers per provincie</h3>
+      <div id="bezoekers-map"></div>
+    </div>
+    <div class="bezoekers-list-wrap">
+      <h3 class="bezoekers-subtitle">Wie heeft ingelogd</h3>
+      <div id="bezoekers-list"></div>
+    </div>
+  </div>
 </div>
 
 <!-- E-mails opschonen modal -->
@@ -4649,9 +4703,123 @@ document.getElementById('tab-nav').addEventListener('click', e => {
   if (tab === 'wijzigingen') { loadWijzigingen(); }
   if (tab === 'verjaardagen') { renderVerjaardagen(); }
   if (tab === 'adminbeheer') { loadAdmins(); }
+  if (tab === 'bezoekers') { loadBezoekers(); }
   // Zachte reveal van de panel-blokken bij het wisselen van tab
   if (typeof revealPanel === 'function') revealPanel('panel-' + tab);
 });
+
+// ==================== BEZOEKERS-DASHBOARD (alleen hoofdadmin) ====================
+const NL_PROVINCES = ['Groningen','Friesland','Drenthe','Overijssel','Flevoland','Gelderland','Utrecht','Noord-Holland','Zuid-Holland','Zeeland','Noord-Brabant','Limburg'];
+// Stilistische tegel-layout van NL (rij/kolom), benadert de geografie
+const NL_TILE_POS = {
+  'Friesland':     [0,2], 'Groningen':     [0,3],
+  'Noord-Holland': [1,1], 'Flevoland':     [1,2], 'Drenthe':       [1,3],
+  'Zuid-Holland':  [2,1], 'Utrecht':       [2,2], 'Overijssel':    [2,3],
+  'Zeeland':       [3,0], 'Noord-Brabant': [3,1], 'Gelderland':    [3,2],
+  'Limburg':       [4,2],
+};
+
+async function loadBezoekers() {
+  if (!isHoofdadmin()) return;
+  const statsEl = document.getElementById('bezoekers-stats');
+  if (statsEl) statsEl.innerHTML = '<div style="color:var(--gray);">Laden…</div>';
+  try {
+    const { data, error } = await db.from('bezoeken').select('*').order('ingelogd_op', { ascending: false });
+    if (error) throw error;
+    renderBezoekers(data || []);
+  } catch (e) {
+    if (statsEl) statsEl.innerHTML = `<div style="color:#c0392b;">Kon bezoekers niet laden: ${escapeHtml(e.message || String(e))}<br><small>Is de tabel "bezoeken" al aangemaakt? Zie BEZOEKERS-SETUP.md.</small></div>`;
+    document.getElementById('bezoekers-map').innerHTML = '';
+    document.getElementById('bezoekers-list').innerHTML = '';
+  }
+}
+
+function renderBezoekers(rows) {
+  // Per persoon samenvatten
+  const perEmail = {};
+  const ips = new Set();
+  const perProv = {};
+  rows.forEach(r => {
+    const em = (r.email || 'onbekend').toLowerCase();
+    if (!perEmail[em]) perEmail[em] = { email: em, count: 0, last: r.ingelogd_op, provincie: r.provincie || 'Onbekend' };
+    perEmail[em].count++;
+    if (new Date(r.ingelogd_op) > new Date(perEmail[em].last)) { perEmail[em].last = r.ingelogd_op; perEmail[em].provincie = r.provincie || 'Onbekend'; }
+    if (r.ip) ips.add(r.ip);
+  });
+  // Per provincie: unieke personen tellen
+  Object.values(perEmail).forEach(p => {
+    const prov = NL_PROVINCES.includes(p.provincie) ? p.provincie : (p.provincie || 'Onbekend');
+    perProv[prov] = (perProv[prov] || 0) + 1;
+  });
+
+  const uniekeLeden = Object.keys(perEmail).length;
+  const totaalBezoeken = rows.length;
+  const uniekeIps = ips.size;
+
+  // Stats-kaarten
+  document.getElementById('bezoekers-stats').innerHTML = `
+    <div class="bezoek-stat"><div class="bezoek-stat-num">${uniekeLeden}</div><div class="bezoek-stat-lbl">leden ingelogd</div></div>
+    <div class="bezoek-stat"><div class="bezoek-stat-num">${totaalBezoeken}</div><div class="bezoek-stat-lbl">bezoeken totaal</div></div>
+    <div class="bezoek-stat"><div class="bezoek-stat-num">${uniekeIps}</div><div class="bezoek-stat-lbl">unieke IP-adressen</div></div>`;
+
+  // NL tegel-kaart (choropleth)
+  const maxProv = Math.max(1, ...NL_PROVINCES.map(p => perProv[p] || 0));
+  let mapHtml = '<div class="nl-map">';
+  let buitenland = 0, onbekend = 0;
+  Object.keys(perProv).forEach(p => { if (!NL_PROVINCES.includes(p)) { if (p === 'Onbekend') onbekend += perProv[p]; else buitenland += perProv[p]; } });
+  NL_PROVINCES.forEach(prov => {
+    const n = perProv[prov] || 0;
+    const pos = NL_TILE_POS[prov];
+    const intensity = n === 0 ? 0 : 0.18 + 0.82 * (n / maxProv);
+    const bg = n === 0 ? 'var(--paper-warm)' : `rgba(42, 77, 130, ${intensity.toFixed(2)})`;
+    const fg = intensity > 0.55 ? '#fff' : 'var(--ink)';
+    mapHtml += `<div class="nl-tile" style="grid-row:${pos[0]+1}; grid-column:${pos[1]+1}; background:${bg}; color:${fg};" title="${prov}: ${n}">
+      <div class="nl-tile-prov">${prov}</div>
+      <div class="nl-tile-num">${n}</div>
+    </div>`;
+  });
+  mapHtml += '</div>';
+  if (buitenland || onbekend) {
+    mapHtml += `<div class="nl-map-extra">${buitenland ? `Buitenland: <strong>${buitenland}</strong>` : ''}${buitenland && onbekend ? ' · ' : ''}${onbekend ? `Onbekend: <strong>${onbekend}</strong>` : ''}</div>`;
+  }
+  document.getElementById('bezoekers-map').innerHTML = mapHtml;
+
+  // Lijst van personen
+  const people = Object.values(perEmail).sort((a, b) => new Date(b.last) - new Date(a.last));
+  if (people.length === 0) {
+    document.getElementById('bezoekers-list').innerHTML = '<div style="color:var(--gray);font-style:italic;">Nog niemand ingelogd.</div>';
+    return;
+  }
+  let listHtml = '<table class="bezoekers-table"><thead><tr><th>E-mail</th><th>Provincie</th><th class="center">Bezoeken</th><th>Laatst</th></tr></thead><tbody>';
+  people.forEach(p => {
+    const d = new Date(p.last);
+    const datum = d.toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' });
+    listHtml += `<tr><td>${escapeHtml(p.email)}</td><td>${escapeHtml(p.provincie || 'Onbekend')}</td><td class="center">${p.count}</td><td>${datum}</td></tr>`;
+  });
+  listHtml += '</tbody></table>';
+  document.getElementById('bezoekers-list').innerHTML = listHtml;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const rb = document.getElementById('bezoekers-refresh');
+  if (rb) rb.addEventListener('click', loadBezoekers);
+});
+
+// Log dit bezoek eenmalig per browsersessie (IP + provincie via serverfunctie)
+async function logVisitOnce() {
+  try {
+    if (sessionStorage.getItem('od35_visit_logged') === '1') return;
+    const { data } = await db.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) return;
+    sessionStorage.setItem('od35_visit_logged', '1');
+    fetch('/api/log-visit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: '{}',
+    }).catch(() => {});
+  } catch (_) {}
+}
 
 // ==================== ADMIN-BEHEER (alleen hoofdadmin) ====================
 let adminsList = [];
@@ -6604,6 +6772,8 @@ async function init() {
   render();
   // Onthul de eerste (Personen) panel-blokken zacht
   if (typeof revealPanel === 'function') revealPanel('panel-personen');
+  // Registreer dit bezoek (eenmalig per sessie) voor het bezoekers-dashboard
+  if (typeof logVisitOnce === 'function') logVisitOnce();
 }
 
 // ==================== SCROLL-EFFECTEN ====================
