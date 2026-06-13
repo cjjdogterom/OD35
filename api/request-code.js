@@ -87,10 +87,12 @@ module.exports = async function handler(req, res) {
   }
 
   // 2. Zorg dat er een (bevestigd) auth-account bestaat voor dit e-mailadres
+  let createInfo = 'ok';
   try {
-    await admin.auth.admin.createUser({ email, email_confirm: true });
+    const { error: cErr } = await admin.auth.admin.createUser({ email, email_confirm: true });
+    if (cErr) createInfo = 'createUser: ' + cErr.message;
   } catch (e) {
-    // Bestaat al → prima, negeren
+    createInfo = 'createUser threw: ' + (e.message || e);
   }
 
   // 3. Verstuur de 6-cijferige inlogcode (via de in Supabase ingestelde SMTP)
@@ -104,7 +106,8 @@ module.exports = async function handler(req, res) {
     const msg = /seconds|rate|after/i.test(otpErr.message || '')
       ? 'Er is net een code verstuurd. Wacht even voor je een nieuwe aanvraagt.'
       : 'Kon geen code versturen. Probeer het later opnieuw.';
-    return res.status(429).json({ error: msg });
+    // TIJDELIJK: echte oorzaak meesturen voor diagnose
+    return res.status(429).json({ error: msg, detail: otpErr.message, status: otpErr.status, createInfo });
   }
 
   return res.status(200).json({ ok: true });
