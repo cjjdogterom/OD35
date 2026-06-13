@@ -1069,6 +1069,30 @@
     color: white;
     border-color: #8b0000;
   }
+  /* Leesbaar (niet-klikbaar) badge voor niet-admins */
+  .huis-oudste-badge {
+    background: #8b0000;
+    color: white;
+    border: 1px solid #8b0000;
+    padding: 0.4rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+  }
+  .huis-oudste-badge::before {
+    content: '';
+    display: inline-block;
+    width: 0.85em;
+    height: 0.85em;
+    background-color: currentColor;
+    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><polygon points='12,2 14.9,8.9 22.4,9.5 16.7,14.4 18.5,21.7 12,17.7 5.5,21.7 7.3,14.4 1.6,9.5 9.1,8.9'/></svg>") center/contain no-repeat;
+            mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><polygon points='12,2 14.9,8.9 22.4,9.5 16.7,14.4 18.5,21.7 12,17.7 5.5,21.7 7.3,14.4 1.6,9.5 9.1,8.9'/></svg>") center/contain no-repeat;
+  }
 
   /* ==================== AANWEZIGHEID ==================== */
   .attendance-section {
@@ -3750,23 +3774,30 @@ function renderDetails(p) {
   if (p['Samenvoeg-notitie']) html += `<span>${escapeHtml(p['Samenvoeg-notitie'])}</span>`;
   html += '</div>';
 
-  // Huis Oudste toggle (alleen voor personen met aankomstjaar)
+  // Huis Oudste (alleen voor personen met aankomstjaar)
   if (p['Aankomstjaar']) {
     const isOudste = isHuisOudste(p);
     const personId = getPersonId(p);
-    html += `<div style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--line-soft);">`;
-    html += `<button class="huis-oudste-toggle ${isOudste ? 'active' : ''}" data-action="toggle-oudste" data-person-id="${escapeHtml(personId)}">`;
-    html += isOudste ? `Huis Oudste van ${p['Aankomstjaar']}` : `Markeer als Huis Oudste`;
-    html += `</button>`;
-    // Toon ander persoon als die al Huis Oudste is
-    const currentOudsteId = huisOudsteMap[p['Aankomstjaar']];
-    if (currentOudsteId && currentOudsteId !== personId) {
-      const other = PEOPLE.find(x => matchesPersonId(x, currentOudsteId));
-      if (other) {
-        html += `<span style="margin-left:0.75rem; font-size:0.85rem; color:var(--gray); font-style:italic;">huidige Huis Oudste: ${escapeHtml(plainName(other))}</span>`;
+    if (isAdmin()) {
+      // Admin: klikbare knop om te (ont)markeren
+      html += `<div style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--line-soft);">`;
+      html += `<button class="huis-oudste-toggle ${isOudste ? 'active' : ''}" data-action="toggle-oudste" data-person-id="${escapeHtml(personId)}">`;
+      html += isOudste ? `Huis Oudste van ${p['Aankomstjaar']}` : `Markeer als Huis Oudste`;
+      html += `</button>`;
+      const currentOudsteId = huisOudsteMap[p['Aankomstjaar']];
+      if (currentOudsteId && currentOudsteId !== personId) {
+        const other = PEOPLE.find(x => matchesPersonId(x, currentOudsteId));
+        if (other) {
+          html += `<span style="margin-left:0.75rem; font-size:0.85rem; color:var(--gray); font-style:italic;">huidige Huis Oudste: ${escapeHtml(plainName(other))}</span>`;
+        }
       }
+      html += `</div>`;
+    } else if (isOudste) {
+      // Niet-admin: alleen een leesbaar (niet-klikbaar) label als deze persoon Huis Oudste is
+      html += `<div style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--line-soft);">`;
+      html += `<span class="huis-oudste-badge">Huis Oudste van ${p['Aankomstjaar']}</span>`;
+      html += `</div>`;
     }
-    html += `</div>`;
   }
 
   // Aanwezigheid bij alle komende events
@@ -3902,9 +3933,10 @@ function render() {
 
 // Click handler (event delegation)
 list.addEventListener('click', e => {
-  // Huis Oudste toggle
+  // Huis Oudste toggle — alleen admins
   if (e.target.matches('[data-action="toggle-oudste"]')) {
     e.stopPropagation();
+    if (!isAdmin()) return;
     const id = e.target.dataset.personId;
     const p = PEOPLE.find(x => matchesPersonId(x, id));
     if (p) {
