@@ -2689,10 +2689,10 @@
 
     <!-- Stap 2: code invoeren -->
     <div id="login-step-code" style="display:none;">
-      <p class="login-intro">We hebben een code van 6 cijfers gestuurd naar<br><span class="login-sent-to" id="login-sent-to"></span>.<br>Kijk ook even in je spam-map.</p>
+      <p class="login-intro">We hebben een inlogcode gestuurd naar<br><span class="login-sent-to" id="login-sent-to"></span>.<br>Kijk ook even in je spam-map.</p>
       <div class="login-field">
         <label for="login-code-input">Inlogcode</label>
-        <input type="text" id="login-code-input" class="login-text login-code" placeholder="······" autocomplete="one-time-code" inputmode="numeric" maxlength="6">
+        <input type="text" id="login-code-input" class="login-text login-code" placeholder="········" autocomplete="one-time-code" inputmode="numeric" maxlength="8">
       </div>
       <button class="login-btn-primary" id="login-verify-btn">Inloggen</button>
       <div class="login-links">
@@ -7528,8 +7528,8 @@ Met vriendelijke groet,"></textarea>
 
   async function doVerify() {
     const token = (codeInput.value || '').replace(/\s/g, '');
-    if (!/^\d{6}$/.test(token)) {
-      setMsg('Vul de 6 cijfers uit de e-mail in.', 'error');
+    if (!/^\d{6,8}$/.test(token)) {
+      setMsg('Vul de code uit de e-mail in.', 'error');
       codeInput.focus();
       return;
     }
@@ -7561,8 +7561,8 @@ Met vriendelijke groet,"></textarea>
   verifyBtn.addEventListener('click', doVerify);
   codeInput.addEventListener('keydown', e => { if (e.key === 'Enter') doVerify(); });
   codeInput.addEventListener('input', () => {
-    codeInput.value = codeInput.value.replace(/\D/g, '').slice(0, 6);
-    if (codeInput.value.length === 6) doVerify();
+    codeInput.value = codeInput.value.replace(/\D/g, '').slice(0, 8);
+    if (codeInput.value.length === 8) doVerify();
   });
   resendBtn.addEventListener('click', doResend);
   backBtn.addEventListener('click', () => {
