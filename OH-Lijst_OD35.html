@@ -2495,6 +2495,24 @@
 .foto-cover-btn:hover { background: rgba(58,124,193,0.85); }
 .foto-cover-btn.is-cover { background: var(--burgundy); opacity: 1 !important; }
 
+/* Uploader-info + blokkeerknop (alleen zichtbaar voor admins) */
+.foto-uploader {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.78));
+  color: #fff; padding: 1.4rem 0.5rem 0.4rem;
+  font-size: 0.7rem; display: flex; align-items: center;
+  justify-content: space-between; gap: 0.4rem;
+}
+.foto-uploader span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.foto-block-btn {
+  flex-shrink: 0; background: rgba(192,57,43,0.9); color: #fff; border: none;
+  border-radius: 3px; padding: 0.2rem 0.5rem; font-size: 0.68rem; cursor: pointer;
+  font-family: var(--font-body);
+}
+.foto-block-btn:hover { background: #c0392b; }
+.foto-block-btn.geblokkeerd { background: rgba(0,0,0,0.55); }
+.foto-block-btn.geblokkeerd:hover { background: rgba(0,0,0,0.75); }
+
 /* Lightbox */
 .foto-lightbox {
   position: fixed;
@@ -3171,6 +3189,21 @@ async function deletePerson(id) {
 
 // ── Admin state ───────────────────────────────────────────────────────────────
 let adminUser = null;
+let currentUserEmail = '';        // e-mail van de ingelogde gebruiker (ook niet-admins)
+let uploadBlokkades = [];         // [{email, naam, reden, door, aangemaakt_op}]
+let uploadGeblokkeerd = false;    // is de huidige gebruiker geblokkeerd voor uploaden?
+function isUploadGeblokkeerd(email) {
+  const e = (email || '').toLowerCase();
+  return uploadBlokkades.some(b => (b.email || '').toLowerCase() === e);
+}
+function canUploadFotos() { return !!currentUserEmail && !uploadGeblokkeerd; }
+async function loadUploadBlokkades() {
+  try {
+    const { data } = await db.from('upload_blokkades').select('*').order('aangemaakt_op', { ascending: false });
+    uploadBlokkades = data || [];
+  } catch (_) { uploadBlokkades = []; }
+  uploadGeblokkeerd = isUploadGeblokkeerd(currentUserEmail);
+}
 const HOOFDADMIN_EMAIL = 'cjj.dogterom@gmail.com';
 // Viewer-account herkennen: behandelt als 'niet-admin' ook al is er een Supabase session
 const VIEWER_EMAIL_DOMAIN_HINT = 'viewer';
@@ -6504,6 +6537,7 @@ async function init() {
   // e-mailadres in de admins-tabel staat (of de vaste hoofdadmin is).
   const { data: { user } } = await db.auth.getUser();
   adminUser = null;
+  currentUserEmail = (user && user.email ? user.email : '').toLowerCase();
   if (user && user.email) {
     const em = user.email.toLowerCase();
     if (em === HOOFDADMIN_EMAIL.toLowerCase()) {
@@ -6515,6 +6549,7 @@ async function init() {
       } catch (_) { /* geen admin-rij = gewoon lid */ }
     }
   }
+  await loadUploadBlokkades();
   updateAdminUI();
 
   try {
@@ -6784,7 +6819,7 @@ function renderAlbumFotos(albumId) {
   if (!content) return;
 
   let topHtml = '';
-  if (isAdmin()) {
+  if (canUploadFotos()) {
     topHtml = `<button class="fotos-upload-toggle" id="fotos-upload-toggle" onclick="toggleUploadSection()">↑ Foto's uploaden</button>
     <div class="foto-upload-section" id="foto-upload-section" style="display:none">
       <div class="foto-upload-area" id="foto-upload-area">
@@ -6795,6 +6830,11 @@ function renderAlbumFotos(albumId) {
       </div>
       <div class="foto-upload-progress" id="foto-upload-progress"></div>
     </div>`;
+  } else if (currentUserEmail && uploadGeblokkeerd) {
+    topHtml = `<div style="background:var(--paper-warm); border:1px solid var(--line); border-left:3px solid #c0392b; padding:0.8rem 1rem; margin-bottom:1rem; font-size:0.9rem; color:var(--gray);">Je bent door een beheerder geblokkeerd voor het uploaden van foto's.</div>`;
+  }
+  if (isAdmin()) {
+    topHtml += `<button class="fotos-upload-toggle" onclick="openBlokkadeBeheer()" style="margin-left:0.5rem;">⚙ Geblokkeerde uploaders</button>`;
   }
 
   let fotosHtml = '';
@@ -6811,10 +6851,23 @@ function renderAlbumFotos(albumId) {
           <button class="foto-cover-btn ${isCover ? 'is-cover' : ''}" title="${isCover ? 'Huidige albumcover' : 'Instellen als albumcover'}" onclick="setCover('${escapeHtml(albumId)}','${escapeHtml(foto.url)}',this)">★</button>
           <button class="foto-delete-btn" title="Foto verwijderen" onclick="deleteFoto(event,'${escapeHtml(foto.id)}','${escapeHtml(foto.url)}')">✕</button>
         </div>` : '';
+      // Admins zien wie de foto heeft geüpload + kunnen die persoon blokkeren
+      let uploaderHtml = '';
+      if (isAdmin() && foto.uploaded_by) {
+        const ub = foto.uploaded_by;
+        const geblokkeerd = isUploadGeblokkeerd(ub);
+        uploaderHtml = `<div class="foto-uploader" onclick="event.stopPropagation()">
+          <span title="Geüpload door">↥ ${escapeHtml(ub)}</span>
+          ${geblokkeerd
+            ? `<button class="foto-block-btn geblokkeerd" onclick="deblokkeerUploader('${escapeHtml(ub)}')">geblokkeerd ✕</button>`
+            : `<button class="foto-block-btn" onclick="blokkeerUploader('${escapeHtml(ub)}')">blokkeer</button>`}
+        </div>`;
+      }
       fotosHtml += `
         <div class="foto-item" onclick="openLightbox(${idx})">
           <img src="${escapeHtml(foto.url)}" alt="${escapeHtml(foto.bijschrift || '')}" loading="lazy">
           ${foto.bijschrift ? `<div class="foto-caption">${escapeHtml(foto.bijschrift)}</div>` : ''}
+          ${uploaderHtml}
           ${adminBtns}
         </div>`;
     });
@@ -6823,8 +6876,8 @@ function renderAlbumFotos(albumId) {
 
   content.innerHTML = topHtml + fotosHtml;
 
-  // Wire up upload area
-  if (isAdmin()) {
+  // Wire up upload area (voor alle leden die mogen uploaden)
+  if (canUploadFotos()) {
     const area = document.getElementById('foto-upload-area');
     const fileInput = document.getElementById('foto-file-input');
     if (area && fileInput) {
@@ -6947,7 +7000,7 @@ async function uploadFotos(files, albumId) {
         continue;
       }
 
-      const { error: insErr } = await db.from('fotos').insert({ album_id: albumId, url: urlData.publicUrl, volgorde: done });
+      const { error: insErr } = await db.from('fotos').insert({ album_id: albumId, url: urlData.publicUrl, volgorde: done, uploaded_by: currentUserEmail || null });
       if (insErr) {
         console.error('DB insert fout:', insErr);
         setProgress(`Fout bij opslaan "${file.name}": ${insErr.message}`, true);
@@ -6968,6 +7021,40 @@ async function uploadFotos(files, albumId) {
   await loadFotos(albumId);
   await loadAlbums();
   renderAlbumFotos(albumId);
+}
+
+// ── Upload-blokkades (admin) ──────────────────────────────────────────────────
+async function blokkeerUploader(email) {
+  if (!isAdmin() || !email) return;
+  email = email.toLowerCase();
+  if (email === HOOFDADMIN_EMAIL.toLowerCase()) { alert('De hoofdadmin kan niet geblokkeerd worden.'); return; }
+  const reden = prompt(`Blokkeer ${email} voor het uploaden van foto's.\n\nReden (optioneel):`, '');
+  if (reden === null) return; // geannuleerd
+  try {
+    const { error } = await db.from('upload_blokkades')
+      .upsert({ email, reden: reden || null, door: adminUser?.email || null }, { onConflict: 'email' });
+    if (error) throw error;
+    await loadUploadBlokkades();
+    if (typeof currentAlbumId !== 'undefined' && currentAlbumId) renderAlbumFotos(currentAlbumId);
+  } catch (e) { alert('Blokkeren mislukt: ' + (e.message || e)); }
+}
+async function deblokkeerUploader(email) {
+  if (!isAdmin() || !email) return;
+  email = email.toLowerCase();
+  if (!confirm(`Blokkade voor ${email} opheffen?`)) return;
+  try {
+    const { error } = await db.from('upload_blokkades').delete().eq('email', email);
+    if (error) throw error;
+    await loadUploadBlokkades();
+    if (typeof currentAlbumId !== 'undefined' && currentAlbumId) renderAlbumFotos(currentAlbumId);
+  } catch (e) { alert('Deblokkeren mislukt: ' + (e.message || e)); }
+}
+function openBlokkadeBeheer() {
+  if (!isAdmin()) return;
+  if (uploadBlokkades.length === 0) { alert('Er zijn momenteel geen geblokkeerde uploaders.'); return; }
+  const lijst = uploadBlokkades.map(b => `• ${b.email}${b.reden ? '  (' + b.reden + ')' : ''}`).join('\n');
+  const email = prompt(`Geblokkeerde uploaders:\n\n${lijst}\n\nTyp een e-mailadres om de blokkade op te heffen (of laat leeg om te sluiten):`, '');
+  if (email && email.trim()) deblokkeerUploader(email.trim());
 }
 
 // Delete album
