@@ -2288,6 +2288,45 @@
 }
 .tab-badge:empty { display: none; }
 
+/* ==================== WANDELGANGEN (forum) ==================== */
+.wg-form {
+  background: var(--paper-warm); border: 1px solid var(--line);
+  border-top: 3px solid var(--burgundy); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm); padding: 1rem 1.1rem; margin-bottom: 1.8rem;
+}
+.wg-form textarea {
+  width: 100%; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--paper); padding: 0.7rem 0.85rem; resize: vertical; min-height: 70px;
+  font-family: var(--font-body); font-size: 1.02rem; color: var(--ink); outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.wg-form textarea:focus { border-color: var(--burgundy); box-shadow: 0 0 0 3px rgba(42,77,130,0.12); }
+.wg-form-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 0.6rem; gap: 1rem; }
+.wg-count { font-size: 0.78rem; color: var(--gray-light); font-family: var(--font-mono); }
+.wg-post-btn {
+  background: var(--burgundy); color: var(--paper); border: none; cursor: pointer;
+  padding: 0.6rem 1.4rem; border-radius: var(--radius); font-family: var(--font-display);
+  font-size: 1rem; box-shadow: var(--shadow-sm); transition: background 0.2s, transform 0.15s var(--ease);
+}
+.wg-post-btn:hover:not(:disabled) { background: var(--burgundy-deep); transform: translateY(-1px); }
+.wg-post-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.wg-list { display: flex; flex-direction: column; gap: 1rem; }
+.wg-msg {
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm); padding: 1rem 1.2rem; position: relative;
+}
+.wg-msg-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 0.4rem; flex-wrap: wrap; }
+.wg-msg-author { font-family: var(--font-display); font-weight: 600; color: var(--burgundy); font-size: 1.05rem; }
+.wg-msg-author .jaar { font-family: var(--font-mono); font-size: 0.75rem; color: var(--gray); font-weight: 400; margin-left: 0.35rem; }
+.wg-msg-date { font-size: 0.78rem; color: var(--gray); white-space: nowrap; }
+.wg-msg-body { color: var(--ink); line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+.wg-del-btn {
+  margin-top: 0.6rem; background: transparent; border: 1px solid var(--line); color: var(--gray);
+  padding: 0.3rem 0.7rem; font-size: 0.78rem; cursor: pointer; border-radius: var(--radius); font-family: var(--font-body);
+}
+.wg-del-btn:hover { background: #c0392b; color: #fff; border-color: #c0392b; }
+.wg-empty { text-align: center; padding: 2.5rem 1rem; color: var(--gray); font-style: italic; }
+
 /* ==================== BEZOEKERS-DASHBOARD ==================== */
 .bezoekers-stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
 .bezoek-stat {
@@ -2876,6 +2915,7 @@
       <button class="tab-btn" data-tab="fotos">Foto's</button>
       <button class="tab-btn" data-tab="agenda">Agenda</button>
       <button class="tab-btn" data-tab="contacten">Contacten</button>
+      <button class="tab-btn" data-tab="wandelgangen">Wandelgangen</button>
       <button class="tab-btn" data-tab="geschiedenis">Geschiedenis</button>
       <button class="tab-btn admin-only" data-tab="wijzigingen" style="display:none">Verzoeken <span id="wijzigingen-badge" class="tab-badge"></span></button>
       <button class="tab-btn admin-only" data-tab="verjaardagen" style="display:none">Verjaardagen</button>
@@ -2981,6 +3021,24 @@
     </div>
   </div>
 </div><!-- /panel-geschiedenis -->
+
+<!-- ==================== TAB: WANDELGANGEN (forum) ==================== -->
+<div class="tab-panel" id="panel-wandelgangen">
+  <div style="text-align:center; margin-bottom:1.5rem;">
+    <h2 style="font-family:var(--font-display); font-size:2.2rem; font-weight:600; margin-bottom:0.3rem;">Wandelgangen</h2>
+    <p style="color:var(--gray); font-style:italic;">Een plek voor oud-huisgenoten om bij te praten, herinneringen te delen en elkaar weer te vinden.</p>
+  </div>
+
+  <form id="wg-form" class="wg-form">
+    <textarea id="wg-input" rows="3" placeholder="Schrijf iets in de wandelgangen…" maxlength="2000"></textarea>
+    <div class="wg-form-bar">
+      <span id="wg-count" class="wg-count">0 / 2000</span>
+      <button type="submit" class="wg-post-btn" id="wg-post-btn">Plaatsen</button>
+    </div>
+  </form>
+
+  <div id="wg-list" class="wg-list"></div>
+</div><!-- /panel-wandelgangen -->
 
 <!-- ==================== TAB: FOTO'S ==================== -->
 <div class="tab-panel" id="panel-fotos">
@@ -4700,6 +4758,7 @@ document.getElementById('tab-nav').addEventListener('click', e => {
   // Re-render relevant tab content
   if (tab === 'agenda') renderEvents();
   if (tab === 'contacten') renderContacts();
+  if (tab === 'wandelgangen') loadWandelgangen();
   if (tab === 'geschiedenis') renderHistory();
   if (tab === 'fotos') { loadAlbums().then(renderFotosTab); }
   if (tab === 'wijzigingen') { loadWijzigingen(); }
@@ -4708,6 +4767,95 @@ document.getElementById('tab-nav').addEventListener('click', e => {
   if (tab === 'bezoekers') { loadBezoekers(); }
   // Zachte reveal van de panel-blokken bij het wisselen van tab
   if (typeof revealPanel === 'function') revealPanel('panel-' + tab);
+});
+
+// ==================== WANDELGANGEN (forum) ====================
+let wandelgangenList = [];
+
+// Zoek de persoon bij een e-mailadres → naam + aankomstjaar
+function personByEmail(email) {
+  if (!email) return null;
+  const e = email.toLowerCase();
+  return PEOPLE.find(p => [p['E-mail 1'], p['E-mail 2'], p['E-mail 3']].some(x => (x || '').toLowerCase() === e)) || null;
+}
+function displayNaam(email) {
+  const p = personByEmail(email);
+  if (!p) return { naam: email || 'Onbekend', jaar: '' };
+  const naam = [p['Voorletters'], p['Tussenvoegsel'], p['Achternaam']].filter(Boolean).join(' ').trim() || email;
+  return { naam, jaar: p['Aankomstjaar'] || '' };
+}
+
+async function loadWandelgangen() {
+  const list = document.getElementById('wg-list');
+  if (list) list.innerHTML = '<div class="wg-empty">Laden…</div>';
+  try {
+    const { data, error } = await db.from('wandelgangen').select('*').order('aangemaakt_op', { ascending: false });
+    if (error) throw error;
+    wandelgangenList = data || [];
+    renderWandelgangen();
+  } catch (e) {
+    if (list) list.innerHTML = `<div class="wg-empty">Kon berichten niet laden: ${escapeHtml(e.message || String(e))}<br><small>Is de tabel "wandelgangen" al aangemaakt? Zie WANDELGANGEN-SETUP.md.</small></div>`;
+  }
+}
+
+function renderWandelgangen() {
+  const list = document.getElementById('wg-list');
+  if (!list) return;
+  if (wandelgangenList.length === 0) {
+    list.innerHTML = '<div class="wg-empty">Nog geen berichten. Wees de eerste om iets te plaatsen!</div>';
+    return;
+  }
+  list.innerHTML = wandelgangenList.map(m => {
+    const info = displayNaam(m.email);
+    const naam = info.naam || m.naam || m.email;
+    const jaar = info.jaar ? `<span class="jaar">(${escapeHtml(String(info.jaar))})</span>` : '';
+    const d = new Date(m.aangemaakt_op);
+    const datum = d.toLocaleString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const magWeg = isAdmin() || (currentUserEmail && (m.email || '').toLowerCase() === currentUserEmail);
+    return `<div class="wg-msg">
+      <div class="wg-msg-head">
+        <span class="wg-msg-author">${escapeHtml(naam)}${jaar}</span>
+        <span class="wg-msg-date">${escapeHtml(datum)}</span>
+      </div>
+      <div class="wg-msg-body">${escapeHtml(m.bericht)}</div>
+      ${magWeg ? `<button class="wg-del-btn" data-action="wg-del" data-id="${escapeHtml(m.id)}">Verwijderen</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('wg-form');
+  const input = document.getElementById('wg-input');
+  const count = document.getElementById('wg-count');
+  if (input && count) input.addEventListener('input', () => { count.textContent = `${input.value.length} / 2000`; });
+  if (form) form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const bericht = (input.value || '').trim();
+    if (!bericht) return;
+    if (!currentUserEmail) { alert('Log eerst in om een bericht te plaatsen.'); return; }
+    const btn = document.getElementById('wg-post-btn');
+    btn.disabled = true; btn.textContent = 'Plaatsen…';
+    try {
+      const info = displayNaam(currentUserEmail);
+      const { error } = await db.from('wandelgangen').insert({ email: currentUserEmail, naam: info.naam, bericht });
+      if (error) throw error;
+      input.value = ''; if (count) count.textContent = '0 / 2000';
+      await loadWandelgangen();
+    } catch (e2) { alert('Plaatsen mislukt: ' + (e2.message || e2)); }
+    finally { btn.disabled = false; btn.textContent = 'Plaatsen'; }
+  });
+  const wgList = document.getElementById('wg-list');
+  if (wgList) wgList.addEventListener('click', async e => {
+    if (!e.target.matches('[data-action="wg-del"]')) return;
+    const id = e.target.dataset.id;
+    if (!confirm('Dit bericht verwijderen?')) return;
+    try {
+      const { error } = await db.from('wandelgangen').delete().eq('id', id);
+      if (error) throw error;
+      wandelgangenList = wandelgangenList.filter(x => x.id !== id);
+      renderWandelgangen();
+    } catch (e2) { alert('Verwijderen mislukt: ' + (e2.message || e2)); }
+  });
 });
 
 // ==================== BEZOEKERS-DASHBOARD (alleen hoofdadmin) ====================
