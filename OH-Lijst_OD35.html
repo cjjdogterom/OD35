@@ -6907,7 +6907,7 @@ function renderFotosTab() {
 
 function renderAlbumGrid() {
   const btn = document.getElementById('fotos-album-btn');
-  if (btn) btn.style.display = isAdmin() ? '' : 'none';
+  if (btn) btn.style.display = canUploadFotos() ? '' : 'none';
   if (btn) btn.onclick = showAlbumForm;
 
   const bc = document.getElementById('fotos-breadcrumb');
