@@ -146,12 +146,13 @@
     margin: 0 auto 2rem;
   }
 
+  html { scroll-behavior: smooth; }
   html, body {
     background: var(--paper);
     color: var(--ink);
     font-family: var(--font-body);
-    font-size: 16px;
-    line-height: 1.6;
+    font-size: 17px;
+    line-height: 1.65;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
   }
@@ -176,32 +177,60 @@
     z-index: 1;
   }
 
-  /* HEADER */
+  /* HEADER / HERO */
   header {
     text-align: center;
-    border-bottom: 2px solid var(--ink);
-    padding-bottom: 2.5rem;
-    margin-bottom: 2.5rem;
+    padding: 1.5rem 0 3rem;
+    margin-bottom: 0;
     position: relative;
+  }
+  /* Dubbele sierlijn onder de hero — klassiek detail */
+  header::after {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 3px;
+    margin-top: 2.5rem;
+    background: linear-gradient(to right,
+      transparent, var(--burgundy) 15%, var(--burgundy) 85%, transparent);
+    opacity: 0.85;
+  }
+
+  .house-logo {
+    max-height: 110px;
+    width: auto;
+    margin-bottom: 1.5rem;
+    filter: drop-shadow(0 2px 6px rgba(42, 77, 130, 0.12));
+    animation: heroLogoIn 1s cubic-bezier(.2,.7,.3,1) both;
+  }
+  @keyframes heroLogoIn {
+    from { opacity: 0; transform: translateY(-14px) scale(0.94); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
   }
 
   .eyebrow {
     font-family: var(--font-mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.4em;
+    font-size: 0.78rem;
+    letter-spacing: 0.42em;
     text-transform: uppercase;
     color: var(--burgundy);
-    margin-bottom: 1rem;
+    margin-bottom: 1.1rem;
+    animation: heroFade 1s ease 0.15s both;
+  }
+  @keyframes heroFade {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   h1 {
     font-family: var(--font-display);
     font-weight: 600;
-    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-size: clamp(2.8rem, 6.5vw, 5rem);
     line-height: 1;
     letter-spacing: -0.02em;
     color: var(--ink);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.6rem;
+    animation: heroFade 1s ease 0.25s both;
   }
 
   h1 .ampersand {
@@ -213,9 +242,18 @@
   .subtitle {
     font-family: var(--font-display);
     font-style: italic;
-    font-size: 1.3rem;
+    font-size: 1.4rem;
     color: var(--gray);
     margin-bottom: 1.5rem;
+    animation: heroFade 1s ease 0.35s both;
+  }
+  .hero-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+    margin-top: 1.6rem;
+    animation: heroFade 1s ease 0.5s both;
   }
 
   .ornament {
@@ -760,22 +798,68 @@
   .form-success p { color: var(--gray); font-style: italic; }
 
 
-  /* ==================== TABS ==================== */
+  /* ==================== STICKY NAVIGATIE ==================== */
+  /* Blijft bovenaan plakken zodat de navigatie altijd bereikbaar is */
+  .nav-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    background: rgba(244, 241, 232, 0.92);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 2px solid var(--ink);
+    margin: 0 -2rem 2.5rem;
+    padding: 0 2rem;
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  }
+  .nav-sticky.scrolled {
+    box-shadow: 0 6px 24px rgba(42, 38, 32, 0.10);
+    border-bottom-color: var(--burgundy);
+  }
+  .nav-sticky-inner {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  /* Mini-merk dat verschijnt zodra je voorbij de hero scrolt */
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    transition: opacity 0.35s ease, max-width 0.35s ease;
+    white-space: nowrap;
+  }
+  .nav-sticky.scrolled .nav-brand {
+    opacity: 1;
+    max-width: 280px;
+  }
+  .nav-brand-logo { height: 34px; width: auto; }
+  .nav-brand-name {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--burgundy);
+    letter-spacing: 0.01em;
+  }
+
   .tab-nav {
     display: flex;
     flex-wrap: wrap;
     gap: 0;
-    border-bottom: 2px solid var(--ink);
-    margin-bottom: 2.5rem;
-    margin-top: -1rem;
+    flex: 1;
   }
   .tab-btn {
     background: transparent;
     border: none;
     border-bottom: 3px solid transparent;
-    padding: 0.85rem 1.5rem;
+    padding: 1rem 1.5rem;
     font-family: var(--font-display);
-    font-size: 1.15rem;
+    font-size: 1.2rem;
     font-weight: 500;
     color: var(--gray);
     cursor: pointer;
@@ -785,6 +869,7 @@
   }
   .tab-btn:hover {
     color: var(--burgundy);
+    background: rgba(42, 77, 130, 0.04);
   }
   .tab-btn.active {
     color: var(--burgundy);
@@ -792,11 +877,52 @@
     font-weight: 600;
   }
   .tab-panel { display: none; }
-  .tab-panel.active { display: block; animation: fadeIn 0.3s; }
+  .tab-panel.active { display: block; animation: fadeIn 0.4s ease; }
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(4px); }
+    from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
   }
+
+  /* ==================== SCROLL-REVEAL ==================== */
+  .reveal {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+    will-change: opacity, transform;
+  }
+  .reveal.in-view {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+  }
+
+  /* ==================== TERUG NAAR BOVEN ==================== */
+  .to-top {
+    position: fixed;
+    bottom: 1.6rem;
+    left: 1.6rem;
+    width: 3.2rem;
+    height: 3.2rem;
+    border-radius: 50%;
+    background: var(--burgundy);
+    color: var(--paper);
+    border: none;
+    cursor: pointer;
+    font-size: 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(42, 38, 32, 0.22);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(12px);
+    transition: opacity 0.3s ease, transform 0.3s ease, background 0.2s;
+    z-index: 1000;
+  }
+  .to-top.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+  .to-top:hover { background: var(--burgundy-deep); }
 
   /* ==================== EXPORT BUTTON ==================== */
   .export-btn {
@@ -1559,8 +1685,12 @@
     .person-details { padding: 0.25rem 0.75rem 1.25rem; }
     .details-grid { padding: 1rem; gap: 0.9rem 1rem; }
 
-    .tab-btn { padding: 0.5rem 0.65rem; font-size: 0.9rem; }
-    .tab-nav { margin-bottom: 1.5rem; }
+    .tab-btn { padding: 0.55rem 0.7rem; font-size: 0.95rem; }
+    .nav-sticky { margin: 0 -0.85rem 1.5rem; padding: 0 0.85rem; }
+    .nav-brand { display: none; }
+    .nav-sticky-inner { gap: 0; }
+    .tab-nav { justify-content: center; }
+    .to-top { width: 2.8rem; height: 2.8rem; bottom: 1rem; left: 1rem; }
   }
 
 
@@ -1595,16 +1725,17 @@
   .hero-action-btn {
     background: var(--burgundy); color: var(--paper);
     border: none; cursor: pointer;
-    padding: 0.85rem 1.8rem;
-    font-family: var(--font-display); font-size: 1rem;
-    letter-spacing: 0.05em;
+    padding: 0.95rem 2rem;
+    font-family: var(--font-display); font-size: 1.1rem;
+    letter-spacing: 0.04em;
+    border-radius: 2px;
     transition: all 0.2s;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(42, 77, 130, 0.14);
   }
   .hero-action-btn:hover {
     background: var(--burgundy-deep);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(42, 77, 130, 0.22);
   }
 
   /* Share buttons (mail/whatsapp/sms/copy) */
@@ -1856,10 +1987,11 @@
   /* ==================== LOGO ==================== */
   .house-logo {
     display: block;
-    margin: 0 auto 1.75rem;
-    height: 90px;
+    margin: 0 auto 1.5rem;
+    height: 110px;
     width: auto;
-    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.08));
+    filter: drop-shadow(0 2px 6px rgba(42, 77, 130, 0.12));
+    animation: heroLogoIn 1s cubic-bezier(.2,.7,.3,1) both;
   }
 
   /* ==================== CONTACT PICKER ==================== */
@@ -2470,7 +2602,7 @@
   <h1>Oud-Huisgenoten</h1>
   <p class="subtitle">Het adresboek van alle oud-huisgenoten van Oude Delft 35</p>
   <div class="stats" id="stats"></div>
-  <div style="display:flex; justify-content:center; gap:0.7rem; flex-wrap:wrap; margin-top:1.2rem;">
+  <div class="hero-actions">
     <button id="global-wijziging-btn" class="hero-action-btn">✎ Wijziging indienen</button>
     <button id="invite-member-btn" class="hero-action-btn" style="background:transparent; color:var(--burgundy); border:1px solid var(--burgundy);">✉ Iemand uitnodigen</button>
   </div>
@@ -2484,16 +2616,24 @@
   </div>
 </div>
 
-<nav class="tab-nav" id="tab-nav">
-  <button class="tab-btn active" data-tab="personen">Personen</button>
-  <button class="tab-btn" data-tab="fotos">Foto's</button>
-  <button class="tab-btn" data-tab="agenda">Agenda</button>
-  <button class="tab-btn" data-tab="contacten">Contacten</button>
-  <button class="tab-btn" data-tab="geschiedenis">Geschiedenis</button>
-  <button class="tab-btn admin-only" data-tab="wijzigingen" style="display:none">Verzoeken <span id="wijzigingen-badge" class="tab-badge"></span></button>
-  <button class="tab-btn admin-only" data-tab="verjaardagen" style="display:none">Verjaardagen</button>
-  <button class="tab-btn hoofdadmin-only" data-tab="adminbeheer" style="display:none">Admin-beheer</button>
-</nav>
+<div class="nav-sticky" id="nav-sticky">
+  <div class="nav-sticky-inner">
+    <div class="nav-brand">
+      <img src="logo_od35.png" alt="OD35" class="nav-brand-logo">
+      <span class="nav-brand-name">Oude Delft 35</span>
+    </div>
+    <nav class="tab-nav" id="tab-nav">
+      <button class="tab-btn active" data-tab="personen">Personen</button>
+      <button class="tab-btn" data-tab="fotos">Foto's</button>
+      <button class="tab-btn" data-tab="agenda">Agenda</button>
+      <button class="tab-btn" data-tab="contacten">Contacten</button>
+      <button class="tab-btn" data-tab="geschiedenis">Geschiedenis</button>
+      <button class="tab-btn admin-only" data-tab="wijzigingen" style="display:none">Verzoeken <span id="wijzigingen-badge" class="tab-badge"></span></button>
+      <button class="tab-btn admin-only" data-tab="verjaardagen" style="display:none">Verjaardagen</button>
+      <button class="tab-btn hoofdadmin-only" data-tab="adminbeheer" style="display:none">Admin-beheer</button>
+    </nav>
+  </div>
+</div>
 
 <!-- ==================== TAB: PERSONEN ==================== -->
 <div class="tab-panel active" id="panel-personen">
@@ -4185,6 +4325,8 @@ document.getElementById('tab-nav').addEventListener('click', e => {
   if (tab === 'wijzigingen') { loadWijzigingen(); }
   if (tab === 'verjaardagen') { renderVerjaardagen(); }
   if (tab === 'adminbeheer') { loadAdmins(); }
+  // Zachte reveal van de panel-blokken bij het wisselen van tab
+  if (typeof revealPanel === 'function') revealPanel('panel-' + tab);
 });
 
 // ==================== ADMIN-BEHEER (alleen hoofdadmin) ====================
@@ -6128,7 +6270,61 @@ async function init() {
 
   updateStats();
   render();
+  // Onthul de eerste (Personen) panel-blokken zacht
+  if (typeof revealPanel === 'function') revealPanel('panel-personen');
 }
+
+// ==================== SCROLL-EFFECTEN ====================
+// Sticky-nav schaduw, "terug naar boven" knop en zachte reveal van panel-blokken.
+(function() {
+  const nav = document.getElementById('nav-sticky');
+  const toTop = document.getElementById('to-top');
+
+  function onScroll() {
+    const y = window.scrollY || document.documentElement.scrollTop;
+    if (nav) nav.classList.toggle('scrolled', y > 180);
+    if (toTop) toTop.classList.toggle('visible', y > 480);
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  if (toTop) {
+    toTop.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  // Reveal: observeer top-level blokken per panel (container-niveau, dus geen geflikker
+  // bij het opnieuw renderen van zoekresultaten). Een fallback-timer garandeert dat
+  // niets ooit onzichtbaar blijft staan.
+  let io = null;
+  if ('IntersectionObserver' in window) {
+    io = new IntersectionObserver((entries) => {
+      entries.forEach(en => {
+        if (en.isIntersecting) {
+          en.target.classList.add('in-view');
+          io.unobserve(en.target);
+        }
+      });
+    }, { threshold: 0.04, rootMargin: '0px 0px -30px 0px' });
+  }
+
+  window.revealPanel = function(panelId) {
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    const blocks = [...panel.children];
+    blocks.forEach((el, i) => {
+      if (el.classList.contains('reveal') || el.classList.contains('in-view')) return;
+      el.classList.add('reveal');
+      el.style.transitionDelay = Math.min(i * 70, 280) + 'ms';
+      if (io) io.observe(el); else el.classList.add('in-view');
+    });
+    // Vangnet: na 1,5s alles tonen wat nog niet onthuld is
+    setTimeout(() => {
+      panel.querySelectorAll('.reveal:not(.in-view)').forEach(el => el.classList.add('in-view'));
+    }, 1500);
+  };
+})();
 
 init();
 
@@ -6588,6 +6784,9 @@ async function submitAlbumForm() {
   }
 }
 </script>
+
+<!-- Terug naar boven -->
+<button class="to-top" id="to-top" title="Terug naar boven" aria-label="Terug naar boven">↑</button>
 
 <!-- Admin FAB knop -->
 <button class="admin-fab" id="admin-fab" title="Admin inloggen">⚙</button>
