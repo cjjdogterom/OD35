@@ -60,12 +60,12 @@ module.exports = async function handler(req, res) {
   // Provincie bepalen via gratis IP-geolocatie (best effort)
   let provincie = 'Onbekend', land = 'Onbekend';
   try {
-    const geo = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,regionName`);
+    const geo = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,countryCode,regionName`);
     if (geo.ok) {
       const g = await geo.json();
       if (g.status === 'success') {
-        land = g.country || 'Onbekend';
-        provincie = (land === 'Netherlands' || land === 'Nederland')
+        land = (g.countryCode === 'NL') ? 'Nederland' : (g.country || 'Onbekend');
+        provincie = (g.countryCode === 'NL')
           ? normalizeProvince(g.regionName) : (g.regionName || 'Buitenland');
       }
     }
