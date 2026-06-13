@@ -4852,27 +4852,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btn.disabled = true; btn.textContent = 'Bezig…';
     try {
-      // 1. Voeg eerst admins-rij toe (terwijl we nog hoofdadmin sessie hebben)
+      // 1. Maak (via serverfunctie, hoofdadmin-only) een auth-account MET wachtwoord aan.
+      //    signUp kan niet meer omdat zelf-registratie uitstaat — daarom service-role.
+      const { data: { session: hoofdSession } } = await db.auth.getSession();
+      const token = hoofdSession?.access_token;
+      if (!token) throw new Error('Geen actieve hoofdadmin-sessie — log opnieuw in.');
+      const res = await fetch('/api/create-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ email, password: wachtwoord }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Aanmaken van het account mislukt.');
+
+      // 2. Voeg toe aan admins-tabel (geeft de adminrechten in de app)
       const { error: insErr } = await db.from('admins').insert({ email, naam: naam || null, rol: 'admin', wachtwoord });
       if (insErr && !insErr.message.includes('duplicate key')) throw insErr;
-
-      // 2. Bewaar huidige hoofdadmin sessie zodat we hem kunnen herstellen na signUp
-      const { data: { session: hoofdSession } } = await db.auth.getSession();
-
-      // 3. Maak nieuwe Supabase Auth user (signUp wisselt onze sessie)
-      const { error: signErr } = await db.auth.signUp({ email, password: wachtwoord });
-      if (signErr && !signErr.message.includes('already registered') && !signErr.message.includes('User already registered')) {
-        // Rollback: verwijder admins-rij die we net toevoegden
-        await db.from('admins').delete().eq('email', email);
-        // En herstel sessie
-        if (hoofdSession) await db.auth.setSession({ access_token: hoofdSession.access_token, refresh_token: hoofdSession.refresh_token });
-        throw signErr;
-      }
-
-      // 4. Herstel hoofdadmin sessie
-      if (hoofdSession) {
-        await db.auth.setSession({ access_token: hoofdSession.access_token, refresh_token: hoofdSession.refresh_token });
-      }
 
       adminsList.push({ email, naam: naam || null, rol: 'admin', wachtwoord, aangemaakt_op: new Date().toISOString() });
       renderAdmins();
@@ -4880,7 +4875,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Bouw mailto link
       const loginUrl = window.location.origin + '/';
       const subject = encodeURIComponent('Je bent admin geworden van Oude Delft 35');
-      const plainText = `Hi${naam ? ' ' + naam : ''},\n\nJe hebt admin-rechten gekregen voor de OD35 ledenlijst.\n\nInloglink: ${loginUrl}\nE-mail: ${email}\nWachtwoord: ${wachtwoord}\n\nKlik rechtsonder op het tandwiel-icoon om in te loggen.\n\nMet vriendelijke groet,\n${adminUser?.email || 'Hoofdadmin'}`;
+      const plainText = `Hi${naam ? ' ' + naam : ''},\n\nJe hebt admin-rechten gekregen voor de OD35 ledenlijst.\n\nInloglink: ${loginUrl}\nE-mail: ${email}\nWachtwoord: ${wachtwoord}\n\nInloggen: ga naar de site, klik onderaan op "Beheerder inloggen met wachtwoord" en log in met bovenstaande e-mail + wachtwoord. (Je kunt ook gewoon je e-mailadres invullen en een code aanvragen.)\n\nMet vriendelijke groet,\n${adminUser?.email || 'Hoofdadmin'}`;
       const body = encodeURIComponent(plainText);
       result.innerHTML = `<div style="font-size:0.9rem;">
         <div style="color:#4a8c4a;margin-bottom:0.6rem;"><strong>✓ Admin aangemaakt.</strong> Deel de inloggegevens via:</div>
