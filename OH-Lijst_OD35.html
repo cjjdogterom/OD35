@@ -7578,9 +7578,12 @@ Met vriendelijke groet,"></textarea>
     setMsg('', '');
     emailInput.focus();
   });
-  // Beheerder-noodingang: open de bestaande wachtwoord-login modal
-  // (boven het inlogscherm tillen, want pw-screen heeft z-index 9999)
+  // Beheerder-noodingang: open de bestaande wachtwoord-login modal.
+  // De modal zit binnen #main-content (display:none op het inlogscherm), dus
+  // we maken main-content renderbaar; het pw-screen (z-index 9999) blijft er
+  // ondoorzichtig overheen liggen, en de modal (z-index 10001) komt bovenop.
   adminLink.addEventListener('click', () => {
+    if (main) main.style.display = '';
     const m = document.getElementById('login-modal');
     if (m) {
       m.style.zIndex = '10001';
