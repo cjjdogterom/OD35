@@ -6,8 +6,16 @@ const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const ALLOWED_ORIGINS = [
   'https://oudedelft35.com',
   'https://www.oudedelft35.com',
-  'https://od-35.vercel.app',
 ];
+// Sta ook alle Vercel-deploys van dit project toe (*.vercel.app)
+function originAllowed(origin) {
+  if (!origin) return false;
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  try {
+    const host = new URL(origin).hostname;
+    return host.endsWith('.vercel.app');
+  } catch (_) { return false; }
+}
 
 // Eenvoudige rate-limit per cold start
 const recent = new Map();
@@ -21,7 +29,7 @@ function rateLimited(key, maxPerMin) {
 
 module.exports = async function handler(req, res) {
   const origin = req.headers.origin || '';
-  const isAllowed = ALLOWED_ORIGINS.includes(origin);
+  const isAllowed = originAllowed(origin);
   res.setHeader('Access-Control-Allow-Origin', isAllowed ? origin : ALLOWED_ORIGINS[0]);
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');

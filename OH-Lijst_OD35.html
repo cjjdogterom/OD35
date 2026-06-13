@@ -7572,9 +7572,14 @@ Met vriendelijke groet,"></textarea>
     emailInput.focus();
   });
   // Beheerder-noodingang: open de bestaande wachtwoord-login modal
+  // (boven het inlogscherm tillen, want pw-screen heeft z-index 9999)
   adminLink.addEventListener('click', () => {
     const m = document.getElementById('login-modal');
-    if (m) { m.classList.remove('hidden'); setTimeout(() => document.getElementById('login-email')?.focus(), 80); }
+    if (m) {
+      m.style.zIndex = '10001';
+      m.classList.remove('hidden');
+      setTimeout(() => document.getElementById('login-email')?.focus(), 80);
+    }
   });
 
   // Al ingelogd? Direct door.
