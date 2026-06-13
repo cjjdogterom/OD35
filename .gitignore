@@ -3,3 +3,6 @@ node_modules/
 *.xlsx
 import_personen.sql
 Schermafbeelding*
+
+Archief_OD35_boekje.docx
+.DS_Store

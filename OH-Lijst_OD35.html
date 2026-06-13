@@ -163,6 +163,62 @@
     width: 3rem; height: 1px; background: var(--gold);
     margin: 0 auto 2rem;
   }
+  /* Nieuw: e-mail/code login */
+  #pw-screen .login-box { width: 100%; max-width: 380px; }
+  #pw-screen .login-intro {
+    font-family: var(--font-body); font-style: normal;
+    color: var(--gray); font-size: 1.02rem; line-height: 1.5;
+    margin-bottom: 1.5rem; text-align: center;
+  }
+  #pw-screen .login-field { width: 100%; margin-bottom: 0.9rem; }
+  #pw-screen .login-field label {
+    display: block; font-family: var(--font-mono); font-size: 0.7rem;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--gray);
+    margin-bottom: 0.4rem;
+  }
+  #pw-screen input.login-text {
+    width: 100%; padding: 0.95rem 1rem;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--paper-warm);
+    font-family: var(--font-body); font-size: 1.15rem;
+    color: var(--ink); outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  #pw-screen input.login-text:focus {
+    border-color: var(--burgundy);
+    box-shadow: 0 0 0 3px rgba(42, 77, 130, 0.12);
+  }
+  #pw-screen input.login-code {
+    text-align: center; letter-spacing: 0.5em;
+    font-family: var(--font-mono); font-size: 1.7rem; font-weight: 500;
+    padding: 0.8rem 1rem;
+  }
+  #pw-screen .login-btn-primary {
+    width: 100%; margin-top: 0.4rem; padding: 0.95rem 1.25rem;
+    background: var(--burgundy); color: white; border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-display); font-size: 1.1rem; letter-spacing: 0.03em;
+    cursor: pointer; transition: background 0.2s, transform 0.15s var(--ease);
+    box-shadow: var(--shadow-sm);
+  }
+  #pw-screen .login-btn-primary:hover:not(:disabled) { background: var(--burgundy-deep); transform: translateY(-1px); }
+  #pw-screen .login-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+  #pw-screen .login-links {
+    margin-top: 1.1rem; display: flex; flex-direction: column; gap: 0.5rem;
+    align-items: center;
+  }
+  #pw-screen .login-link {
+    background: none; border: none; color: var(--burgundy);
+    font-family: var(--font-body); font-size: 0.92rem; cursor: pointer;
+    text-decoration: underline; padding: 0.2rem;
+  }
+  #pw-screen .login-link.muted { color: var(--gray); font-size: 0.82rem; }
+  #pw-screen .login-msg {
+    margin-top: 0.9rem; font-size: 0.95rem; font-family: var(--font-body);
+    text-align: center; min-height: 1.2em;
+  }
+  #pw-screen .login-msg.error { color: #c0392b; }
+  #pw-screen .login-msg.ok { color: #2e7d32; }
+  #pw-screen .login-sent-to { font-weight: 600; color: var(--ink); }
 
   html { scroll-behavior: smooth; }
   html, body {
@@ -2619,11 +2675,38 @@
   <h1>Oude Delft 35</h1>
   <p>Oud-huisgenoten archief</p>
   <div class="pw-ornament"></div>
-  <div class="pw-form">
-    <input type="password" id="pw-input" placeholder="Wachtwoord" autocomplete="current-password">
-    <button id="pw-btn">Inloggen</button>
+
+  <div class="login-box">
+    <!-- Stap 1: e-mailadres -->
+    <div id="login-step-email">
+      <p class="login-intro">Vul je e-mailadres in. Je krijgt een persoonlijke inlogcode in je mailbox.</p>
+      <div class="login-field">
+        <label for="login-email-input">E-mailadres</label>
+        <input type="email" id="login-email-input" class="login-text" placeholder="naam@voorbeeld.nl" autocomplete="email" inputmode="email">
+      </div>
+      <button class="login-btn-primary" id="login-send-btn">Stuur mij een code</button>
+    </div>
+
+    <!-- Stap 2: code invoeren -->
+    <div id="login-step-code" style="display:none;">
+      <p class="login-intro">We hebben een code van 6 cijfers gestuurd naar<br><span class="login-sent-to" id="login-sent-to"></span>.<br>Kijk ook even in je spam-map.</p>
+      <div class="login-field">
+        <label for="login-code-input">Inlogcode</label>
+        <input type="text" id="login-code-input" class="login-text login-code" placeholder="······" autocomplete="one-time-code" inputmode="numeric" maxlength="6">
+      </div>
+      <button class="login-btn-primary" id="login-verify-btn">Inloggen</button>
+      <div class="login-links">
+        <button type="button" class="login-link" id="login-resend-btn">Geen code ontvangen? Opnieuw sturen</button>
+        <button type="button" class="login-link muted" id="login-back-btn">Ander e-mailadres gebruiken</button>
+      </div>
+    </div>
+
+    <div class="login-msg" id="login-msg"></div>
+
+    <div class="login-links" style="margin-top:1.5rem;">
+      <button type="button" class="login-link muted" id="login-admin-link">Beheerder inloggen met wachtwoord</button>
+    </div>
   </div>
-  <div class="pw-error" id="pw-error">Onjuist wachtwoord</div>
 </div>
 
 <!-- Publiek inschrijfscherm — bereikbaar via ?inschrijven=1 zonder wachtwoord -->
@@ -3177,35 +3260,16 @@ function openPersonModal(existingPerson) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Helper: na admin-logout opnieuw inloggen als gedeelde viewer
-  async function reloginAsViewer() {
-    try {
-      // We hebben het site-pwd niet meer; gebruik PW_HASH die we al kennen
-      const PW_HASH = '86967edd971fb490904869f32ffe3383db9c19315ba08513e8288f1b3a11e295';
-      const res = await fetch('/api/viewer-login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pwd_hash: PW_HASH })
-      });
-      if (!res.ok) return false;
-      const { access_token, refresh_token } = await res.json();
-      await db.auth.setSession({ access_token, refresh_token });
-      return true;
-    } catch { return false; }
+  // Volledig uitloggen → terug naar het inlogscherm
+  async function logoutFully() {
+    try { await db.auth.signOut(); } catch (_) {}
+    location.reload();
   }
 
-  // Login modal
+  // Tandwiel-knop = uitloggen (iedereen is nu persoonlijk ingelogd)
   document.getElementById('admin-fab').addEventListener('click', async () => {
-    if (adminUser) {
-      if (confirm('Uitloggen als admin? Je blijft de site bekijken als gewone gebruiker.')) {
-        await db.auth.signOut();
-        adminUser = null;
-        await reloginAsViewer(); // herstel data-toegang
-        updateAdminUI();
-        render();
-      }
-    } else {
-      document.getElementById('login-modal').classList.remove('hidden');
-      setTimeout(() => document.getElementById('login-email')?.focus(), 100);
+    if (confirm('Uitloggen? Je moet dan opnieuw inloggen met je e-mailadres.')) {
+      await logoutFully();
     }
   });
 
@@ -3213,6 +3277,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('login-modal').classList.add('hidden');
   });
 
+  // Beheerder-noodingang: inloggen met e-mail + wachtwoord (fallback voor admins)
   document.getElementById('login-form').addEventListener('submit', async e => {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
@@ -3220,22 +3285,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const btn   = document.getElementById('login-submit');
     const err   = document.getElementById('login-error');
     btn.disabled = true; btn.textContent = 'Bezig…'; err.textContent = '';
-    const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
+    const { error } = await db.auth.signInWithPassword({ email, password: pass });
     btn.disabled = false; btn.textContent = 'Inloggen';
     if (error) { err.textContent = 'Inloggen mislukt: ' + error.message; return; }
-    adminUser = data.user;
-    updateAdminUI();
-    document.getElementById('login-modal').classList.add('hidden');
-    render();
+    // Sessie staat — herlaad zodat de app schoon opstart met de juiste rechten
+    location.reload();
   });
 
-  document.getElementById('admin-logout-btn').addEventListener('click', async () => {
-    await db.auth.signOut();
-    adminUser = null;
-    await reloginAsViewer();
-    updateAdminUI();
-    render();
-  });
+  document.getElementById('admin-logout-btn').addEventListener('click', logoutFully);
 
   document.getElementById('add-person-btn').addEventListener('click', () => {
     window._pendingInschrijvingId = null;
@@ -3699,9 +3756,14 @@ function renderDetails(p) {
 
   let adminHtml = '';
   if (isAdmin()) {
+    const primaryEmail = [p['E-mail 1'], p['E-mail 2'], p['E-mail 3']].find(e => e && /@/.test(e)) || '';
+    const codeBtn = primaryEmail
+      ? `<button class="admin-edit-btn" data-action="send-access-code" data-email="${escapeHtml(primaryEmail)}" style="background:transparent;color:var(--burgundy);border:1px solid var(--burgundy);">✉ Stuur toegangscode</button>`
+      : `<span style="font-size:0.8rem;color:var(--gray);font-style:italic;align-self:center;">geen e-mail → geen login mogelijk</span>`;
     adminHtml = `<div class="admin-person-actions">
       <button class="admin-edit-btn" data-action="admin-edit" data-id="${p._id || ''}">✎ Bewerken</button>
       <button class="admin-delete-btn" data-action="admin-delete" data-id="${p._id || ''}">✕ Verwijderen</button>
+      ${codeBtn}
     </div>`;
   }
   let html = '<div class="details-grid">';
@@ -3932,7 +3994,7 @@ function render() {
 }
 
 // Click handler (event delegation)
-list.addEventListener('click', e => {
+list.addEventListener('click', async e => {
   // Huis Oudste toggle — alleen admins
   if (e.target.matches('[data-action="toggle-oudste"]')) {
     e.stopPropagation();
@@ -3998,6 +4060,34 @@ list.addEventListener('click', e => {
     const p = PEOPLE.find(x => String(x._id) === String(id));
     if (p && confirm(`Weet je zeker dat je ${plainName(p)} wilt verwijderen?`)) {
       deletePerson(id);
+    }
+    return;
+  }
+  // Admin: stuur toegangscode naar dit lid
+  if (e.target.matches('[data-action="send-access-code"]')) {
+    e.stopPropagation();
+    const email = e.target.dataset.email;
+    if (!email) return;
+    if (!confirm(`Een inlogcode sturen naar ${email}?`)) return;
+    const btn = e.target;
+    const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Versturen…';
+    try {
+      const res = await fetch('/api/request-code', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        btn.textContent = '✓ Code verstuurd';
+        setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2500);
+      } else {
+        alert(data.error || 'Versturen mislukt.');
+        btn.textContent = orig; btn.disabled = false;
+      }
+    } catch (err) {
+      alert('Netwerkfout: ' + err.message);
+      btn.textContent = orig; btn.disabled = false;
     }
     return;
   }
@@ -6409,9 +6499,21 @@ document.getElementById('export-excel').addEventListener('click', () => {
 // ── Initialisatie ────────────────────────────────────────────────────────────
 async function init() {
 
-  // Sessie kan viewer ÓF admin zijn. Alleen echte admin-users zetten we als adminUser.
+  // Iedereen is nu ingelogd als persoonlijk lid. Adminrechten alleen als het
+  // e-mailadres in de admins-tabel staat (of de vaste hoofdadmin is).
   const { data: { user } } = await db.auth.getUser();
-  adminUser = (user && !isViewerSession(user)) ? user : null;
+  adminUser = null;
+  if (user && user.email) {
+    const em = user.email.toLowerCase();
+    if (em === HOOFDADMIN_EMAIL.toLowerCase()) {
+      adminUser = user;
+    } else {
+      try {
+        const { data: adminRow } = await db.from('admins').select('rol').eq('email', em).maybeSingle();
+        if (adminRow) adminUser = user;
+      } catch (_) { /* geen admin-rij = gewoon lid */ }
+    }
+  }
   updateAdminUI();
 
   try {
@@ -6520,7 +6622,9 @@ async function init() {
   };
 })();
 
-init();
+// init() wordt nu aangeroepen door de login-gate (onderaan) zodra er een
+// geldige sessie is — niet meer onvoorwaardelijk, want zonder login mag er
+// geen data geladen worden.
 
 // ==================== FOTO'S ====================
 let albumsList = [];
@@ -6983,7 +7087,7 @@ async function submitAlbumForm() {
 <button class="to-top" id="to-top" title="Terug naar boven" aria-label="Terug naar boven">↑</button>
 
 <!-- Admin FAB knop -->
-<button class="admin-fab" id="admin-fab" title="Admin inloggen">⚙</button>
+<button class="admin-fab" id="admin-fab" title="Uitloggen">⎋</button>
 
 <button class="theme-fab" id="theme-fab" title="Thema kiezen" aria-label="Thema kiezen">
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
@@ -7342,18 +7446,12 @@ Met vriendelijke groet,"></textarea>
 })();
 
 (function() {
-  // Client-side hash blijft als instant feedback; server doet daadwerkelijke validatie
-  // én logt in als gedeelde viewer-account (RLS staat anon SELECT op personen niet meer toe).
-  const PW_HASH = '86967edd971fb490904869f32ffe3383db9c19315ba08513e8288f1b3a11e295';
-  const KEY = 'od35_toegang';
+  // Persoonlijke login via 6-cijferige e-mailcode (geen gedeeld wachtwoord meer).
   const screen = document.getElementById('pw-screen');
   const main   = document.getElementById('main-content');
   const ins    = document.getElementById('ins-screen');
-  const input  = document.getElementById('pw-input');
-  const btn    = document.getElementById('pw-btn');
-  const error  = document.getElementById('pw-error');
 
-  // Publiek inschrijfformulier — bypass wachtwoord via ?inschrijven=1
+  // Publiek inschrijfformulier — bereikbaar zonder login via ?inschrijven=1
   const params = new URLSearchParams(window.location.search);
   if (params.has('inschrijven')) {
     screen.style.display = 'none';
@@ -7362,35 +7460,132 @@ Met vriendelijke groet,"></textarea>
     return;
   }
 
-  async function sha256(text) {
-    const buf = new TextEncoder().encode(text);
-    const hash = await crypto.subtle.digest('SHA-256', buf);
-    return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2,'0')).join('');
+  const stepEmail  = document.getElementById('login-step-email');
+  const stepCode   = document.getElementById('login-step-code');
+  const emailInput = document.getElementById('login-email-input');
+  const codeInput  = document.getElementById('login-code-input');
+  const sendBtn    = document.getElementById('login-send-btn');
+  const verifyBtn  = document.getElementById('login-verify-btn');
+  const resendBtn  = document.getElementById('login-resend-btn');
+  const backBtn    = document.getElementById('login-back-btn');
+  const adminLink  = document.getElementById('login-admin-link');
+  const sentTo     = document.getElementById('login-sent-to');
+  const msg        = document.getElementById('login-msg');
+
+  let currentEmail = '';
+
+  function setMsg(text, kind) {
+    msg.textContent = text || '';
+    msg.className = 'login-msg' + (kind ? ' ' + kind : '');
   }
 
-  // Vraag viewer-tokens van server en zet sessie op
   function unlock() {
-    sessionStorage.setItem(KEY, '1');
     screen.style.display = 'none';
     main.style.display = '';
+    if (typeof init === 'function') init();
   }
 
-  if (sessionStorage.getItem(KEY) === '1') { unlock(); return; }
+  // Wacht tot de Supabase-client (db) bestaat
+  async function waitForDb() {
+    for (let i = 0; i < 50 && (typeof db === 'undefined' || !db || !db.auth); i++) {
+      await new Promise(r => setTimeout(r, 100));
+    }
+    return (typeof db !== 'undefined' && db && db.auth);
+  }
 
-  async function tryUnlock() {
-    error.style.display = 'none';
-    const h = await sha256(input.value);
-    if (h !== PW_HASH) {
-      error.style.display = 'block';
-      error.textContent = 'Onjuist wachtwoord';
-      input.value = ''; input.focus();
+  async function requestCode(email) {
+    const res = await fetch('/api/request-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, error: data.error };
+  }
+
+  async function doSend() {
+    const email = (emailInput.value || '').trim().toLowerCase();
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      setMsg('Vul een geldig e-mailadres in.', 'error');
+      emailInput.focus();
       return;
     }
-    unlock();
+    sendBtn.disabled = true; sendBtn.textContent = 'Versturen…';
+    setMsg('', '');
+    const r = await requestCode(email);
+    sendBtn.disabled = false; sendBtn.textContent = 'Stuur mij een code';
+    if (!r.ok) {
+      setMsg(r.error || 'Er ging iets mis. Probeer het opnieuw.', 'error');
+      return;
+    }
+    currentEmail = email;
+    sentTo.textContent = email;
+    stepEmail.style.display = 'none';
+    stepCode.style.display = 'block';
+    setMsg('', '');
+    setTimeout(() => codeInput.focus(), 100);
   }
-  btn.addEventListener('click', tryUnlock);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
-  input.focus();
+
+  async function doVerify() {
+    const token = (codeInput.value || '').replace(/\s/g, '');
+    if (!/^\d{6}$/.test(token)) {
+      setMsg('Vul de 6 cijfers uit de e-mail in.', 'error');
+      codeInput.focus();
+      return;
+    }
+    if (!(await waitForDb())) { setMsg('Verbinding mislukt. Ververs de pagina.', 'error'); return; }
+    verifyBtn.disabled = true; verifyBtn.textContent = 'Bezig…';
+    setMsg('', '');
+    const { error } = await db.auth.verifyOtp({ email: currentEmail, token, type: 'email' });
+    if (error) {
+      verifyBtn.disabled = false; verifyBtn.textContent = 'Inloggen';
+      setMsg('Code klopt niet of is verlopen. Probeer het opnieuw of vraag een nieuwe code aan.', 'error');
+      codeInput.value = ''; codeInput.focus();
+      return;
+    }
+    setMsg('Welkom! Een ogenblik…', 'ok');
+    // Sessie staat nu vast — herlaad zodat de app schoon opstart met de sessie
+    location.reload();
+  }
+
+  async function doResend() {
+    setMsg('Nieuwe code aanvragen…', '');
+    resendBtn.disabled = true;
+    const r = await requestCode(currentEmail);
+    resendBtn.disabled = false;
+    setMsg(r.ok ? 'Nieuwe code verstuurd. Kijk in je mailbox (ook spam).' : (r.error || 'Mislukt, probeer later opnieuw.'), r.ok ? 'ok' : 'error');
+  }
+
+  sendBtn.addEventListener('click', doSend);
+  emailInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSend(); });
+  verifyBtn.addEventListener('click', doVerify);
+  codeInput.addEventListener('keydown', e => { if (e.key === 'Enter') doVerify(); });
+  codeInput.addEventListener('input', () => {
+    codeInput.value = codeInput.value.replace(/\D/g, '').slice(0, 6);
+    if (codeInput.value.length === 6) doVerify();
+  });
+  resendBtn.addEventListener('click', doResend);
+  backBtn.addEventListener('click', () => {
+    stepCode.style.display = 'none';
+    stepEmail.style.display = 'block';
+    setMsg('', '');
+    emailInput.focus();
+  });
+  // Beheerder-noodingang: open de bestaande wachtwoord-login modal
+  adminLink.addEventListener('click', () => {
+    const m = document.getElementById('login-modal');
+    if (m) { m.classList.remove('hidden'); setTimeout(() => document.getElementById('login-email')?.focus(), 80); }
+  });
+
+  // Al ingelogd? Direct door.
+  (async () => {
+    if (!(await waitForDb())) { setMsg('Verbinding mislukt. Ververs de pagina.', 'error'); return; }
+    try {
+      const { data } = await db.auth.getSession();
+      if (data && data.session) { unlock(); return; }
+    } catch (_) {}
+    emailInput.focus();
+  })();
 
   // Anti self-XSS — waarschuwing in DevTools console
   if (window.console && window.console.log) {
