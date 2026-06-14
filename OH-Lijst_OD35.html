@@ -2544,6 +2544,22 @@
 .album-rename-btn { font-size: 0.85rem; }
 .album-delete-btn:hover { background: rgba(192,57,43,0.85); }
 .album-rename-btn:hover { background: rgba(58,124,193,0.85); }
+.album-pin-btn.is-pinned { background: var(--burgundy); }
+.album-pin-btn.is-pinned:hover { background: var(--burgundy); opacity: 0.85; }
+/* Badge linksboven op een vastgepind album (zichtbaar voor iedereen) */
+.album-pin-badge {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  background: var(--burgundy);
+  color: #fff;
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  z-index: 1;
+}
 
 /* Photo grid */
 .foto-grid {
@@ -7597,8 +7613,13 @@ async function loadAlbums() {
     const counts = {};
     (fotos || []).forEach(f => { counts[f.album_id] = (counts[f.album_id] || 0) + 1; });
     albumsList = (albums || []).map(a => ({ ...a, foto_count: counts[a.id] || 0 }));
-    // Automatisch sorteren: nieuwste datum eerst (jong → oud)
-    albumsList.sort((a, b) => albumSorteerWaarde(b) - albumSorteerWaarde(a));
+    // Sorteren: vastgepind album altijd bovenaan, daarna nieuwste datum eerst
+    albumsList.sort((a, b) => {
+      const ap = a.vastgepind ? 1 : 0;
+      const bp = b.vastgepind ? 1 : 0;
+      if (ap !== bp) return bp - ap;
+      return albumSorteerWaarde(b) - albumSorteerWaarde(a);
+    });
   } catch (e) {
     console.error('loadAlbums error:', e);
     albumsList = [];
@@ -7643,6 +7664,7 @@ function bindAlbumActions() {
     e.stopPropagation();
     if (action === 'rename') renameAlbum(e, id);
     else if (action === 'jaar') wijzigAlbumJaar(e, id);
+    else if (action === 'pin') togglePinAlbum(e, id);
     else if (action === 'delete') deleteAlbum(e, id);
   });
 }
@@ -7691,13 +7713,16 @@ function renderAlbumGrid() {
       // Knoppen werken via event-delegatie (data-attributen) i.p.v. inline onclick.
       const renameBtn = (isAdmin() || currentUserEmail) ? `<button class="album-rename-btn" title="Albumnaam aanpassen" data-album-action="rename" data-id="${escapeHtml(album.id)}">✎</button>` : '';
       const jaarBtn = isAdmin() ? `<button class="album-rename-btn" title="Jaartal aanpassen" data-album-action="jaar" data-id="${escapeHtml(album.id)}">📅</button>` : '';
+      const pinBtn = isAdmin() ? `<button class="album-rename-btn album-pin-btn${album.vastgepind ? ' is-pinned' : ''}" title="${album.vastgepind ? 'Losmaken van bovenaan' : 'Bovenaan vastzetten'}" data-album-action="pin" data-id="${escapeHtml(album.id)}">📌</button>` : '';
       const deleteBtn = isAdmin() ? `<button class="album-delete-btn" title="Album verwijderen" data-album-action="delete" data-id="${escapeHtml(album.id)}">✕</button>` : '';
-      const adminBtns = (renameBtn || jaarBtn || deleteBtn)
-        ? `<div class="album-admin-btns">${renameBtn}${jaarBtn}${deleteBtn}</div>`
+      const adminBtns = (renameBtn || jaarBtn || pinBtn || deleteBtn)
+        ? `<div class="album-admin-btns">${renameBtn}${jaarBtn}${pinBtn}${deleteBtn}</div>`
         : '';
+      const pinBadge = album.vastgepind ? `<div class="album-pin-badge" title="Vast bovenaan">📌</div>` : '';
       html += `
         <div class="album-card" data-id="${escapeHtml(album.id)}" data-album-action="open">
           ${thumbHtml}
+          ${pinBadge}
           ${adminBtns}
           <div class="album-meta">
             <div class="album-name">${escapeHtml(album.naam)}</div>
@@ -8069,6 +8094,28 @@ async function bewerkBijschrift(e, fotoId) {
   if (error) { alert('Opslaan mislukt: ' + error.message); return; }
   if (foto) foto.bijschrift = waarde;
   renderAlbumFotos(currentAlbumId);
+}
+
+// Admin: één album bovenaan vastzetten (bijv. het jaarlijkse huisfoto-album).
+// Er kan maar één album tegelijk bovenaan staan.
+async function togglePinAlbum(e, albumId) {
+  if (e) e.stopPropagation();
+  const album = albumsList.find(a => a.id === albumId);
+  if (!album) return;
+  const nieuw = !album.vastgepind;
+  try {
+    if (nieuw) {
+      // Maak eventuele andere vastgepinde albums los — er staat er maar één bovenaan
+      const { error: e1 } = await db.from('albums').update({ vastgepind: false }).neq('id', albumId);
+      if (e1) throw e1;
+    }
+    const { error: e2 } = await db.from('albums').update({ vastgepind: nieuw }).eq('id', albumId);
+    if (e2) throw e2;
+    await loadAlbums();
+    renderAlbumGrid();
+  } catch (err) {
+    alert('Vastzetten mislukt: ' + (err.message || err) + '\n\n(Bestaat de kolom "vastgepind" al? Zie de SQL.)');
+  }
 }
 
 async function renameAlbum(e, albumId) {
