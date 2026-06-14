@@ -7656,12 +7656,19 @@ async function init() {
 
 // ==================== BESTAANS-TIMER ====================
 // Subtiele teller onderaan de personenlijst: aantal dagen sinds 1 september 1891.
+function sciNotatie(n) {
+  const [mant, e] = Number(n).toExponential(2).split('e');
+  const sup = String(parseInt(e, 10)).replace(/[0-9]/g, d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]).replace('-', '⁻');
+  return `${mant.replace('.', ',')} × 10${sup}`;
+}
 function updateBestaanTimer() {
   const el = document.getElementById('bestaan-timer');
   if (!el) return;
   const start = new Date(1891, 8, 1); // 1 september 1891 (maand 0-based)
-  const dagen = Math.floor((new Date() - start) / 86400000);
-  el.innerHTML = `Oude Delft 35 bestaat al <strong>${dagen.toLocaleString('nl-NL')}</strong> dagen`;
+  const ms = new Date() - start;
+  const dagen = Math.floor(ms / 86400000);
+  const seconden = Math.floor(ms / 1000);
+  el.innerHTML = `Oude Delft 35 bestaat al <strong>${dagen.toLocaleString('nl-NL')}</strong> dagen &middot; <strong>${sciNotatie(seconden)}</strong> seconden`;
 }
 updateBestaanTimer();
 setInterval(updateBestaanTimer, 6 * 60 * 60 * 1000); // elke 6 uur bijwerken
