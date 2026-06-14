@@ -808,6 +808,20 @@
     padding: 0;
   }
   .hero-idee-link:hover { opacity: 0.75; }
+  .bestaan-timer {
+    margin: 2.5rem auto 0;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gray-light);
+  }
+  .bestaan-timer strong {
+    color: var(--burgundy);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
   .hero-idee-link:disabled { opacity: 0.6; cursor: default; text-decoration: none; }
 
   footer .ornament-text {
@@ -3205,6 +3219,8 @@
 <div class="results-count" id="results-count"></div>
 
 <div class="person-list" id="person-list"></div>
+
+<div class="bestaan-timer" id="bestaan-timer"></div>
 
 </div><!-- /panel-personen -->
 
@@ -7637,6 +7653,18 @@ async function init() {
   // Start de live-aanwezigheid (heartbeat) voor "wie is nu online"
   if (typeof startHeartbeat === 'function') startHeartbeat();
 }
+
+// ==================== BESTAANS-TIMER ====================
+// Subtiele teller onderaan de personenlijst: aantal dagen sinds 1 september 1891.
+function updateBestaanTimer() {
+  const el = document.getElementById('bestaan-timer');
+  if (!el) return;
+  const start = new Date(1891, 8, 1); // 1 september 1891 (maand 0-based)
+  const dagen = Math.floor((new Date() - start) / 86400000);
+  el.innerHTML = `Oude Delft 35 bestaat al <strong>${dagen.toLocaleString('nl-NL')}</strong> dagen`;
+}
+updateBestaanTimer();
+setInterval(updateBestaanTimer, 6 * 60 * 60 * 1000); // elke 6 uur bijwerken
 
 // ==================== SCROLL-EFFECTEN ====================
 // Sticky-nav schaduw, "terug naar boven" knop en zachte reveal van panel-blokken.
