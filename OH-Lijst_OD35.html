@@ -2684,6 +2684,18 @@
   border-radius: 2px;
   box-shadow: 0 8px 40px rgba(0,0,0,0.6);
 }
+.foto-lightbox-pdf {
+  width: min(90vw, 800px);
+  max-height: 82vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+  cursor: pointer;
+  min-height: 160px;
+}
+.foto-lightbox-pdf .foto-pdf-canvas { width: 100%; height: auto; }
+.foto-lightbox-pdf .foto-pdf-fallback { color: var(--gray); }
 .foto-lightbox-caption {
   font-family: var(--font-body);
   font-size: 0.9rem;
@@ -7851,20 +7863,31 @@ function renderLightbox() {
 
   if (fotosList.length === 0) return;
   const foto = fotosList[lightboxIndex];
+  const isPdf = isPdfUrl(foto.url);
+
+  const mediaHtml = isPdf
+    ? `<div class="foto-lightbox-pdf foto-pdf-preview" data-pdf-url="${escapeHtml(foto.url)}" onclick="event.stopPropagation(); openPdf('${escapeHtml(foto.url)}')" title="Klik om de PDF te openen">
+         <div class="foto-pdf-fallback"><div class="foto-pdf-icon">📄</div><div class="foto-pdf-open">PDF laden…</div></div>
+       </div>`
+    : `<img src="${escapeHtml(foto.url)}" alt="${escapeHtml(foto.bijschrift || '')}">`;
+  const onderschrift = isPdf
+    ? `<div class="foto-lightbox-caption">📄 ${escapeHtml(foto.bijschrift || 'PDF-document')} · klik om te openen ↗</div>`
+    : (foto.bijschrift ? `<div class="foto-lightbox-caption">${escapeHtml(foto.bijschrift)}</div>` : '');
 
   const overlay = document.createElement('div');
   overlay.className = 'foto-lightbox';
   overlay.id = 'foto-lightbox-overlay';
   overlay.innerHTML = `
     <button class="foto-lightbox-close" title="Sluiten" onclick="closeLightbox()">✕</button>
-    <img src="${escapeHtml(foto.url)}" alt="${escapeHtml(foto.bijschrift || '')}">
-    ${foto.bijschrift ? `<div class="foto-lightbox-caption">${escapeHtml(foto.bijschrift)}</div>` : ''}
+    ${mediaHtml}
+    ${onderschrift}
     <div class="foto-lightbox-counter">${lightboxIndex + 1} / ${fotosList.length}</div>
     ${lightboxIndex > 0 ? `<button class="foto-lightbox-nav foto-lightbox-prev" onclick="lightboxNav(-1)">&#8249;</button>` : ''}
     ${lightboxIndex < fotosList.length - 1 ? `<button class="foto-lightbox-nav foto-lightbox-next" onclick="lightboxNav(1)">&#8250;</button>` : ''}
   `;
   overlay.addEventListener('click', e => { if (e.target === overlay) closeLightbox(); });
   document.body.appendChild(overlay);
+  if (isPdf) renderAllPdfPreviews();
 
   _lightboxKeyHandler = e => {
     if (e.key === 'Escape') { closeLightbox(); return; }
