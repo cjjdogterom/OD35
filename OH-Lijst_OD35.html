@@ -7996,7 +7996,9 @@ function showAlbumForm() {
     <div class="album-form-box">
       <h3>Nieuw album</h3>
       <label>Naam <span style="color:var(--burgundy)">*</span></label>
-      <input type="text" id="album-form-naam" placeholder="Bijv. Lustrum 2023" required>
+      <input type="text" id="album-form-naam" placeholder="Bijv. Lustrum" required>
+      <label>Jaartal <span style="color:var(--burgundy)">*</span></label>
+      <input type="number" id="album-form-jaar" placeholder="Bijv. 2024" min="1880" max="2100" required>
       <label>Beschrijving (optioneel)</label>
       <textarea id="album-form-beschrijving" placeholder="Korte omschrijving van het album…"></textarea>
       <div class="album-form-actions">
@@ -8006,6 +8008,7 @@ function showAlbumForm() {
     </div>`;
   overlay.addEventListener('click', e => { if (e.target === overlay) closeAlbumForm(); });
   document.body.appendChild(overlay);
+  document.getElementById('album-form-jaar').value = new Date().getFullYear();
   document.getElementById('album-form-naam').focus();
 }
 
@@ -8016,10 +8019,14 @@ function closeAlbumForm() {
 
 async function submitAlbumForm() {
   const naam = (document.getElementById('album-form-naam').value || '').trim();
+  const jaar = parseInt((document.getElementById('album-form-jaar').value || '').trim(), 10);
   const beschrijving = (document.getElementById('album-form-beschrijving').value || '').trim();
   if (!naam) { alert('Naam is verplicht.'); return; }
+  if (!jaar || jaar < 1880 || jaar > 2100) { alert('Geef een geldig jaartal op (bijv. 2024).'); return; }
+  // Zorg dat het jaartal in de naam staat, zodat de albums op datum sorteren
+  const naamMetJaar = new RegExp('\\b' + jaar + '\\b').test(naam) ? naam : `${naam} ${jaar}`;
   try {
-    const { error } = await db.from('albums').insert({ naam, beschrijving: beschrijving || null });
+    const { error } = await db.from('albums').insert({ naam: naamMetJaar, beschrijving: beschrijving || null });
     if (error) throw error;
     closeAlbumForm();
     await loadAlbums();
