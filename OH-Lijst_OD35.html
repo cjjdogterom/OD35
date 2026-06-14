@@ -2601,6 +2601,31 @@
 .foto-cover-btn:hover { background: rgba(58,124,193,0.85); }
 .foto-cover-btn.is-cover { background: var(--burgundy); opacity: 1 !important; }
 
+/* Member-knop: verzoek tot verwijderen (alleen voor ingelogde niet-admins) */
+.foto-member-btns {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.foto-item:hover .foto-member-btns { opacity: 1; }
+.foto-flag-btn {
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.68rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+.foto-flag-btn:hover { background: rgba(192,57,43,0.85); }
+.wijz-foto-thumb {
+  max-width: 160px; max-height: 120px; border: 1px solid var(--line);
+  border-radius: 2px; display: block; margin-top: 0.3rem;
+}
+
 /* Uploader-info + blokkeerknop (alleen zichtbaar voor admins) */
 .foto-uploader {
   position: absolute; left: 0; right: 0; bottom: 0;
@@ -5606,6 +5631,36 @@ function renderWijzigingen() {
 
 function renderWijzigingCard(w) {
   const datum = w.aangemaakt_op ? new Date(w.aangemaakt_op).toLocaleString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+
+  // Foto-verwijderverzoek: eigen kaart met thumbnail + goed-/afkeuren
+  if (w.veld === '__FOTO_VERWIJDER__') {
+    let meta = {};
+    try { meta = JSON.parse(w.wijziging || '{}'); } catch (_) {}
+    const afgekeurd = w.afgehandeld && String(w.toelichting || '').startsWith('[AFGEKEURD]');
+    const statusBadge = afgekeurd
+      ? `<span style="background:#c14040;color:white;padding:1px 8px;font-size:0.7rem;border-radius:9px;margin-left:0.5rem;">AFGEKEURD</span>` : '';
+    return `
+      <div class="wijz-card ${w.afgehandeld ? 'afgehandeld' : ''}" data-id="${escapeHtml(w.id)}" style="border-left-color:#c0392b;">
+        <div class="wijz-card-head">
+          <div class="wijz-card-persoon"><span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:#c0392b;margin-right:0.5rem;">Foto verwijderen</span>${escapeHtml(meta.album_naam || '')}${statusBadge}</div>
+          <div class="wijz-card-datum">${escapeHtml(datum)}</div>
+        </div>
+        <div class="wijz-card-aanvrager">
+          Aangevraagd door <strong>${escapeHtml(w.aanvrager_naam || '')}</strong>
+          ${w.aanvrager_email ? ` &middot; <a href="mailto:${escapeHtml(w.aanvrager_email)}">${escapeHtml(w.aanvrager_email)}</a>` : ''}
+        </div>
+        ${meta.url ? `<a href="${escapeHtml(meta.url)}" target="_blank" rel="noopener noreferrer"><img class="wijz-foto-thumb" src="${escapeHtml(meta.url)}" alt="" loading="lazy"></a>` : ''}
+        <div class="wijz-row"><div class="label">Reden</div><div class="value" style="white-space:pre-wrap;">${escapeHtml(meta.reden || '')}</div></div>
+        <div class="wijz-actions" style="gap:0.5rem;flex-wrap:wrap;">
+          ${!w.afgehandeld ? `
+            <button class="wijz-delete-btn" style="border-color:#4a8c4a;color:#4a8c4a;" data-action="approve-foto-del" data-id="${escapeHtml(w.id)}">✓ Goedkeuren &amp; verwijderen</button>
+            <button class="wijz-delete-btn" data-action="reject-foto-del" data-id="${escapeHtml(w.id)}">✗ Afkeuren</button>
+          ` : ''}
+          <button class="wijz-delete-btn" data-action="delete-wijziging" data-id="${escapeHtml(w.id)}">Verzoek verwijderen</button>
+        </div>
+      </div>`;
+  }
+
   const isGesch = w.veld === '__GESCHIEDENIS__';
   const tag = isGesch ? 'Geschiedenis' : 'Wijziging';
   const tagColor = isGesch ? '#8a6d3b' : 'var(--gray)';
@@ -5693,6 +5748,50 @@ document.getElementById('wijz-list').addEventListener('change', async e => {
 });
 
 document.getElementById('wijz-list').addEventListener('click', async e => {
+  // Foto-verwijderverzoek goedkeuren → foto definitief verwijderen + verzoek weg
+  if (e.target.matches('[data-action="approve-foto-del"]')) {
+    const id = e.target.dataset.id;
+    const w = wijzigingenList.find(x => x.id === id);
+    if (!w) return;
+    let meta = {}; try { meta = JSON.parse(w.wijziging || '{}'); } catch (_) {}
+    if (!confirm('De foto definitief verwijderen en dit verzoek afronden?')) return;
+    const btn = e.target; btn.disabled = true; const orig = btn.textContent; btn.textContent = '…';
+    try {
+      if (meta.url) {
+        const parts = String(meta.url).split('/fotos/');
+        if (parts.length > 1) await db.storage.from('fotos').remove([decodeURIComponent(parts[1])]);
+      }
+      if (meta.foto_id) {
+        const { error: delErr } = await db.from('fotos').delete().eq('id', meta.foto_id);
+        if (delErr) throw delErr;
+      }
+      await db.from('wijzigingsverzoeken').delete().eq('id', id);
+      wijzigingenList = wijzigingenList.filter(x => x.id !== id);
+      renderWijzigingen(); updateWijzigingenBadge();
+      // Ververs het album als het nu open staat
+      if (currentAlbumId && meta.album_id === currentAlbumId) {
+        await loadFotos(currentAlbumId); await loadAlbums(); renderAlbumFotos(currentAlbumId);
+      }
+    } catch (err) {
+      alert('Goedkeuren mislukt: ' + (err.message || err));
+      btn.disabled = false; btn.textContent = orig;
+    }
+    return;
+  }
+  // Foto-verwijderverzoek afkeuren → foto blijft staan, verzoek afgehandeld
+  if (e.target.matches('[data-action="reject-foto-del"]')) {
+    const id = e.target.dataset.id;
+    if (!confirm('Dit verwijderverzoek afkeuren? De foto blijft staan.')) return;
+    try {
+      const { error } = await db.from('wijzigingsverzoeken')
+        .update({ afgehandeld: true, toelichting: '[AFGEKEURD]' }).eq('id', id);
+      if (error) throw error;
+      const w = wijzigingenList.find(x => x.id === id);
+      if (w) { w.afgehandeld = true; w.toelichting = '[AFGEKEURD]'; }
+      renderWijzigingen(); updateWijzigingenBadge();
+    } catch (err) { alert('Afkeuren mislukt: ' + (err.message || err)); }
+    return;
+  }
   // Wijzigingen verwijderen
   if (e.target.matches('[data-action="delete-wijziging"]')) {
     const id = e.target.dataset.id;
@@ -7563,12 +7662,18 @@ function renderAlbumFotos(albumId) {
             : `<button class="foto-block-btn" onclick="blokkeerUploader('${escapeHtml(ub)}')">blokkeer</button>`}
         </div>`;
       }
+      // Ingelogde leden (niet-admins) kunnen een verzoek tot verwijderen doen
+      const memberBtns = (!isAdmin() && currentUserEmail) ? `
+        <div class="foto-member-btns" onclick="event.stopPropagation()">
+          <button class="foto-flag-btn" title="Verzoek tot verwijderen indienen" onclick="verzoekFotoVerwijderen(event,'${escapeHtml(foto.id)}','${escapeHtml(foto.url)}','${escapeHtml(albumId)}')">🚩 Verwijderen aanvragen</button>
+        </div>` : '';
       fotosHtml += `
         <div class="foto-item" onclick="openLightbox(${idx})">
           <img src="${escapeHtml(foto.url)}" alt="${escapeHtml(foto.bijschrift || '')}" loading="lazy">
           ${foto.bijschrift ? `<div class="foto-caption">${escapeHtml(foto.bijschrift)}</div>` : ''}
           ${uploaderHtml}
           ${adminBtns}
+          ${memberBtns}
         </div>`;
     });
     fotosHtml += '</div>';
@@ -7806,6 +7911,32 @@ async function deleteAlbum(e, albumId) {
 }
 
 // Delete foto
+// Lid dient een verzoek tot verwijderen van een foto in (komt binnen bij Verzoeken)
+async function verzoekFotoVerwijderen(e, fotoId, fotoUrl, albumId) {
+  e.stopPropagation();
+  if (!currentUserEmail) { alert('Log eerst in om een verzoek in te dienen.'); return; }
+  const reden = prompt('Waarom moet deze foto verwijderd worden?\n\nGeef een korte reden (de beheerder beoordeelt je verzoek):');
+  if (reden === null) return;
+  if (!reden.trim()) { alert('Geef een reden op voor het verwijderverzoek.'); return; }
+  const album = albumsList.find(a => a.id === albumId);
+  const info = displayNaam(currentUserEmail);
+  try {
+    const { error } = await db.from('wijzigingsverzoeken').insert({
+      persoon: 'Foto verwijderen',
+      aanvrager_naam: info.naam && info.naam !== currentUserEmail ? info.naam : currentUserEmail,
+      aanvrager_email: currentUserEmail,
+      veld: '__FOTO_VERWIJDER__',
+      wijziging: JSON.stringify({ reden: reden.trim(), foto_id: fotoId, url: fotoUrl, album_id: albumId, album_naam: album ? album.naam : '' }),
+      toelichting: null,
+    });
+    if (error) throw error;
+    alert('Je verzoek tot verwijderen is ingediend. Een beheerder beoordeelt het.');
+    if (isAdmin() && typeof loadWijzigingen === 'function') loadWijzigingen();
+  } catch (err) {
+    alert('Verzoek mislukt: ' + (err.message || err));
+  }
+}
+
 async function deleteFoto(e, fotoId, fotoUrl) {
   e.stopPropagation();
   if (!confirm('Deze foto definitief verwijderen?')) return;
