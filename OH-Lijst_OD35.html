@@ -7563,12 +7563,13 @@ function renderAlbumGrid() {
       const thumbHtml = thumb
         ? `<img class="album-thumb" src="${escapeHtml(thumb)}" alt="" loading="lazy">`
         : `<div class="album-thumb-placeholder">📷</div>`;
-      // Hernoemen mag elk ingelogd lid; verwijderen blijft admin-only.
+      // Hernoemen mag elk ingelogd lid; jaartal aanpassen en verwijderen blijven admin-only.
       // Volgorde is automatisch op datum, dus geen handmatig slepen meer.
       const renameBtn = (isAdmin() || currentUserEmail) ? `<button class="album-rename-btn" title="Albumnaam aanpassen" onclick="renameAlbum(event,'${escapeHtml(album.id)}','${escapeHtml(album.naam).replace(/'/g,"\\'")}')">✎</button>` : '';
+      const jaarBtn = isAdmin() ? `<button class="album-rename-btn" title="Jaartal aanpassen" onclick="wijzigAlbumJaar(event,'${escapeHtml(album.id)}','${escapeHtml(album.naam).replace(/'/g,"\\'")}')">📅</button>` : '';
       const deleteBtn = isAdmin() ? `<button class="album-delete-btn" title="Album verwijderen" onclick="deleteAlbum(event,'${escapeHtml(album.id)}')">✕</button>` : '';
-      const adminBtns = (renameBtn || deleteBtn)
-        ? `<div class="album-admin-btns" onclick="event.stopPropagation()">${renameBtn}${deleteBtn}</div>`
+      const adminBtns = (renameBtn || jaarBtn || deleteBtn)
+        ? `<div class="album-admin-btns" onclick="event.stopPropagation()">${renameBtn}${jaarBtn}${deleteBtn}</div>`
         : '';
       html += `
         <div class="album-card" data-id="${escapeHtml(album.id)}" onclick="openAlbum('${escapeHtml(album.id)}')">
@@ -7911,6 +7912,24 @@ async function renameAlbum(e, albumId, huidigNaam) {
   if (!nieuwNaam || nieuwNaam.trim() === huidigNaam) return;
   const { error } = await db.from('albums').update({ naam: nieuwNaam.trim() }).eq('id', albumId);
   if (error) { alert('Hernoemen mislukt: ' + error.message); return; }
+  await loadAlbums();
+  renderAlbumGrid();
+}
+
+// Admin: jaartal van een bestaand album achteraf aanpassen (vervangt het
+// jaartal in de naam; voegt het toe als er nog geen jaartal in staat)
+async function wijzigAlbumJaar(e, albumId, huidigNaam) {
+  e.stopPropagation();
+  const m = String(huidigNaam).match(/\b((?:19|20)\d{2})\b/);
+  const huidigJaar = m ? m[1] : '';
+  const inp = prompt('Jaartal voor dit album:', huidigJaar);
+  if (inp === null) return;
+  const jaar = parseInt(String(inp).trim(), 10);
+  if (!jaar || jaar < 1880 || jaar > 2100) { alert('Geef een geldig jaartal op (bijv. 2024).'); return; }
+  const nieuwNaam = m ? huidigNaam.replace(/\b(?:19|20)\d{2}\b/, String(jaar)) : `${huidigNaam} ${jaar}`;
+  if (nieuwNaam === huidigNaam) return;
+  const { error } = await db.from('albums').update({ naam: nieuwNaam }).eq('id', albumId);
+  if (error) { alert('Jaartal aanpassen mislukt: ' + error.message); return; }
   await loadAlbums();
   renderAlbumGrid();
 }
