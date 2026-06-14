@@ -2390,6 +2390,23 @@
 }
 .bezoek-stat-num { font-family: var(--font-display); font-size: 2.2rem; font-weight: 600; color: var(--burgundy); line-height: 1; }
 .bezoek-stat-lbl { font-size: 0.82rem; color: var(--gray); margin-top: 0.35rem; }
+.bezoek-stat-online { border-top-color: #4a8c4a; }
+.bezoek-stat-online .bezoek-stat-num { color: #3f7d3f; }
+.online-dot {
+  display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 50%;
+  background: #4a8c4a; margin-left: 0.35rem; vertical-align: middle;
+  box-shadow: 0 0 0 0 rgba(74,140,74,0.6); animation: online-pulse 2s infinite;
+}
+@keyframes online-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(74,140,74,0.5); }
+  70% { box-shadow: 0 0 0 6px rgba(74,140,74,0); }
+  100% { box-shadow: 0 0 0 0 rgba(74,140,74,0); }
+}
+.online-badge {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  color: #3f7d3f; font-weight: 600; font-size: 0.85rem;
+}
+.online-badge .online-dot { margin-left: 0; }
 .bezoekers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
 @media (max-width: 760px) { .bezoekers-grid { grid-template-columns: 1fr; } }
 .bezoekers-subtitle { font-family: var(--font-display); font-size: 1.15rem; color: var(--ink); margin-bottom: 0.8rem; }
@@ -3340,7 +3357,7 @@
     <button id="bezoekers-refresh" class="export-btn" style="background:transparent; color:var(--burgundy); border:1px solid var(--burgundy);">↻ Vernieuwen</button>
   </div>
   <p style="color:var(--gray); font-size:0.88rem; margin-bottom:1rem;">
-    Overzicht van wie er heeft ingelogd en vanuit welke provincie. Alleen zichtbaar voor de hoofdadmin.
+    Wie is er nu online, wie heeft er ingelogd en wanneer voor het laatst, en vanuit welke provincie. Ververst automatisch. Alleen zichtbaar voor de hoofdadmin.
   </p>
   <div id="bezoekers-stats" class="bezoekers-stats"></div>
   <div class="bezoekers-grid">
@@ -5056,10 +5073,24 @@ document.getElementById('tab-nav').addEventListener('click', e => {
   if (tab === 'wijzigingen') { loadWijzigingen(); }
   if (tab === 'verjaardagen') { renderVerjaardagen(); }
   if (tab === 'adminbeheer') { loadAdmins(); }
-  if (tab === 'bezoekers') { loadBezoekers(); }
+  if (tab === 'bezoekers') { loadBezoekers(); startBezoekersAutoRefresh(); } else { stopBezoekersAutoRefresh(); }
   // Zachte reveal van de panel-blokken bij het wisselen van tab
   if (typeof revealPanel === 'function') revealPanel('panel-' + tab);
 });
+
+// Ververs het bezoekers-dashboard automatisch zodat "nu online" actueel blijft
+let _bezoekersTimer = null;
+function startBezoekersAutoRefresh() {
+  stopBezoekersAutoRefresh();
+  _bezoekersTimer = setInterval(() => {
+    if (document.visibilityState === 'visible' && document.getElementById('panel-bezoekers')?.classList.contains('active')) {
+      loadBezoekers();
+    }
+  }, 30000);
+}
+function stopBezoekersAutoRefresh() {
+  if (_bezoekersTimer) { clearInterval(_bezoekersTimer); _bezoekersTimer = null; }
+}
 
 // ==================== WANDELGANGEN (forum) ====================
 let wandelgangenList = [];
@@ -5185,7 +5216,13 @@ async function loadBezoekers() {
   try {
     const { data, error } = await db.from('bezoeken').select('*').order('ingelogd_op', { ascending: false });
     if (error) throw error;
-    renderBezoekers(data || []);
+    // Live-aanwezigheid erbij (best effort; tabel kan nog ontbreken)
+    let presence = [];
+    try {
+      const { data: pres } = await db.from('online_status').select('*');
+      presence = pres || [];
+    } catch (_) { presence = []; }
+    renderBezoekers(data || [], presence);
   } catch (e) {
     if (statsEl) statsEl.innerHTML = `<div style="color:#c0392b;">Kon bezoekers niet laden: ${escapeHtml(e.message || String(e))}<br><small>Is de tabel "bezoeken" al aangemaakt? Zie BEZOEKERS-SETUP.md.</small></div>`;
     document.getElementById('bezoekers-map').innerHTML = '';
@@ -5215,19 +5252,44 @@ function gemNamenSet() {
   return bezoekGemNamen;
 }
 
-function renderBezoekers(rows) {
+function relatieveTijd(d) {
+  if (!d) return '';
+  const ms = Date.now() - new Date(d).getTime();
+  const min = Math.floor(ms / 60000);
+  if (min < 1) return 'zojuist';
+  if (min < 60) return min + ' min geleden';
+  const uur = Math.floor(min / 60);
+  if (uur < 24) return uur + ' uur geleden';
+  const dag = Math.floor(uur / 24);
+  return dag + (dag === 1 ? ' dag' : ' dagen') + ' geleden';
+}
+
+function renderBezoekers(rows, presence = []) {
   const perEmail = {};
   const ips = new Set();
   rows.forEach(r => {
     const em = (r.email || 'onbekend').toLowerCase();
     const prov = normProv(r.provincie);
     const gem = normGem(r.gemeente);
-    if (!perEmail[em]) perEmail[em] = { email: em, count: 0, last: r.ingelogd_op, provincie: prov, gemeente: gem };
+    if (!perEmail[em]) perEmail[em] = { email: em, count: 0, last: r.ingelogd_op, provincie: prov, gemeente: gem, laatstGezien: null };
     perEmail[em].count++;
     if (new Date(r.ingelogd_op) > new Date(perEmail[em].last)) {
       perEmail[em].last = r.ingelogd_op; perEmail[em].provincie = prov; perEmail[em].gemeente = gem;
     }
     if (r.ip) ips.add(r.ip);
+  });
+  // Live-aanwezigheid samenvoegen (laatst_gezien is nauwkeuriger dan login-tijd)
+  const nu = Date.now();
+  let online = 0;
+  (presence || []).forEach(p => {
+    const em = (p.email || '').toLowerCase();
+    if (!em) return;
+    if (!perEmail[em]) perEmail[em] = { email: em, count: 0, last: p.laatst_gezien, provincie: 'Onbekend', gemeente: 'Onbekend', laatstGezien: null };
+    perEmail[em].laatstGezien = p.laatst_gezien;
+  });
+  Object.values(perEmail).forEach(p => {
+    if (p.laatstGezien && (nu - new Date(p.laatstGezien).getTime()) < ONLINE_DREMPEL_MS) p.online = true;
+    if (p.online) online++;
   });
   // Unieke personen per provincie en per gemeente
   const perProv = {}, perGem = {};
@@ -5239,26 +5301,42 @@ function renderBezoekers(rows) {
 
   const uniekeLeden = Object.keys(perEmail).length;
   document.getElementById('bezoekers-stats').innerHTML = `
+    <div class="bezoek-stat bezoek-stat-online"><div class="bezoek-stat-num">${online}<span class="online-dot"></span></div><div class="bezoek-stat-lbl">nu online</div></div>
     <div class="bezoek-stat"><div class="bezoek-stat-num">${uniekeLeden}</div><div class="bezoek-stat-lbl">leden ingelogd</div></div>
     <div class="bezoek-stat"><div class="bezoek-stat-num">${rows.length}</div><div class="bezoek-stat-lbl">bezoeken totaal</div></div>
     <div class="bezoek-stat"><div class="bezoek-stat-num">${ips.size}</div><div class="bezoek-stat-lbl">unieke IP-adressen</div></div>`;
 
   renderBezoekersMap();
 
-  // Lijst van personen — met naam + aankomstjaar
-  const people = Object.values(perEmail).sort((a, b) => new Date(b.last) - new Date(a.last));
+  // Lijst van personen — online eerst, daarna op laatst gezien/ingelogd
+  const laatsteMoment = p => new Date(p.laatstGezien || p.last || 0).getTime();
+  const people = Object.values(perEmail).sort((a, b) => {
+    if (!!a.online !== !!b.online) return a.online ? -1 : 1;
+    return laatsteMoment(b) - laatsteMoment(a);
+  });
   const listEl = document.getElementById('bezoekers-list');
   if (people.length === 0) {
     listEl.innerHTML = '<div style="color:var(--gray);font-style:italic;">Nog niemand ingelogd.</div>';
     return;
   }
-  let listHtml = '<table class="bezoekers-table"><thead><tr><th>Naam</th><th>Gemeente</th><th>Provincie</th><th class="center">Bezoeken</th><th>Laatst</th></tr></thead><tbody>';
+  let listHtml = '<table class="bezoekers-table"><thead><tr><th>Naam</th><th>Gemeente</th><th class="center">Bezoeken</th><th>Laatst gezien</th></tr></thead><tbody>';
   people.forEach(p => {
     const info = displayNaam(p.email);
     const naam = info.naam || p.email;
     const jaar = info.jaar ? ` <span style="color:var(--gray);font-family:var(--font-mono);font-size:0.78rem;">(${escapeHtml(String(info.jaar))})</span>` : '';
-    const datum = new Date(p.last).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' });
-    listHtml += `<tr><td>${escapeHtml(naam)}${jaar}<br><span style="color:var(--gray-light);font-size:0.78rem;">${escapeHtml(p.email)}</span></td><td>${escapeHtml(p.gemeente || 'Onbekend')}</td><td>${escapeHtml(p.provincie || 'Onbekend')}</td><td class="center">${p.count}</td><td>${datum}</td></tr>`;
+    const moment = p.laatstGezien || p.last;
+    let laatstCel;
+    if (p.online) {
+      laatstCel = `<span class="online-badge"><span class="online-dot"></span>online</span>`;
+    } else if (moment) {
+      const d = new Date(moment);
+      const datum = d.toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' });
+      const tijd = d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+      laatstCel = `${datum} ${tijd}<br><span style="color:var(--gray-light);font-size:0.75rem;">${escapeHtml(relatieveTijd(moment))}</span>`;
+    } else {
+      laatstCel = '—';
+    }
+    listHtml += `<tr${p.online ? ' style="background:rgba(74,140,74,0.06);"' : ''}><td>${escapeHtml(naam)}${jaar}<br><span style="color:var(--gray-light);font-size:0.78rem;">${escapeHtml(p.email)}</span></td><td>${escapeHtml(p.gemeente || 'Onbekend')}</td><td class="center">${p.count}</td><td>${laatstCel}</td></tr>`;
   });
   listHtml += '</tbody></table>';
   listEl.innerHTML = listHtml;
@@ -5339,6 +5417,33 @@ async function logVisitOnce() {
       body: '{}',
     }).catch(() => {});
   } catch (_) {}
+}
+
+// ==================== LIVE AANWEZIGHEID (heartbeat) ====================
+// Iemand geldt als "online" als hij in de laatste 3 minuten een hartslag stuurde.
+const ONLINE_DREMPEL_MS = 3 * 60 * 1000;
+let _heartbeatTimer = null;
+async function stuurHeartbeat() {
+  if (!currentUserEmail) return;
+  try {
+    const info = displayNaam(currentUserEmail);
+    await db.from('online_status').upsert(
+      { email: currentUserEmail, naam: info.naam || currentUserEmail, laatst_gezien: new Date().toISOString() },
+      { onConflict: 'email' }
+    );
+  } catch (_) { /* tabel bestaat mogelijk nog niet — stil falen */ }
+}
+function startHeartbeat() {
+  if (!currentUserEmail) return;
+  stuurHeartbeat();
+  if (_heartbeatTimer) clearInterval(_heartbeatTimer);
+  // elke 60s een hartslag, alleen als het tabblad zichtbaar is
+  _heartbeatTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') stuurHeartbeat();
+  }, 60000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') stuurHeartbeat();
+  });
 }
 
 // ==================== ADMIN-BEHEER (alleen hoofdadmin) ====================
@@ -7521,6 +7626,8 @@ async function init() {
   if (typeof revealPanel === 'function') revealPanel('panel-personen');
   // Registreer dit bezoek (eenmalig per sessie) voor het bezoekers-dashboard
   if (typeof logVisitOnce === 'function') logVisitOnce();
+  // Start de live-aanwezigheid (heartbeat) voor "wie is nu online"
+  if (typeof startHeartbeat === 'function') startHeartbeat();
 }
 
 // ==================== SCROLL-EFFECTEN ====================
