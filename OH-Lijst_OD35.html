@@ -2407,6 +2407,8 @@
   color: #3f7d3f; font-weight: 600; font-size: 0.85rem;
 }
 .online-badge .online-dot { margin-left: 0; }
+.bezoekers-table td.laatst-cel { white-space: nowrap; }
+.laatst-rel { color: var(--gray-light); font-size: 0.78rem; }
 .bezoekers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
 @media (max-width: 760px) { .bezoekers-grid { grid-template-columns: 1fr; } }
 .bezoekers-subtitle { font-family: var(--font-display); font-size: 1.15rem; color: var(--ink); margin-bottom: 0.8rem; }
@@ -5330,13 +5332,13 @@ function renderBezoekers(rows, presence = []) {
       laatstCel = `<span class="online-badge"><span class="online-dot"></span>online</span>`;
     } else if (moment) {
       const d = new Date(moment);
-      const datum = d.toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' });
+      const datum = d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
       const tijd = d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
-      laatstCel = `${datum} ${tijd}<br><span style="color:var(--gray-light);font-size:0.75rem;">${escapeHtml(relatieveTijd(moment))}</span>`;
+      laatstCel = `${escapeHtml(datum)}, ${tijd} <span class="laatst-rel">· ${escapeHtml(relatieveTijd(moment))}</span>`;
     } else {
       laatstCel = '—';
     }
-    listHtml += `<tr${p.online ? ' style="background:rgba(74,140,74,0.06);"' : ''}><td>${escapeHtml(naam)}${jaar}<br><span style="color:var(--gray-light);font-size:0.78rem;">${escapeHtml(p.email)}</span></td><td>${escapeHtml(p.gemeente || 'Onbekend')}</td><td class="center">${p.count}</td><td>${laatstCel}</td></tr>`;
+    listHtml += `<tr${p.online ? ' style="background:rgba(74,140,74,0.06);"' : ''}><td>${escapeHtml(naam)}${jaar}<br><span style="color:var(--gray-light);font-size:0.78rem;">${escapeHtml(p.email)}</span></td><td>${escapeHtml(p.gemeente || 'Onbekend')}</td><td class="center">${p.count}</td><td class="laatst-cel">${laatstCel}</td></tr>`;
   });
   listHtml += '</tbody></table>';
   listEl.innerHTML = listHtml;
