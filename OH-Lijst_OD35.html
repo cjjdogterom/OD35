@@ -518,8 +518,14 @@
   }
   .person.expanded::before { transform: scaleY(1); }
 
-  .person.deceased { opacity: 0.55; font-style: italic; }
-  .person.deceased .person-name { color: var(--gray); }
+  /* Overledenen staan gewoon tussen de jaargenoten; alleen een kruisje markeert hen */
+  .deceased-cross {
+    display: inline-block;
+    margin-left: 0.45rem;
+    color: var(--burgundy);
+    font-size: 0.95em;
+    vertical-align: baseline;
+  }
 
   .person-summary {
     display: grid;
@@ -2604,7 +2610,7 @@
   transition: opacity 0.15s;
 }
 .foto-item:hover .foto-admin-btns { opacity: 1; }
-.foto-delete-btn, .foto-cover-btn {
+.foto-delete-btn, .foto-cover-btn, .foto-caption-btn {
   background: rgba(0,0,0,0.55);
   color: #fff;
   border: none;
@@ -2618,6 +2624,7 @@
   justify-content: center;
 }
 .foto-delete-btn:hover { background: rgba(192,57,43,0.85); }
+.foto-caption-btn:hover { background: rgba(58,124,193,0.85); }
 .foto-cover-btn:hover { background: rgba(58,124,193,0.85); }
 .foto-cover-btn.is-cover { background: var(--burgundy); opacity: 1 !important; }
 
@@ -4043,12 +4050,10 @@ function updateStats() {
   `;
 }
 
-// Sort: alive first, then by year DESC, then by achternaam
+// Sort by year DESC, then by achternaam. Overledenen staan gewoon tussen
+// hun jaargenoten (niet apart onderaan).
 function sortPeople(arr) {
   return [...arr].sort((a, b) => {
-    const aDeceased = a['Status'] === 'Overleden' ? 1 : 0;
-    const bDeceased = b['Status'] === 'Overleden' ? 1 : 0;
-    if (aDeceased !== bDeceased) return aDeceased - bDeceased;
     const ay = a['Aankomstjaar'] || 0;
     const by = b['Aankomstjaar'] || 0;
     if (ay !== by) return by - ay;
@@ -4349,7 +4354,7 @@ function render() {
     html += `<div class="person ${expanded ? 'expanded' : ''} ${deceased ? 'deceased' : ''}" data-id="${escapeHtml(personId)}">`;
     html += `<div class="person-summary">`;
     html += `<div class="person-jaar ${jaarClass}">${isHuisOudste(p) ? STAR_SVG : ''}${escapeHtml(String(jaar))}</div>`;
-    html += `<div class="person-name">${fullName(p)}${!hasAnyEmail(p) ? NO_EMAIL_SVG : ''}${deceased ? '<span class="deceased-badge">overleden</span>' : ''}${p['Gearchiveerd'] ? '<span class="deceased-badge">gearchiveerd</span>' : ''}</div>`;
+    html += `<div class="person-name">${fullName(p)}${!hasAnyEmail(p) ? NO_EMAIL_SVG : ''}${deceased ? '<span class="deceased-cross" title="Overleden">✝</span>' : ''}${p['Gearchiveerd'] ? '<span class="deceased-badge">gearchiveerd</span>' : ''}</div>`;
     html += `<div class="person-toggle">▾</div>`;
     html += `</div>`;
     if (expanded) {
@@ -4485,8 +4490,9 @@ list.addEventListener('click', async e => {
   if (!summary) return;
   const personEl = summary.parentElement;
   const id = personEl.dataset.id;
-  if (expandedSet.has(id)) expandedSet.delete(id);
-  else expandedSet.add(id);
+  const wasExpanded = expandedSet.has(id);
+  expandedSet.clear();           // klap een eventueel andere open kaart meteen in
+  if (!wasExpanded) expandedSet.add(id);
   render();
 });
 
@@ -7611,11 +7617,34 @@ async function loadFotos(albumId) {
 }
 
 function renderFotosTab() {
+  bindAlbumActions();
   if (currentAlbumId === null) {
     renderAlbumGrid();
   } else {
     renderAlbumFotos(currentAlbumId);
   }
+}
+
+// Eén gedelegeerde klikhandler voor de albumtegels (openen + admin-acties).
+// Robuuster dan inline onclick: geen problemen met aanhalingstekens in namen.
+let _albumActionsBound = false;
+function bindAlbumActions() {
+  if (_albumActionsBound) return;
+  const content = document.getElementById('fotos-content');
+  if (!content) return;
+  _albumActionsBound = true;
+  content.addEventListener('click', e => {
+    const el = e.target.closest('[data-album-action]');
+    if (!el || !content.contains(el)) return;
+    const action = el.dataset.albumAction;
+    const id = el.dataset.id;
+    if (action === 'open') { openAlbum(id); return; }
+    // admin-/lid-acties: niet doorklikken naar het album
+    e.stopPropagation();
+    if (action === 'rename') renameAlbum(e, id);
+    else if (action === 'jaar') wijzigAlbumJaar(e, id);
+    else if (action === 'delete') deleteAlbum(e, id);
+  });
 }
 
 function renderAlbumGrid() {
@@ -7659,15 +7688,15 @@ function renderAlbumGrid() {
             : `<img class="album-thumb" src="${escapeHtml(thumb)}" alt="" loading="lazy">`)
         : `<div class="album-thumb-placeholder">📷</div>`;
       // Hernoemen mag elk ingelogd lid; jaartal aanpassen en verwijderen blijven admin-only.
-      // Volgorde is automatisch op datum, dus geen handmatig slepen meer.
-      const renameBtn = (isAdmin() || currentUserEmail) ? `<button class="album-rename-btn" title="Albumnaam aanpassen" onclick="renameAlbum(event,'${escapeHtml(album.id)}','${escapeHtml(album.naam).replace(/'/g,"\\'")}')">✎</button>` : '';
-      const jaarBtn = isAdmin() ? `<button class="album-rename-btn" title="Jaartal aanpassen" onclick="wijzigAlbumJaar(event,'${escapeHtml(album.id)}','${escapeHtml(album.naam).replace(/'/g,"\\'")}')">📅</button>` : '';
-      const deleteBtn = isAdmin() ? `<button class="album-delete-btn" title="Album verwijderen" onclick="deleteAlbum(event,'${escapeHtml(album.id)}')">✕</button>` : '';
+      // Knoppen werken via event-delegatie (data-attributen) i.p.v. inline onclick.
+      const renameBtn = (isAdmin() || currentUserEmail) ? `<button class="album-rename-btn" title="Albumnaam aanpassen" data-album-action="rename" data-id="${escapeHtml(album.id)}">✎</button>` : '';
+      const jaarBtn = isAdmin() ? `<button class="album-rename-btn" title="Jaartal aanpassen" data-album-action="jaar" data-id="${escapeHtml(album.id)}">📅</button>` : '';
+      const deleteBtn = isAdmin() ? `<button class="album-delete-btn" title="Album verwijderen" data-album-action="delete" data-id="${escapeHtml(album.id)}">✕</button>` : '';
       const adminBtns = (renameBtn || jaarBtn || deleteBtn)
-        ? `<div class="album-admin-btns" onclick="event.stopPropagation()">${renameBtn}${jaarBtn}${deleteBtn}</div>`
+        ? `<div class="album-admin-btns">${renameBtn}${jaarBtn}${deleteBtn}</div>`
         : '';
       html += `
-        <div class="album-card" data-id="${escapeHtml(album.id)}" onclick="openAlbum('${escapeHtml(album.id)}')">
+        <div class="album-card" data-id="${escapeHtml(album.id)}" data-album-action="open">
           ${thumbHtml}
           ${adminBtns}
           <div class="album-meta">
@@ -7775,6 +7804,7 @@ function renderAlbumFotos(albumId) {
       const coverBtn = isPdf ? '' : `<button class="foto-cover-btn ${isCover ? 'is-cover' : ''}" title="${isCover ? 'Huidige albumcover' : 'Instellen als albumcover'}" onclick="setCover('${escapeHtml(albumId)}','${escapeHtml(foto.url)}',this)">★</button>`;
       const adminBtns = isAdmin() ? `
         <div class="foto-admin-btns" onclick="event.stopPropagation()">
+          <button class="foto-caption-btn" title="Beschrijving onder de foto bewerken" onclick="bewerkBijschrift(event,'${escapeHtml(foto.id)}')">✎</button>
           ${coverBtn}
           <button class="foto-delete-btn" title="${isPdf ? 'PDF verwijderen' : 'Foto verwijderen'}" onclick="deleteFoto(event,'${escapeHtml(foto.id)}','${escapeHtml(foto.url)}')">✕</button>
         </div>` : '';
@@ -8027,8 +8057,24 @@ async function setCover(albumId, url, btn) {
   btn.classList.add('is-cover');
 }
 
-async function renameAlbum(e, albumId, huidigNaam) {
-  e.stopPropagation();
+// Admin: korte beschrijving onder een foto (of PDF) zetten/aanpassen
+async function bewerkBijschrift(e, fotoId) {
+  if (e) e.stopPropagation();
+  const foto = fotosList.find(f => String(f.id) === String(fotoId));
+  const huidig = foto ? (foto.bijschrift || '') : '';
+  const nieuw = prompt('Korte beschrijving onder deze foto:', huidig);
+  if (nieuw === null) return;
+  const waarde = nieuw.trim() || null;
+  const { error } = await db.from('fotos').update({ bijschrift: waarde }).eq('id', fotoId);
+  if (error) { alert('Opslaan mislukt: ' + error.message); return; }
+  if (foto) foto.bijschrift = waarde;
+  renderAlbumFotos(currentAlbumId);
+}
+
+async function renameAlbum(e, albumId) {
+  if (e) e.stopPropagation();
+  const album = albumsList.find(a => a.id === albumId);
+  const huidigNaam = album ? album.naam : '';
   const nieuwNaam = prompt('Nieuwe naam voor het album:', huidigNaam);
   if (!nieuwNaam || nieuwNaam.trim() === huidigNaam) return;
   const { error } = await db.from('albums').update({ naam: nieuwNaam.trim() }).eq('id', albumId);
@@ -8039,8 +8085,10 @@ async function renameAlbum(e, albumId, huidigNaam) {
 
 // Admin: jaartal van een bestaand album achteraf aanpassen (vervangt het
 // jaartal in de naam; voegt het toe als er nog geen jaartal in staat)
-async function wijzigAlbumJaar(e, albumId, huidigNaam) {
-  e.stopPropagation();
+async function wijzigAlbumJaar(e, albumId) {
+  if (e) e.stopPropagation();
+  const album = albumsList.find(a => a.id === albumId);
+  const huidigNaam = album ? album.naam : '';
   const m = String(huidigNaam).match(/\b((?:19|20)\d{2})\b/);
   const huidigJaar = m ? m[1] : '';
   const inp = prompt('Jaartal voor dit album:', huidigJaar);
