@@ -6477,8 +6477,9 @@ function renderContacts() {
       html += `<div class="contact-detail">☎ <a href="tel:${cleaned}">${escapeHtml(c.telefoon)}</a></div>`;
     }
     if (c.notitie) html += `<div class="contact-detail" style="font-style:italic; color:var(--gray); margin-top:0.5rem;">${escapeHtml(c.notitie)}</div>`;
-    html += `<button class="edit-btn" data-action="edit-contact" data-role="${role.key}">${hasName ? 'Bewerken' : 'Invullen'}</button>`;
+    if (isAdmin()) html += `<button class="edit-btn" data-action="edit-contact" data-role="${role.key}">${hasName ? 'Bewerken' : 'Invullen'}</button>`;
     html += `</div>`;
+    if (isAdmin()) {
     html += `<div class="contact-edit-form" data-role="${role.key}">`;
     const sortedPeople = [...PEOPLE].sort((a,b) => (a['Achternaam']||'').localeCompare(b['Achternaam']||''));
     html += `<label class="picker-label">Kies uit ledenlijst</label>`;
@@ -6500,7 +6501,9 @@ function renderContacts() {
     html += `<div class="form-buttons">`;
     html += `<button class="save-btn" data-action="save-contact" data-role="${role.key}">Opslaan</button>`;
     html += `<button class="cancel-btn" data-action="cancel-contact" data-role="${role.key}">Annuleren</button>`;
-    html += `</div></div></div>`;
+    html += `</div></div>`;   // sluit form-buttons + contact-edit-form
+    } // einde if(isAdmin()) — alleen admins kunnen contacten instellen
+    html += `</div>`;          // sluit contact-card
   });
   container.innerHTML = html;
 }
@@ -6548,6 +6551,8 @@ document.getElementById('contacts-grid').addEventListener('click', e => {
     return;
   }
 
+  // Alleen admins kunnen contacten instellen/bewerken
+  if (!isAdmin()) return;
   const role = e.target.dataset.role;
   if (!role) return;
   const card = e.target.closest('.contact-card');
