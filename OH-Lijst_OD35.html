@@ -2428,6 +2428,18 @@
   gap: 1rem;
   flex-wrap: wrap;
 }
+.fotos-intro {
+  background: var(--paper-warm);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--burgundy);
+  border-radius: 2px;
+  padding: 0.7rem 1rem;
+  margin-bottom: 1.25rem;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--gray);
+}
 .fotos-add-btn {
   background: var(--burgundy);
   color: var(--paper);
@@ -7732,8 +7744,13 @@ function renderAlbumGrid() {
   const content = document.getElementById('fotos-content');
   if (!content) return;
 
+  // Uitleg voor leden: zelf foto's toevoegen of een nieuw album aanmaken
+  const intro = canUploadFotos()
+    ? `<div class="fotos-intro">📷 Je kunt zelf foto's toevoegen: open een album en klik op <strong>↑ Foto's uploaden</strong> — of maak met <strong>+ Nieuw album</strong> hierboven een eigen album aan.</div>`
+    : '';
+
   if (albumsList.length === 0) {
-    content.innerHTML = '<div class="empty-state"><div class="icon">📷</div><p>Nog geen fotoalbums aangemaakt.</p></div>';
+    content.innerHTML = intro + '<div class="empty-state"><div class="icon">📷</div><p>Nog geen fotoalbums aangemaakt.</p></div>';
     return;
   }
 
@@ -7753,7 +7770,7 @@ function renderAlbumGrid() {
     albumsList.forEach(a => { if (a.cover_url && !isPdfUrl(a.cover_url)) thumbMap[a.id] = a.cover_url; });
     thumbs.forEach(t => { if (!thumbMap[t.id]) thumbMap[t.id] = t.url; });
 
-    let html = '<div class="album-grid">';
+    let html = intro + '<div class="album-grid">';
     albumsList.forEach(album => {
       const thumb = thumbMap[album.id];
       const thumbHtml = thumb
