@@ -2563,6 +2563,19 @@
   transition: opacity 0.15s;
 }
 .foto-item:hover img { opacity: 0.88; }
+/* PDF-document in een album */
+.foto-item.is-pdf { background: var(--paper-warm); border: 1px solid var(--line); }
+.foto-pdf {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 1.6rem 1rem; gap: 0.4rem; min-height: 140px;
+}
+.foto-pdf-icon { font-size: 2.4rem; line-height: 1; }
+.foto-pdf-label {
+  font-family: var(--font-body); font-size: 0.85rem; color: var(--ink);
+  word-break: break-word; font-weight: 600;
+}
+.foto-pdf-open { font-family: var(--font-body); font-size: 0.72rem; color: var(--burgundy); }
+.foto-item.is-pdf:hover { box-shadow: var(--shadow-lift); }
 .foto-caption {
   font-family: var(--font-body);
   font-size: 0.78rem;
@@ -7467,6 +7480,11 @@ let currentAlbumId = null;
 let fotosList = [];
 let lightboxIndex = 0;
 
+// Is dit item een PDF (op basis van de opgeslagen URL)?
+function isPdfUrl(u) { return /\.pdf($|\?)/i.test(String(u || '')); }
+// Open een PDF in een nieuw tabblad
+function openPdf(url) { window.open(url, '_blank', 'noopener'); }
+
 // Haal een datum uit de albumnaam (of beschrijving) om automatisch te sorteren.
 // Herkent: dd-mm-jjjj / dd maand jjjj / maand jjjj / los jaartal.
 const ALBUM_MAANDEN = {
@@ -7545,16 +7563,16 @@ function renderAlbumGrid() {
     return;
   }
 
-  // Use cover_url if set, otherwise fetch first photo per album
-  const albumsNeedingThumb = albumsList.filter(a => !a.cover_url);
+  // Use cover_url if set (geen PDF), otherwise fetch first non-pdf photo per album
+  const albumsNeedingThumb = albumsList.filter(a => !a.cover_url || isPdfUrl(a.cover_url));
   const thumbPromises = albumsNeedingThumb.map(album =>
-    db.from('fotos').select('url').eq('album_id', album.id).order('volgorde').order('created_at').limit(1)
-      .then(({ data }) => ({ id: album.id, url: data && data[0] ? data[0].url : null }))
+    db.from('fotos').select('url').eq('album_id', album.id).order('volgorde').order('created_at').limit(10)
+      .then(({ data }) => ({ id: album.id, url: (data || []).map(d => d.url).find(u => !isPdfUrl(u)) || null }))
   );
 
   Promise.all(thumbPromises).then(thumbs => {
     const thumbMap = {};
-    albumsList.forEach(a => { if (a.cover_url) thumbMap[a.id] = a.cover_url; });
+    albumsList.forEach(a => { if (a.cover_url && !isPdfUrl(a.cover_url)) thumbMap[a.id] = a.cover_url; });
     thumbs.forEach(t => { if (!thumbMap[t.id]) thumbMap[t.id] = t.url; });
 
     let html = '<div class="album-grid">';
@@ -7652,9 +7670,9 @@ function renderAlbumFotos(albumId) {
     <div class="foto-upload-section" id="foto-upload-section" style="display:none">
       <div class="foto-upload-area" id="foto-upload-area">
         <div class="foto-upload-icon">📷</div>
-        <div>Klik om foto's te kiezen, of sleep ze hierheen</div>
-        <div style="font-size:0.8rem;margin-top:0.3rem;opacity:0.7;">JPG, PNG, WEBP — meerdere tegelijk mogelijk</div>
-        <input type="file" id="foto-file-input" accept="image/*" multiple>
+        <div>Klik om foto's of PDF's te kiezen, of sleep ze hierheen</div>
+        <div style="font-size:0.8rem;margin-top:0.3rem;opacity:0.7;">JPG, PNG, WEBP of PDF — meerdere tegelijk mogelijk</div>
+        <input type="file" id="foto-file-input" accept="image/*,application/pdf" multiple>
       </div>
       <div class="foto-upload-progress" id="foto-upload-progress"></div>
     </div>`;
@@ -7674,10 +7692,12 @@ function renderAlbumFotos(albumId) {
     const currentCover = currentAlbum ? currentAlbum.cover_url : null;
     fotosList.forEach((foto, idx) => {
       const isCover = foto.url === currentCover;
+      const isPdf = isPdfUrl(foto.url);
+      const coverBtn = isPdf ? '' : `<button class="foto-cover-btn ${isCover ? 'is-cover' : ''}" title="${isCover ? 'Huidige albumcover' : 'Instellen als albumcover'}" onclick="setCover('${escapeHtml(albumId)}','${escapeHtml(foto.url)}',this)">★</button>`;
       const adminBtns = isAdmin() ? `
         <div class="foto-admin-btns" onclick="event.stopPropagation()">
-          <button class="foto-cover-btn ${isCover ? 'is-cover' : ''}" title="${isCover ? 'Huidige albumcover' : 'Instellen als albumcover'}" onclick="setCover('${escapeHtml(albumId)}','${escapeHtml(foto.url)}',this)">★</button>
-          <button class="foto-delete-btn" title="Foto verwijderen" onclick="deleteFoto(event,'${escapeHtml(foto.id)}','${escapeHtml(foto.url)}')">✕</button>
+          ${coverBtn}
+          <button class="foto-delete-btn" title="${isPdf ? 'PDF verwijderen' : 'Foto verwijderen'}" onclick="deleteFoto(event,'${escapeHtml(foto.id)}','${escapeHtml(foto.url)}')">✕</button>
         </div>` : '';
       // Admins zien wie de foto heeft geüpload + kunnen die persoon blokkeren
       let uploaderHtml = '';
@@ -7696,10 +7716,13 @@ function renderAlbumFotos(albumId) {
         <div class="foto-member-btns" onclick="event.stopPropagation()">
           <button class="foto-flag-btn" title="Verzoek tot verwijderen indienen" onclick="verzoekFotoVerwijderen(event,'${escapeHtml(foto.id)}','${escapeHtml(foto.url)}','${escapeHtml(albumId)}')">🚩 Verwijderen aanvragen</button>
         </div>` : '';
+      const inhoud = isPdf
+        ? `<div class="foto-pdf"><div class="foto-pdf-icon">📄</div><div class="foto-pdf-label">${escapeHtml(foto.bijschrift || 'PDF-document')}</div><div class="foto-pdf-open">PDF openen ↗</div></div>`
+        : `<img src="${escapeHtml(foto.url)}" alt="${escapeHtml(foto.bijschrift || '')}" loading="lazy">${foto.bijschrift ? `<div class="foto-caption">${escapeHtml(foto.bijschrift)}</div>` : ''}`;
+      const klik = isPdf ? `openPdf('${escapeHtml(foto.url)}')` : `openLightbox(${idx})`;
       fotosHtml += `
-        <div class="foto-item" onclick="openLightbox(${idx})">
-          <img src="${escapeHtml(foto.url)}" alt="${escapeHtml(foto.bijschrift || '')}" loading="lazy">
-          ${foto.bijschrift ? `<div class="foto-caption">${escapeHtml(foto.bijschrift)}</div>` : ''}
+        <div class="foto-item${isPdf ? ' is-pdf' : ''}" onclick="${klik}">
+          ${inhoud}
           ${uploaderHtml}
           ${adminBtns}
           ${memberBtns}
@@ -7802,8 +7825,9 @@ async function uploadFotos(files, albumId) {
     progress.style.display = 'block';
   };
 
-  const fileArr = Array.from(files).filter(f => f.type.startsWith('image/'));
-  if (fileArr.length === 0) { setProgress('Geen afbeeldingen geselecteerd.', true); return; }
+  const isPdfFile = f => f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+  const fileArr = Array.from(files).filter(f => f.type.startsWith('image/') || isPdfFile(f));
+  if (fileArr.length === 0) { setProgress('Geen afbeeldingen of PDF\'s geselecteerd.', true); return; }
 
   let done = 0;
   const total = fileArr.length;
@@ -7811,7 +7835,8 @@ async function uploadFotos(files, albumId) {
 
   for (const file of fileArr) {
     try {
-      const ext = file.name.split('.').pop().replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg';
+      const pdf = isPdfFile(file);
+      const ext = pdf ? 'pdf' : (file.name.split('.').pop().replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg');
       const uid = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '_' + Math.random().toString(36).slice(2));
       const path = `${albumId}/${uid}.${ext}`;
 
@@ -7834,7 +7859,7 @@ async function uploadFotos(files, albumId) {
         continue;
       }
 
-      const { error: insErr } = await db.from('fotos').insert({ album_id: albumId, url: urlData.publicUrl, volgorde: done, uploaded_by: currentUserEmail || null });
+      const { error: insErr } = await db.from('fotos').insert({ album_id: albumId, url: urlData.publicUrl, volgorde: done, uploaded_by: currentUserEmail || null, bijschrift: pdf ? file.name.replace(/\.pdf$/i, '') : null });
       if (insErr) {
         console.error('DB insert fout:', insErr);
         setProgress(`Fout bij opslaan "${file.name}": ${insErr.message}`, true);
@@ -7849,8 +7874,8 @@ async function uploadFotos(files, albumId) {
     }
   }
 
-  if (done === total) setProgress(`Klaar! ${done} foto${done !== 1 ? "'s" : ''} geüpload.`, false);
-  else if (done > 0) setProgress(`${done} van ${total} foto's geüpload (${total - done} mislukt).`, true);
+  if (done === total) setProgress(`Klaar! ${done} bestand${done !== 1 ? 'en' : ''} geüpload.`, false);
+  else if (done > 0) setProgress(`${done} van ${total} bestanden geüpload (${total - done} mislukt).`, true);
 
   await loadFotos(albumId);
   await loadAlbums();
