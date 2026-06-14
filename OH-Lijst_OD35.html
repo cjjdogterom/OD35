@@ -7713,12 +7713,13 @@ function renderAlbumGrid() {
       // Knoppen werken via event-delegatie (data-attributen) i.p.v. inline onclick.
       const renameBtn = (isAdmin() || currentUserEmail) ? `<button class="album-rename-btn" title="Albumnaam aanpassen" data-album-action="rename" data-id="${escapeHtml(album.id)}">✎</button>` : '';
       const jaarBtn = isAdmin() ? `<button class="album-rename-btn" title="Jaartal aanpassen" data-album-action="jaar" data-id="${escapeHtml(album.id)}">📅</button>` : '';
-      const pinBtn = isAdmin() ? `<button class="album-rename-btn album-pin-btn${album.vastgepind ? ' is-pinned' : ''}" title="${album.vastgepind ? 'Losmaken van bovenaan' : 'Bovenaan vastzetten'}" data-album-action="pin" data-id="${escapeHtml(album.id)}">📌</button>` : '';
+      // Pinnen en het zien van de pin-status is alleen voor de superadmin (hoofdadmin)
+      const pinBtn = isHoofdadmin() ? `<button class="album-rename-btn album-pin-btn${album.vastgepind ? ' is-pinned' : ''}" title="${album.vastgepind ? 'Losmaken van bovenaan' : 'Bovenaan vastzetten'}" data-album-action="pin" data-id="${escapeHtml(album.id)}">📌</button>` : '';
       const deleteBtn = isAdmin() ? `<button class="album-delete-btn" title="Album verwijderen" data-album-action="delete" data-id="${escapeHtml(album.id)}">✕</button>` : '';
       const adminBtns = (renameBtn || jaarBtn || pinBtn || deleteBtn)
         ? `<div class="album-admin-btns">${renameBtn}${jaarBtn}${pinBtn}${deleteBtn}</div>`
         : '';
-      const pinBadge = album.vastgepind ? `<div class="album-pin-badge" title="Vast bovenaan">📌</div>` : '';
+      const pinBadge = (album.vastgepind && isHoofdadmin()) ? `<div class="album-pin-badge" title="Vast bovenaan">📌</div>` : '';
       html += `
         <div class="album-card" data-id="${escapeHtml(album.id)}" data-album-action="open">
           ${thumbHtml}
@@ -8100,6 +8101,7 @@ async function bewerkBijschrift(e, fotoId) {
 // Er kan maar één album tegelijk bovenaan staan.
 async function togglePinAlbum(e, albumId) {
   if (e) e.stopPropagation();
+  if (!isHoofdadmin()) return;
   const album = albumsList.find(a => a.id === albumId);
   if (!album) return;
   const nieuw = !album.vastgepind;
