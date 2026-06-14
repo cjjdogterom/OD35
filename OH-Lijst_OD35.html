@@ -3132,13 +3132,14 @@
 <div class="tab-panel" id="panel-geschiedenis">
   <div class="history-intro member-only">
     Heb jij goede input voor de geschiedenis van Oude Delft 35? Leden kunnen
-    aanvullingen of correcties voorstellen door op de knop onderaan deze pagina
-    te klikken. Je voorstel wordt als verzoek ingediend en door een admin
+    aanvullingen of correcties voorstellen met de knop hieronder (of onderaan
+    deze pagina). Je voorstel wordt als verzoek ingediend en door een admin
     beoordeeld voordat het wordt doorgevoerd.
   </div>
+  <button class="history-edit-btn member-only js-history-suggest" id="history-suggest-btn-top" style="margin-top:0;">✎ Correctie of aanvulling voorstellen</button>
   <div class="history-content" id="history-content"></div>
   <button class="history-edit-btn admin-only" id="history-edit-btn" style="display:none">Geschiedenis bewerken</button>
-  <button class="history-edit-btn member-only" id="history-suggest-btn">✎ Correctie of aanvulling voorstellen</button>
+  <button class="history-edit-btn member-only js-history-suggest" id="history-suggest-btn">✎ Correctie of aanvulling voorstellen</button>
   <div class="history-editor" id="history-editor">
     <p class="editor-help">Tip: gebruik dubbele regelafstand voor nieuwe paragrafen. Begin een regel met <code>## Titel</code> voor een kop, of <code>&gt; quote</code> voor een uitgelichte zin.</p>
     <textarea id="history-textarea"></textarea>
@@ -6725,18 +6726,24 @@ document.getElementById('history-reset').addEventListener('click', () => {
 });
 
 // Leden: correctie/aanvulling op de geschiedenis voorstellen → verzoeken-tab
-document.getElementById('history-suggest-btn').addEventListener('click', () => {
-  const editor = document.getElementById('history-suggest-editor');
-  const naam = document.getElementById('history-suggest-naam');
-  const email = document.getElementById('history-suggest-email');
-  // Voorvullen op basis van de ingelogde gebruiker
-  if (currentUserEmail) {
-    const info = displayNaam(currentUserEmail);
-    if (!naam.value) naam.value = info.naam && info.naam !== currentUserEmail ? info.naam : '';
-    if (!email.value) email.value = currentUserEmail;
-  }
-  document.getElementById('history-suggest-result').innerHTML = '';
-  editor.classList.toggle('open');
+// (knop staat zowel boven- als onderaan de pagina)
+document.querySelectorAll('.js-history-suggest').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const editor = document.getElementById('history-suggest-editor');
+    const naam = document.getElementById('history-suggest-naam');
+    const email = document.getElementById('history-suggest-email');
+    // Voorvullen op basis van de ingelogde gebruiker
+    if (currentUserEmail) {
+      const info = displayNaam(currentUserEmail);
+      if (!naam.value) naam.value = info.naam && info.naam !== currentUserEmail ? info.naam : '';
+      if (!email.value) email.value = currentUserEmail;
+    }
+    document.getElementById('history-suggest-result').innerHTML = '';
+    editor.classList.toggle('open');
+    if (editor.classList.contains('open')) {
+      editor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
 });
 document.getElementById('history-suggest-cancel').addEventListener('click', () => {
   document.getElementById('history-suggest-editor').classList.remove('open');
