@@ -3032,9 +3032,10 @@
     <option value="levend">Levenden</option>
     <option value="overleden">Overledenen</option>
     <option value="huis-oudste">Huis Oudsten</option>
+    <option value="gearchiveerd" class="admin-only-opt">Gearchiveerd</option>
   </select>
   <button id="reset" class="reset-btn">Reset</button>
-  <button id="export-excel" class="export-btn" title="Exporteer alle data naar Excel">Excel export</button>
+  <button id="export-excel" class="export-btn admin-only" title="Exporteer alle data naar Excel" style="display:none">Excel export</button>
   <button id="mail-btn" class="export-btn" title="Mail versturen naar leden">✉ Mail versturen</button>
 </div>
 
@@ -3332,6 +3333,7 @@ function dbRowToPerson(row) {
     'Mobiel 4':            row.mobiel_4 || '',
   };
   if (row.overleden) p['Status'] = 'Overleden';
+  p['Gearchiveerd'] = !!row.gearchiveerd;
   return p;
 }
 
@@ -4011,8 +4013,12 @@ function renderDetails(p) {
     const codeBtn = primaryEmail
       ? `<button class="admin-edit-btn" data-action="send-access-code" data-email="${escapeHtml(primaryEmail)}" style="background:transparent;color:var(--burgundy);border:1px solid var(--burgundy);">✉ Stuur toegangscode</button>`
       : `<span style="font-size:0.8rem;color:var(--gray);font-style:italic;align-self:center;">geen e-mail → geen login mogelijk</span>`;
+    const archiefBtn = p['Gearchiveerd']
+      ? `<button class="admin-edit-btn" data-action="dearchiveer" data-id="${p._id || ''}" style="background:transparent;color:var(--gray);border:1px solid var(--line);">↩ Uit archief halen</button>`
+      : `<button class="admin-edit-btn" data-action="archiveer" data-id="${p._id || ''}" style="background:transparent;color:var(--gray);border:1px solid var(--line);">🗄 Archiveren</button>`;
     adminHtml = `<div class="admin-person-actions">
       <button class="admin-edit-btn" data-action="admin-edit" data-id="${p._id || ''}">✎ Bewerken</button>
+      ${archiefBtn}
       <button class="admin-delete-btn" data-action="admin-delete" data-id="${p._id || ''}">✕ Verwijderen</button>
       ${codeBtn}
     </div>`;
@@ -4196,6 +4202,9 @@ function renderChangeForm(p) {
 
 function render() {
   let filtered = PEOPLE.filter(p => {
+    // Gearchiveerde leden alleen tonen onder het filter "Gearchiveerd"
+    if (currentStatus === 'gearchiveerd') { if (!p['Gearchiveerd']) return false; }
+    else if (p['Gearchiveerd']) return false;
     if (currentQuery && !p._searchText.includes(currentQuery)) return false;
     if (currentJaar && String(p['Aankomstjaar']) !== currentJaar) return false;
     if (currentStatus === 'levend' && p['Status'] === 'Overleden') return false;
@@ -4232,7 +4241,7 @@ function render() {
     html += `<div class="person ${expanded ? 'expanded' : ''} ${deceased ? 'deceased' : ''}" data-id="${escapeHtml(personId)}">`;
     html += `<div class="person-summary">`;
     html += `<div class="person-jaar ${jaarClass}">${isHuisOudste(p) ? STAR_SVG : ''}${escapeHtml(String(jaar))}</div>`;
-    html += `<div class="person-name">${fullName(p)}${!hasAnyEmail(p) ? NO_EMAIL_SVG : ''}${deceased ? '<span class="deceased-badge">overleden</span>' : ''}</div>`;
+    html += `<div class="person-name">${fullName(p)}${!hasAnyEmail(p) ? NO_EMAIL_SVG : ''}${deceased ? '<span class="deceased-badge">overleden</span>' : ''}${p['Gearchiveerd'] ? '<span class="deceased-badge">gearchiveerd</span>' : ''}</div>`;
     html += `<div class="person-toggle">▾</div>`;
     html += `</div>`;
     if (expanded) {
@@ -4311,6 +4320,28 @@ list.addEventListener('click', async e => {
     const p = PEOPLE.find(x => String(x._id) === String(id));
     if (p && confirm(`Weet je zeker dat je ${plainName(p)} wilt verwijderen?`)) {
       deletePerson(id);
+    }
+    return;
+  }
+  // Admin: archiveren / uit archief halen
+  if (e.target.matches('[data-action="archiveer"]') || e.target.matches('[data-action="dearchiveer"]')) {
+    e.stopPropagation();
+    const archiveren = e.target.matches('[data-action="archiveer"]');
+    const id = e.target.dataset.id;
+    const p = PEOPLE.find(x => String(x._id) === String(id));
+    if (!p) return;
+    if (archiveren && !confirm(`${plainName(p)} archiveren?\n\nDit lid wordt uit de actieve lijst gehaald en ontvangt geen mail meer.`)) return;
+    const btn = e.target; const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      const { error } = await db.from('personen').update({ gearchiveerd: archiveren }).eq('id', id);
+      if (error) throw error;
+      p['Gearchiveerd'] = archiveren;
+      p._searchText = buildSearchText(p);
+      render();
+    } catch (err) {
+      alert('Mislukt: ' + (err.message || err) + '\n\n(Bestaat de kolom "gearchiveerd" al? Zie de SQL.)');
+      btn.disabled = false; btn.textContent = orig;
     }
     return;
   }
@@ -6590,6 +6621,9 @@ const mailSelectedIds = new Set();
 
 function getPersonsWithEmail() {
   return PEOPLE.filter(p => {
+    // Overledenen en gearchiveerde leden krijgen geen mail
+    if (p['Status'] === 'Overleden') return false;
+    if (p['Gearchiveerd']) return false;
     for (let i = 1; i <= 5; i++) if (p[`E-mail ${i}`]) return true;
     return false;
   });
@@ -6917,6 +6951,7 @@ document.getElementById('mail-copy-btn').addEventListener('click', async () => {
 
 // ==================== EXCEL EXPORT ====================
 document.getElementById('export-excel').addEventListener('click', () => {
+  if (!isAdmin()) { alert('Alleen beheerders kunnen exporteren naar Excel.'); return; }
   if (typeof XLSX === 'undefined') {
     alert('Excel-bibliotheek nog niet geladen. Probeer het over een paar seconden opnieuw.');
     return;
