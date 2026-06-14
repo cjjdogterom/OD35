@@ -7467,14 +7467,43 @@ let currentAlbumId = null;
 let fotosList = [];
 let lightboxIndex = 0;
 
+// Haal een datum uit de albumnaam (of beschrijving) om automatisch te sorteren.
+// Herkent: dd-mm-jjjj / dd maand jjjj / maand jjjj / los jaartal.
+const ALBUM_MAANDEN = {
+  januari:0, februari:1, maart:2, april:3, mei:4, juni:5, juli:6, augustus:7,
+  september:8, oktober:9, november:10, december:11,
+  jan:0, feb:1, mrt:2, maa:2, apr:3, jun:5, jul:6, aug:7, sep:8, sept:8, okt:9, nov:10, dec:11
+};
+function parseAlbumDatum(tekst) {
+  if (!tekst) return null;
+  const s = String(tekst).toLowerCase();
+  let m = s.match(/(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);              // dd-mm-jjjj
+  if (m) return new Date(+m[3], +m[2] - 1, +m[1]).getTime();
+  m = s.match(/(\d{1,2})\s+([a-z]+)\.?\s+(\d{4})/);                    // dd maand jjjj
+  if (m && ALBUM_MAANDEN[m[2]] !== undefined) return new Date(+m[3], ALBUM_MAANDEN[m[2]], +m[1]).getTime();
+  m = s.match(/([a-z]+)\.?\s+(\d{4})/);                                // maand jjjj
+  if (m && ALBUM_MAANDEN[m[1]] !== undefined) return new Date(+m[2], ALBUM_MAANDEN[m[1]], 1).getTime();
+  m = s.match(/\b(19|20)\d{2}\b/);                                     // los jaartal
+  if (m) return new Date(+m[0], 0, 1).getTime();
+  return null;
+}
+// Sorteersleutel: datum uit naam → anders uit beschrijving → anders aanmaakdatum
+function albumSorteerWaarde(a) {
+  const t = parseAlbumDatum(a.naam) ?? parseAlbumDatum(a.beschrijving);
+  if (t !== null && t !== undefined) return t;
+  return a.created_at ? new Date(a.created_at).getTime() : 0;
+}
+
 async function loadAlbums() {
   try {
-    const { data: albums, error } = await db.from('albums').select('*').order('volgorde', { ascending: true, nullsFirst: false }).order('created_at', { ascending: false });
+    const { data: albums, error } = await db.from('albums').select('*');
     if (error) throw error;
     const { data: fotos } = await db.from('fotos').select('album_id');
     const counts = {};
     (fotos || []).forEach(f => { counts[f.album_id] = (counts[f.album_id] || 0) + 1; });
     albumsList = (albums || []).map(a => ({ ...a, foto_count: counts[a.id] || 0 }));
+    // Automatisch sorteren: nieuwste datum eerst (jong → oud)
+    albumsList.sort((a, b) => albumSorteerWaarde(b) - albumSorteerWaarde(a));
   } catch (e) {
     console.error('loadAlbums error:', e);
     albumsList = [];
@@ -7534,14 +7563,15 @@ function renderAlbumGrid() {
       const thumbHtml = thumb
         ? `<img class="album-thumb" src="${escapeHtml(thumb)}" alt="" loading="lazy">`
         : `<div class="album-thumb-placeholder">📷</div>`;
-      // Hernoemen mag elk ingelogd lid; verwijderen en slepen blijven admin-only
+      // Hernoemen mag elk ingelogd lid; verwijderen blijft admin-only.
+      // Volgorde is automatisch op datum, dus geen handmatig slepen meer.
       const renameBtn = (isAdmin() || currentUserEmail) ? `<button class="album-rename-btn" title="Albumnaam aanpassen" onclick="renameAlbum(event,'${escapeHtml(album.id)}','${escapeHtml(album.naam).replace(/'/g,"\\'")}')">✎</button>` : '';
       const deleteBtn = isAdmin() ? `<button class="album-delete-btn" title="Album verwijderen" onclick="deleteAlbum(event,'${escapeHtml(album.id)}')">✕</button>` : '';
       const adminBtns = (renameBtn || deleteBtn)
-        ? `<div class="album-admin-btns" onclick="event.stopPropagation()">${renameBtn}${deleteBtn}</div>${isAdmin() ? '<div class="album-drag-handle" title="Slepen om volgorde te wijzigen">⠿</div>' : ''}`
+        ? `<div class="album-admin-btns" onclick="event.stopPropagation()">${renameBtn}${deleteBtn}</div>`
         : '';
       html += `
-        <div class="album-card" data-id="${escapeHtml(album.id)}" ${isAdmin() ? 'draggable="true"' : ''} onclick="openAlbum('${escapeHtml(album.id)}')">
+        <div class="album-card" data-id="${escapeHtml(album.id)}" onclick="openAlbum('${escapeHtml(album.id)}')">
           ${thumbHtml}
           ${adminBtns}
           <div class="album-meta">
@@ -7553,8 +7583,6 @@ function renderAlbumGrid() {
     });
     html += '</div>';
     content.innerHTML = html;
-
-    if (isAdmin()) initAlbumDrag();
   });
 }
 
