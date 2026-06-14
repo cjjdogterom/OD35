@@ -790,6 +790,22 @@
     text-transform: uppercase;
     color: var(--gray);
   }
+  .footer-idee { margin-top: 1rem; }
+  .footer-idee-btn {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--gray);
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    letter-spacing: normal;
+    text-transform: none;
+    padding: 0.4rem 0.9rem;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .footer-idee-btn:hover { border-color: var(--burgundy); color: var(--burgundy); }
+  .footer-idee-btn:disabled { opacity: 0.7; cursor: default; }
 
   footer .ornament-text {
     font-family: var(--font-display);
@@ -3411,6 +3427,9 @@
 
 <footer>
   Oude Delft 35 · oud-huisgenoten register · 401 personen · 1896–2024
+  <div class="footer-idee member-only">
+    <button id="idee-btn" class="footer-idee-btn" title="Een idee of suggestie voor het huisbestand insturen">💡 Idee voor het huisbestand indienen</button>
+  </div>
 </footer>
 
 </div>
@@ -5716,15 +5735,17 @@ function renderWijzigingCard(w) {
   }
 
   const isGesch = w.veld === '__GESCHIEDENIS__';
-  const tag = isGesch ? 'Geschiedenis' : 'Wijziging';
-  const tagColor = isGesch ? '#8a6d3b' : 'var(--gray)';
-  const persoonLabel = isGesch ? 'Voorstel geschiedenis' : (w.persoon || '');
-  const bodyRows = isGesch
-    ? `<div class="wijz-row"><div class="label">Voorstel</div><div class="value" style="white-space:pre-wrap;">${escapeHtml(w.wijziging || '')}</div></div>`
+  const isIdee = w.veld === '__IDEE__';
+  const tag = isIdee ? 'Idee' : isGesch ? 'Geschiedenis' : 'Wijziging';
+  const tagColor = isIdee ? '#2e7d6b' : isGesch ? '#8a6d3b' : 'var(--gray)';
+  const persoonLabel = isIdee ? 'Idee voor het huisbestand' : isGesch ? 'Voorstel geschiedenis' : (w.persoon || '');
+  const bodyRows = (isGesch || isIdee)
+    ? `<div class="wijz-row"><div class="label">${isIdee ? 'Idee' : 'Voorstel'}</div><div class="value" style="white-space:pre-wrap;">${escapeHtml(w.wijziging || '')}</div></div>`
     : `<div class="wijz-row"><div class="label">Veld</div><div class="value">${escapeHtml(w.veld || '')}</div></div>
       <div class="wijz-row"><div class="label">Wijziging</div><div class="value">${escapeHtml(w.wijziging || '')}</div></div>`;
+  const borderStyle = isIdee ? ' style="border-left-color:#2e7d6b;"' : isGesch ? ' style="border-left-color:#8a6d3b;"' : '';
   return `
-    <div class="wijz-card ${w.afgehandeld ? 'afgehandeld' : ''}" data-id="${escapeHtml(w.id)}"${isGesch ? ' style="border-left-color:#8a6d3b;"' : ''}>
+    <div class="wijz-card ${w.afgehandeld ? 'afgehandeld' : ''}" data-id="${escapeHtml(w.id)}"${borderStyle}>
       <div class="wijz-card-head">
         <div class="wijz-card-persoon"><span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:${tagColor};margin-right:0.5rem;">${tag}</span>${escapeHtml(persoonLabel)}</div>
         <div class="wijz-card-datum">${escapeHtml(datum)}</div>
@@ -6934,6 +6955,34 @@ document.getElementById('history-suggest-send').addEventListener('click', async 
   } catch (err) {
     result.innerHTML = `<div style="color:#c14040; margin-top:0.5rem;">Versturen mislukt: ${escapeHtml(err.message || String(err))}</div>`;
     btn.disabled = false; btn.textContent = orig;
+  }
+});
+
+// Leden: idee/suggestie voor het huisbestand indienen → komt bij Verzoeken
+const ideeBtn = document.getElementById('idee-btn');
+if (ideeBtn) ideeBtn.addEventListener('click', async () => {
+  const tekst = prompt('Jouw idee of suggestie voor het huisbestand:\n\n(Een admin bekijkt het bij de verzoeken.)');
+  if (tekst === null) return;
+  if (!tekst.trim()) { alert('Typ eerst je idee.'); return; }
+  const info = currentUserEmail ? displayNaam(currentUserEmail) : { naam: '' };
+  const orig = ideeBtn.textContent;
+  ideeBtn.disabled = true; ideeBtn.textContent = 'Versturen…';
+  try {
+    const { error } = await db.from('wijzigingsverzoeken').insert({
+      persoon: 'Idee',
+      aanvrager_naam: (info.naam && info.naam !== currentUserEmail ? info.naam : (currentUserEmail || 'Onbekend')),
+      aanvrager_email: currentUserEmail || null,
+      veld: '__IDEE__',
+      wijziging: tekst.trim(),
+      toelichting: null,
+    });
+    if (error) throw error;
+    ideeBtn.textContent = '✓ Bedankt voor je idee!';
+    if (isAdmin() && typeof loadWijzigingen === 'function') loadWijzigingen();
+    setTimeout(() => { ideeBtn.disabled = false; ideeBtn.textContent = orig; }, 2500);
+  } catch (err) {
+    alert('Versturen mislukt: ' + (err.message || err));
+    ideeBtn.disabled = false; ideeBtn.textContent = orig;
   }
 });
 
