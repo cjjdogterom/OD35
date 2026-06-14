@@ -8091,8 +8091,12 @@ async function bewerkBijschrift(e, fotoId) {
   const nieuw = prompt('Korte beschrijving onder deze foto:', huidig);
   if (nieuw === null) return;
   const waarde = nieuw.trim() || null;
-  const { error } = await db.from('fotos').update({ bijschrift: waarde }).eq('id', fotoId);
+  const { data, error } = await db.from('fotos').update({ bijschrift: waarde }).eq('id', fotoId).select();
   if (error) { alert('Opslaan mislukt: ' + error.message); return; }
+  if (!data || data.length === 0) {
+    alert('Opslaan mislukt: geen rechten om de beschrijving op te slaan.\n\nDraai de SQL die admins UPDATE-rechten op de fotos-tabel geeft (zie de instructie).');
+    return;
+  }
   if (foto) foto.bijschrift = waarde;
   renderAlbumFotos(currentAlbumId);
 }
