@@ -1760,6 +1760,19 @@
     border-bottom: 1px solid var(--line-soft);
   }
   .history-table tr:last-child td { border-bottom: none; }
+  .history-intro {
+    max-width: 720px;
+    margin: 0 auto 2rem;
+    padding: 0.9rem 1.1rem;
+    background: var(--paper-warm);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--burgundy);
+    border-radius: 2px;
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--gray);
+  }
   .history-edit-btn {
     display: block;
     margin: 2rem auto 0;
@@ -3102,6 +3115,12 @@
 
 <!-- ==================== TAB: GESCHIEDENIS ==================== -->
 <div class="tab-panel" id="panel-geschiedenis">
+  <div class="history-intro member-only">
+    Heb jij goede input voor de geschiedenis van Oude Delft 35? Leden kunnen
+    aanvullingen of correcties voorstellen door op de knop onderaan deze pagina
+    te klikken. Je voorstel wordt als verzoek ingediend en door een admin
+    beoordeeld voordat het wordt doorgevoerd.
+  </div>
   <div class="history-content" id="history-content"></div>
   <button class="history-edit-btn admin-only" id="history-edit-btn" style="display:none">Geschiedenis bewerken</button>
   <button class="history-edit-btn member-only" id="history-suggest-btn">✎ Correctie of aanvulling voorstellen</button>
