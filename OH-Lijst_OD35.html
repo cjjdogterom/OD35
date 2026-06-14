@@ -3103,7 +3103,8 @@
 <!-- ==================== TAB: GESCHIEDENIS ==================== -->
 <div class="tab-panel" id="panel-geschiedenis">
   <div class="history-content" id="history-content"></div>
-  <button class="history-edit-btn" id="history-edit-btn">Geschiedenis bewerken</button>
+  <button class="history-edit-btn admin-only" id="history-edit-btn" style="display:none">Geschiedenis bewerken</button>
+  <button class="history-edit-btn member-only" id="history-suggest-btn">✎ Correctie of aanvulling voorstellen</button>
   <div class="history-editor" id="history-editor">
     <p class="editor-help">Tip: gebruik dubbele regelafstand voor nieuwe paragrafen. Begin een regel met <code>## Titel</code> voor een kop, of <code>&gt; quote</code> voor een uitgelichte zin.</p>
     <textarea id="history-textarea"></textarea>
@@ -3112,6 +3113,17 @@
       <button class="cancel-btn" id="history-cancel" style="background:transparent; border:1px solid var(--line); color:var(--gray); padding:0.5rem 1rem; cursor:pointer; border-radius:2px; font-family:var(--font-body);">Annuleren</button>
       <button class="reset-btn" id="history-reset" style="background:transparent; border:1px solid var(--line); color:var(--gray); padding:0.5rem 1rem; cursor:pointer; border-radius:2px; font-family:var(--font-body); margin-left:auto;">Standaardtekst herstellen</button>
     </div>
+  </div>
+  <div class="history-editor" id="history-suggest-editor">
+    <p class="editor-help">Zie je een fout of mis je iets in de geschiedenis? Beschrijf hieronder je correctie of aanvulling. Een admin beoordeelt je voorstel voordat het wordt doorgevoerd.</p>
+    <input id="history-suggest-naam" type="text" placeholder="Je naam" style="width:100%; box-sizing:border-box; margin-bottom:0.5rem; padding:0.5rem; border:1px solid var(--line); border-radius:2px; font-family:var(--font-body);">
+    <input id="history-suggest-email" type="email" placeholder="Je e-mailadres (zodat we kunnen terugkoppelen)" style="width:100%; box-sizing:border-box; margin-bottom:0.5rem; padding:0.5rem; border:1px solid var(--line); border-radius:2px; font-family:var(--font-body);">
+    <textarea id="history-suggest-text" placeholder="Beschrijf je correctie of aanvulling…"></textarea>
+    <div class="editor-buttons">
+      <button id="history-suggest-send" style="background:var(--burgundy); color:var(--paper); padding:0.5rem 1rem; border:none; cursor:pointer; border-radius:2px; font-family:var(--font-body);">Voorstel versturen</button>
+      <button id="history-suggest-cancel" style="background:transparent; border:1px solid var(--line); color:var(--gray); padding:0.5rem 1rem; cursor:pointer; border-radius:2px; font-family:var(--font-body);">Annuleren</button>
+    </div>
+    <div id="history-suggest-result"></div>
   </div>
 </div><!-- /panel-geschiedenis -->
 
@@ -3450,6 +3462,10 @@ function updateAdminUI() {
   // Hoofdadmin-only elementen
   document.querySelectorAll('.hoofdadmin-only').forEach(el => {
     el.style.display = isHoofdadmin() ? '' : 'none';
+  });
+  // Member-only elementen (alleen voor niet-admins)
+  document.querySelectorAll('.member-only').forEach(el => {
+    el.style.display = adminUser ? 'none' : '';
   });
   // Laad wijzigingen badge zodra admin inlogt
   if (adminUser && typeof loadWijzigingen === 'function') {
@@ -5555,18 +5571,25 @@ function renderWijzigingen() {
 
 function renderWijzigingCard(w) {
   const datum = w.aangemaakt_op ? new Date(w.aangemaakt_op).toLocaleString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+  const isGesch = w.veld === '__GESCHIEDENIS__';
+  const tag = isGesch ? 'Geschiedenis' : 'Wijziging';
+  const tagColor = isGesch ? '#8a6d3b' : 'var(--gray)';
+  const persoonLabel = isGesch ? 'Voorstel geschiedenis' : (w.persoon || '');
+  const bodyRows = isGesch
+    ? `<div class="wijz-row"><div class="label">Voorstel</div><div class="value" style="white-space:pre-wrap;">${escapeHtml(w.wijziging || '')}</div></div>`
+    : `<div class="wijz-row"><div class="label">Veld</div><div class="value">${escapeHtml(w.veld || '')}</div></div>
+      <div class="wijz-row"><div class="label">Wijziging</div><div class="value">${escapeHtml(w.wijziging || '')}</div></div>`;
   return `
-    <div class="wijz-card ${w.afgehandeld ? 'afgehandeld' : ''}" data-id="${escapeHtml(w.id)}">
+    <div class="wijz-card ${w.afgehandeld ? 'afgehandeld' : ''}" data-id="${escapeHtml(w.id)}"${isGesch ? ' style="border-left-color:#8a6d3b;"' : ''}>
       <div class="wijz-card-head">
-        <div class="wijz-card-persoon"><span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray);margin-right:0.5rem;">Wijziging</span>${escapeHtml(w.persoon || '')}</div>
+        <div class="wijz-card-persoon"><span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:${tagColor};margin-right:0.5rem;">${tag}</span>${escapeHtml(persoonLabel)}</div>
         <div class="wijz-card-datum">${escapeHtml(datum)}</div>
       </div>
       <div class="wijz-card-aanvrager">
         Aangevraagd door <strong>${escapeHtml(w.aanvrager_naam || '')}</strong>
         ${w.aanvrager_email ? ` &middot; <a href="mailto:${escapeHtml(w.aanvrager_email)}">${escapeHtml(w.aanvrager_email)}</a>` : ''}
       </div>
-      <div class="wijz-row"><div class="label">Veld</div><div class="value">${escapeHtml(w.veld || '')}</div></div>
-      <div class="wijz-row"><div class="label">Wijziging</div><div class="value">${escapeHtml(w.wijziging || '')}</div></div>
+      ${bodyRows}
       ${w.toelichting ? `<div class="wijz-row"><div class="label">Toelichting</div><div class="value">${escapeHtml(w.toelichting)}</div></div>` : ''}
       <div class="wijz-actions">
         <label class="wijz-check-label">
@@ -6611,6 +6634,59 @@ document.getElementById('history-cancel').addEventListener('click', () => {
 document.getElementById('history-reset').addEventListener('click', () => {
   if (confirm('Weet je zeker dat je de geschiedenis wilt herstellen naar de standaardtekst?')) {
     document.getElementById('history-textarea').value = DEFAULT_HISTORY;
+  }
+});
+
+// Leden: correctie/aanvulling op de geschiedenis voorstellen → verzoeken-tab
+document.getElementById('history-suggest-btn').addEventListener('click', () => {
+  const editor = document.getElementById('history-suggest-editor');
+  const naam = document.getElementById('history-suggest-naam');
+  const email = document.getElementById('history-suggest-email');
+  // Voorvullen op basis van de ingelogde gebruiker
+  if (currentUserEmail) {
+    const info = displayNaam(currentUserEmail);
+    if (!naam.value) naam.value = info.naam && info.naam !== currentUserEmail ? info.naam : '';
+    if (!email.value) email.value = currentUserEmail;
+  }
+  document.getElementById('history-suggest-result').innerHTML = '';
+  editor.classList.toggle('open');
+});
+document.getElementById('history-suggest-cancel').addEventListener('click', () => {
+  document.getElementById('history-suggest-editor').classList.remove('open');
+});
+document.getElementById('history-suggest-send').addEventListener('click', async () => {
+  const btn = document.getElementById('history-suggest-send');
+  const result = document.getElementById('history-suggest-result');
+  const tekst = document.getElementById('history-suggest-text').value.trim();
+  const naam = document.getElementById('history-suggest-naam').value.trim();
+  const email = document.getElementById('history-suggest-email').value.trim();
+  result.innerHTML = '';
+  if (!tekst) {
+    result.innerHTML = `<div style="color:#c14040; margin-top:0.5rem;">Beschrijf eerst je correctie of aanvulling.</div>`;
+    return;
+  }
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Versturen…';
+  try {
+    const { error } = await db.from('wijzigingsverzoeken').insert({
+      persoon: 'Geschiedenis',
+      aanvrager_naam: naam || (email || 'Onbekend'),
+      aanvrager_email: email || null,
+      veld: '__GESCHIEDENIS__',
+      wijziging: tekst,
+      toelichting: null,
+    });
+    if (error) throw error;
+    result.innerHTML = `<div style="color:#4a8c4a; padding:0.75rem; background:var(--paper-warm); margin-top:0.5rem;"><strong>✓ Voorstel verstuurd.</strong> Een admin beoordeelt je aanvraag.</div>`;
+    document.getElementById('history-suggest-text').value = '';
+    btn.textContent = 'Verstuurd';
+    setTimeout(() => {
+      document.getElementById('history-suggest-editor').classList.remove('open');
+      btn.disabled = false; btn.textContent = orig;
+    }, 2000);
+  } catch (err) {
+    result.innerHTML = `<div style="color:#c14040; margin-top:0.5rem;">Versturen mislukt: ${escapeHtml(err.message || String(err))}</div>`;
+    btn.disabled = false; btn.textContent = orig;
   }
 });
 
