@@ -7534,12 +7534,12 @@ function renderAlbumGrid() {
       const thumbHtml = thumb
         ? `<img class="album-thumb" src="${escapeHtml(thumb)}" alt="" loading="lazy">`
         : `<div class="album-thumb-placeholder">📷</div>`;
-      const adminBtns = isAdmin() ? `
-        <div class="album-admin-btns" onclick="event.stopPropagation()">
-          <button class="album-rename-btn" title="Album hernoemen" onclick="renameAlbum(event,'${escapeHtml(album.id)}','${escapeHtml(album.naam).replace(/'/g,"\\'")}')">✎</button>
-          <button class="album-delete-btn" title="Album verwijderen" onclick="deleteAlbum(event,'${escapeHtml(album.id)}')">✕</button>
-        </div>
-        <div class="album-drag-handle" title="Slepen om volgorde te wijzigen">⠿</div>` : '';
+      // Hernoemen mag elk ingelogd lid; verwijderen en slepen blijven admin-only
+      const renameBtn = (isAdmin() || currentUserEmail) ? `<button class="album-rename-btn" title="Albumnaam aanpassen" onclick="renameAlbum(event,'${escapeHtml(album.id)}','${escapeHtml(album.naam).replace(/'/g,"\\'")}')">✎</button>` : '';
+      const deleteBtn = isAdmin() ? `<button class="album-delete-btn" title="Album verwijderen" onclick="deleteAlbum(event,'${escapeHtml(album.id)}')">✕</button>` : '';
+      const adminBtns = (renameBtn || deleteBtn)
+        ? `<div class="album-admin-btns" onclick="event.stopPropagation()">${renameBtn}${deleteBtn}</div>${isAdmin() ? '<div class="album-drag-handle" title="Slepen om volgorde te wijzigen">⠿</div>' : ''}`
+        : '';
       html += `
         <div class="album-card" data-id="${escapeHtml(album.id)}" ${isAdmin() ? 'draggable="true"' : ''} onclick="openAlbum('${escapeHtml(album.id)}')">
           ${thumbHtml}
