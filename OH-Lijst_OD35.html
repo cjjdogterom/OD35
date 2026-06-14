@@ -790,22 +790,25 @@
     text-transform: uppercase;
     color: var(--gray);
   }
-  .footer-idee { margin-top: 1rem; }
-  .footer-idee-btn {
-    background: transparent;
-    border: 1px solid var(--line);
-    color: var(--gray);
+  .hero-idee {
+    margin-top: 1rem;
     font-family: var(--font-body);
-    font-size: 0.78rem;
-    letter-spacing: normal;
-    text-transform: none;
-    padding: 0.4rem 0.9rem;
-    border-radius: 2px;
-    cursor: pointer;
-    transition: border-color 0.15s, color 0.15s;
+    font-size: 0.85rem;
+    color: var(--gray);
   }
-  .footer-idee-btn:hover { border-color: var(--burgundy); color: var(--burgundy); }
-  .footer-idee-btn:disabled { opacity: 0.7; cursor: default; }
+  .hero-idee-link {
+    background: transparent;
+    border: none;
+    color: var(--burgundy);
+    font-family: inherit;
+    font-size: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    padding: 0;
+  }
+  .hero-idee-link:hover { opacity: 0.75; }
+  .hero-idee-link:disabled { opacity: 0.6; cursor: default; text-decoration: none; }
 
   footer .ornament-text {
     font-family: var(--font-display);
@@ -3110,6 +3113,9 @@
     <button id="global-wijziging-btn" class="hero-action-btn">✎ Wijziging indienen</button>
     <button id="invite-member-btn" class="hero-action-btn" style="background:transparent; color:var(--burgundy); border:1px solid var(--burgundy);">✉ Iemand uitnodigen</button>
   </div>
+  <div class="hero-idee member-only">
+    💡 Heb jij een leuke toevoeging aan deze site? <button id="idee-btn" class="hero-idee-link">Laat het hier weten</button>
+  </div>
 </header>
 
 <div id="admin-bar" class="admin-bar">
@@ -3427,9 +3433,6 @@
 
 <footer>
   Oude Delft 35 · oud-huisgenoten register · 401 personen · 1896–2024
-  <div class="footer-idee member-only">
-    <button id="idee-btn" class="footer-idee-btn" title="Een idee of suggestie voor het huisbestand insturen">💡 Idee voor het huisbestand indienen</button>
-  </div>
 </footer>
 
 </div>
