@@ -1662,6 +1662,21 @@
     text-align: justify;
     hyphens: auto;
   }
+  .history-content a {
+    color: var(--burgundy);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    word-break: break-word;
+  }
+  .history-content a:hover { opacity: 0.75; }
+  .history-content .history-list {
+    margin: 0 0 1.2rem;
+    padding-left: 1.2rem;
+  }
+  .history-content .history-list li {
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+  }
   .history-content .pull-quote {
     font-family: var(--font-display);
     font-style: italic;
@@ -6528,9 +6543,42 @@ Een van de bekendste stadsgezichten ter wereld is het Gezicht op Delft, geschild
 
 1891 — Oprichtingsjaar studentenhuis · 1896 — Eerste inschrijving als corpshuis
 
-Bronnen: Archief Delft · Stadsarchief Delft · Delpher (Delftsche Courant) · Historisch GIS · Ons Voorgeslacht · Wikipedia · Weve, W. — Vermeer en de Delftse topografie
+Voor het onderzoek naar de geschiedenis van Oude Delft 35 en zijn bewoners zijn onder meer de volgende bronnen geraadpleegd:
+
+- [Ons Voorgeslacht — genealogische databank](https://www.onsvoorgeslacht.nl/wp-content/plugins/typify-databank/download.php?item_id=5853)
+- [Wikipedia — Lijst van burgemeesters van Delft](https://nl.wikipedia.org/wiki/Lijst_van_burgemeesters_van_Delft)
+- [Wikipedia (Duits) — Arent Jacobsz van der Graeff](https://de.wikipedia.org/wiki/Arent_Jacobsz_van_der_Graeff)
+- [Wikipedia — Moord op de gebroeders De Witt](https://nl.wikipedia.org/wiki/Moord_op_de_gebroeders_De_Witt)
+- [Genealogie Online — Willemse-stamboom](https://www.genealogieonline.nl/willemse-stamboom/I510958.php)
+- [Genealogie Online — Harssema-stamboom](https://www.genealogieonline.nl/genealogy-harssema/I210031.php)
+- [WieWasWie — genealogisch zoekportaal](https://www.wiewaswie.nl/)
+- [Open Archieven — genealogisch zoekportaal](https://www.openarchieven.nl/)
+- [Wikipedia — VOC-Kamer Delft](https://nl.wikipedia.org/wiki/VOC-Kamer_Delft)
+- [Stadsarchief Delft — archiefstuk](https://zoeken.stadsarchiefdelft.nl/detail.php?nav_id=4-2&id=31229557&index=5)
+- [Stadsarchief Delft — Adresboek van Delft 1893](https://zoeken.stadsarchiefdelft.nl/adresboek_van_delft_1893/1?id=219945408&nav_id=109-2&index=34)
+- [Kaart Delft — kadastraal perceel 1832 (034E577)](https://kaart.delft.nl/asp/details.asp?percelen1832=034E577&percelenrecent=&koppelnummers=034E577&redirect=no)
+- [Delpher — krantenzoekopdracht "Oude Delft 35" (Delftsche Courant)](https://www.delpher.nl/nl/kranten/results?query=%22Oude+delft+35%22&facets%5BspatialCreation%5D%5B%5D=Delft&page=1&sortfield=date&coll=ddd)
+- Weve, W. — Vermeer en de Delftse topografie
+
+Daarnaast: Archief Delft · Stadsarchief Delft · Historisch GIS.
 `;
 
+
+// Inline-opmaak: maakt markdown-links [tekst](url) en kale URL's klikbaar,
+// en escapet al het overige veilig.
+function inlineFormat(raw) {
+  const re = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|(https?:\/\/[^\s<]+)/g;
+  let out = '', last = 0, m;
+  while ((m = re.exec(raw)) !== null) {
+    out += escapeHtml(raw.slice(last, m.index));
+    const url = m[2] || m[3];
+    const label = m[1] || m[3];
+    out += `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
+    last = re.lastIndex;
+  }
+  out += escapeHtml(raw.slice(last));
+  return out;
+}
 
 function parseHistoryMarkdown(text) {
   const lines = text.split('\n');
@@ -6539,11 +6587,19 @@ function parseHistoryMarkdown(text) {
   let paragraphBuf = [];
   let tableLines = [];
   let inTable = false;
+  let listBuf = [];
 
   function flushParagraph() {
     if (paragraphBuf.length) {
       html += `<p>${paragraphBuf.join(' ')}</p>`;
       paragraphBuf = [];
+    }
+  }
+
+  function flushList() {
+    if (listBuf.length) {
+      html += `<ul class="history-list">${listBuf.map(li => `<li>${inlineFormat(li)}</li>`).join('')}</ul>`;
+      listBuf = [];
     }
   }
 
@@ -6567,6 +6623,17 @@ function parseHistoryMarkdown(text) {
 
   lines.forEach(line => {
     const trimmed = line.trim();
+
+    // Opsommingsregels (- of •): verzamel tot een <ul>
+    if (/^[-•]\s+/.test(trimmed)) {
+      flushParagraph();
+      if (inTimeline) { html += '</div>'; inTimeline = false; }
+      if (inTable) flushTable();
+      listBuf.push(trimmed.replace(/^[-•]\s+/, ''));
+      return;
+    } else if (listBuf.length) {
+      flushList();
+    }
 
     // Afbeeldingenrij: ::row gevolgd door afbeeldingen
     if (trimmed.startsWith('::row')) { html += '<div class="history-figure-row">'; return; }
@@ -6608,21 +6675,22 @@ function parseHistoryMarkdown(text) {
       html += `<h3>${escapeHtml(trimmed.slice(3))}</h3>`;
     } else if (trimmed.startsWith('> ')) {
       flushParagraph();
-      html += `<div class="pull-quote">${escapeHtml(trimmed.slice(2))}</div>`;
+      html += `<div class="pull-quote">${inlineFormat(trimmed.slice(2))}</div>`;
     } else if (trimmed.match(/^\d{4}\s*[-–:]\s*/)) {
       if (!inTimeline) { flushParagraph(); html += '<div class="timeline">'; inTimeline = true; }
       const m = trimmed.match(/^(\d{4})\s*[-–:]\s*(.+)$/);
-      html += `<div class="timeline-item"><div class="timeline-year">${m[1]}</div><div class="timeline-text">${escapeHtml(m[2])}</div></div>`;
+      html += `<div class="timeline-item"><div class="timeline-year">${m[1]}</div><div class="timeline-text">${inlineFormat(m[2])}</div></div>`;
     } else {
       if (inTimeline) { html += '</div>'; inTimeline = false; }
       if (paragraphBuf.length === 0 && html.match(/<h2>[^<]*<\/h2>$/) && !html.includes('<p>')) {
-        html += `<p class="lead">${escapeHtml(trimmed)}</p>`;
+        html += `<p class="lead">${inlineFormat(trimmed)}</p>`;
       } else {
-        paragraphBuf.push(escapeHtml(trimmed));
+        paragraphBuf.push(inlineFormat(trimmed));
       }
     }
   });
   flushParagraph();
+  flushList();
   if (inTimeline) html += '</div>';
   if (inTable) flushTable();
   return html;
