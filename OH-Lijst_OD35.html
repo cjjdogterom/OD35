@@ -3215,7 +3215,7 @@
       <h2>Agenda</h2>
       <p style="color:var(--gray); font-style:italic; margin-top:0.25rem;">Aankomende reünies, lustra en huisgebeurtenissen</p>
     </div>
-    <button class="event-form-toggle" id="event-form-toggle">+ Nieuw event</button>
+    <button class="event-form-toggle admin-only" id="event-form-toggle" style="display:none">+ Nieuw event</button>
   </div>
 
   <form class="event-form" id="event-form">
@@ -6305,6 +6305,7 @@ document.getElementById('event-form-cancel').addEventListener('click', () => {
 });
 document.getElementById('event-form').addEventListener('submit', async e => {
   e.preventDefault();
+  if (!isAdmin()) { alert('Alleen beheerders kunnen agendapunten toevoegen.'); return; }
   const form = e.target;
   const fd = new FormData(form);
   const saveBtn = form.querySelector('.save-btn');
