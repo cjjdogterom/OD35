@@ -2511,6 +2511,12 @@
 .wijz-card.afgehandeld { border-left-color: #4a8c4a; opacity: 0.65; }
 .wijz-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
 .wijz-card-persoon { font-weight: 600; font-size: 1.05rem; color: var(--ink); }
+.wijz-persoon-link {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font: inherit; color: var(--burgundy); font-weight: 600;
+}
+.wijz-persoon-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+.wijz-edit-pen { font-size: 0.85em; opacity: 0.8; }
 .wijz-card-datum { font-size: 0.78rem; color: var(--gray); white-space: nowrap; }
 .wijz-card-aanvrager { font-size: 0.85rem; color: var(--gray); margin-bottom: 0.8rem; }
 .wijz-card-aanvrager a { color: var(--burgundy); text-decoration: none; }
@@ -6292,6 +6298,18 @@ function renderWijzigingen() {
   list.innerHTML = filtered.map(x => x.kind === 'inschrijving' ? renderInschrijvingCard(x) : renderWijzigingCard(x)).join('');
 }
 
+// Zoek de persoon bij het label van een wijzigingsverzoek (zelfde opbouw als
+// waarmee het verzoek is aangemaakt: "Voorletters Tussenvoegsel Achternaam (jaar)").
+function findPersonByWijzigingLabel(label) {
+  if (!label) return null;
+  const doel = String(label).trim();
+  return PEOPLE.find(p => {
+    const naam = [p['Voorletters'], p['Tussenvoegsel'], p['Achternaam']].filter(Boolean).join(' ').trim();
+    const lbl = `${naam}${p['Aankomstjaar'] ? ' (' + p['Aankomstjaar'] + ')' : ''}`;
+    return lbl === doel;
+  }) || null;
+}
+
 function renderWijzigingCard(w) {
   const datum = w.aangemaakt_op ? new Date(w.aangemaakt_op).toLocaleString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 
@@ -6329,6 +6347,15 @@ function renderWijzigingCard(w) {
   const tag = isIdee ? 'Idee' : isGesch ? 'Geschiedenis' : 'Wijziging';
   const tagColor = isIdee ? '#2e7d6b' : isGesch ? '#8a6d3b' : 'var(--gray)';
   const persoonLabel = isIdee ? 'Idee voor het huisbestand' : isGesch ? 'Voorstel geschiedenis' : (w.persoon || '');
+  // Bij een gewoon wijzigingsverzoek: maak de persoon klikbaar zodat een admin
+  // de gegevens meteen kan aanpassen.
+  let persoonHtml = escapeHtml(persoonLabel);
+  if (!isIdee && !isGesch && isAdmin()) {
+    const pers = findPersonByWijzigingLabel(w.persoon);
+    if (pers) {
+      persoonHtml = `<button class="wijz-persoon-link" data-action="wijz-edit-persoon" data-id="${escapeHtml(pers._id || '')}" title="Open en bewerk de gegevens van ${escapeHtml(persoonLabel)}">${escapeHtml(persoonLabel)} <span class="wijz-edit-pen">✎</span></button>`;
+    }
+  }
   const bodyRows = (isGesch || isIdee)
     ? `<div class="wijz-row"><div class="label">${isIdee ? 'Idee' : 'Voorstel'}</div><div class="value" style="white-space:pre-wrap;">${escapeHtml(w.wijziging || '')}</div></div>`
     : `<div class="wijz-row"><div class="label">Veld</div><div class="value">${escapeHtml(w.veld || '')}</div></div>
@@ -6337,7 +6364,7 @@ function renderWijzigingCard(w) {
   return `
     <div class="wijz-card ${w.afgehandeld ? 'afgehandeld' : ''}" data-id="${escapeHtml(w.id)}"${borderStyle}>
       <div class="wijz-card-head">
-        <div class="wijz-card-persoon"><span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:${tagColor};margin-right:0.5rem;">${tag}</span>${escapeHtml(persoonLabel)}</div>
+        <div class="wijz-card-persoon"><span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:${tagColor};margin-right:0.5rem;">${tag}</span>${persoonHtml}</div>
         <div class="wijz-card-datum">${escapeHtml(datum)}</div>
       </div>
       <div class="wijz-card-aanvrager">
@@ -6413,6 +6440,16 @@ document.getElementById('wijz-list').addEventListener('change', async e => {
 });
 
 document.getElementById('wijz-list').addEventListener('click', async e => {
+  // Klik op de persoon in een wijzigingsverzoek → open het bewerk-venster (admin)
+  const persoonBtn = e.target.closest('[data-action="wijz-edit-persoon"]');
+  if (persoonBtn) {
+    if (!isAdmin()) return;
+    const id = persoonBtn.dataset.id;
+    const p = PEOPLE.find(x => String(x._id) === String(id));
+    if (p) openPersonModal(p);
+    else alert('Kon de persoon niet vinden in de ledenlijst.');
+    return;
+  }
   // Foto-verwijderverzoek goedkeuren → foto definitief verwijderen + verzoek weg
   if (e.target.matches('[data-action="approve-foto-del"]')) {
     const id = e.target.dataset.id;
