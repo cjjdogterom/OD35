@@ -3716,13 +3716,26 @@ const SUPABASE_URL = 'https://mxbtmbcgycjqapjzulrp.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14YnRtYmNneWNqcWFwanp1bHJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MDQ4MzgsImV4cCI6MjA5MzQ4MDgzOH0.6Qowa_mqhH7YtrljF5fZnQzUaG_u4N5TodcnLzRhYSM';
 // Sessie blijft bewaard in de browser en wordt automatisch vernieuwd,
 // zodat een lid na inloggen ingelogd blijft (geen herhaald inloggen).
+// storageKey NIET wijzigen — dat zou bestaande sessies eenmalig uitloggen.
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    storage: window.localStorage,
   }
 });
+
+// Reageer op auth-events: bij een definitieve uitlog (of een verlopen sessie die
+// niet meer te vernieuwen is) terug naar het inlogscherm i.p.v. een lege/kapotte app.
+try {
+  db.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+      const main = document.getElementById('main-content');
+      if (main && main.style.display !== 'none') location.reload();
+    }
+  });
+} catch (_) {}
 
 // Supabase rij → persoon object (Dutch veldnamen)
 function dbRowToPerson(row) {
@@ -8018,7 +8031,13 @@ async function init() {
 
   // Iedereen is nu ingelogd als persoonlijk lid. Adminrechten alleen als het
   // e-mailadres in de admins-tabel staat (of de vaste hoofdadmin is).
+  // BELANGRIJK: eerst getSession() — dat ververst een (net) verlopen access-token
+  // via de refresh-token. getUser() doet dat NIET en zou dan ten onrechte 'uitgelogd'
+  // teruggeven, waardoor met RLS alle data faalt en het voelt alsof je bent uitgelogd.
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { location.reload(); return; }
   const { data: { user } } = await db.auth.getUser();
+  if (!user) { try { await db.auth.signOut(); } catch (_) {} location.reload(); return; }
   adminUser = null;
   currentUserEmail = (user && user.email ? user.email : '').toLowerCase();
   if (user && user.email) {
@@ -8051,6 +8070,15 @@ async function init() {
     huisOudsteMap = oudsten;
   } catch(e) {
     console.error('Kon data niet laden:', e);
+    // Auth-/RLS-fout (verlopen of ontbrekende sessie) → opnieuw inloggen i.p.v.
+    // een generieke 'verbinding'-melding waar de gebruiker steeds op terugkomt.
+    const m = ((e && (e.message || e.code)) || '').toString();
+    if ((e && (e.status === 401 || e.status === 403)) || /PGRST301|permission denied|JWT|invalid token|401|403/i.test(m)) {
+      try { await db.auth.signOut(); } catch (_) {}
+      alert('Je sessie is verlopen — log opnieuw in.');
+      location.reload();
+      return;
+    }
     alert('Kon de ledenlijst niet laden. Controleer de verbinding en ververs de pagina.');
     return;
   }
