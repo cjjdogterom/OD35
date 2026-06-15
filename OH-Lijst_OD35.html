@@ -2189,40 +2189,48 @@
   }
   .wk-ball {
     position: absolute;
-    width: var(--ball, 56px);
-    height: var(--ball, 56px);
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='47' fill='%23ffffff' stroke='%23202020' stroke-width='2.5'/><polygon points='50,31 62,40 57,54 43,54 38,40' fill='%23181818'/><path d='M50 31 V12 M62 40 L80 31 M57 54 L70 71 M43 54 L30 71 M38 40 L20 31' stroke='%23181818' stroke-width='2.4' fill='none' stroke-linecap='round'/></svg>");
+    top: 0;
+    pointer-events: none;
+    width: var(--ball, 58px);
+    height: var(--ball, 58px);
+    background-image: url("archief/wk-bal.png");
     background-size: contain;
     background-repeat: no-repeat;
-    opacity: 0.5;
-    filter: drop-shadow(0 6px 10px rgba(0,0,0,0.18));
-    animation: wk-float var(--dur, 9s) ease-in-out infinite;
+    background-position: center;
+    opacity: var(--op, 0.85);
+    filter: drop-shadow(0 8px 10px rgba(0,0,0,0.22));
+    animation: wk-fall var(--dur, 12s) linear infinite;
     animation-delay: var(--delay, 0s);
+    will-change: transform;
   }
-  @keyframes wk-float {
-    0%   { transform: translateY(0) rotate(0deg); }
-    50%  { transform: translateY(-26px) rotate(180deg); }
-    100% { transform: translateY(0) rotate(360deg); }
+  /* De ballen vallen van boven naar onder en draaien onderweg rond */
+  @keyframes wk-fall {
+    0%   { transform: translate3d(0, -16vh, 0) rotate(0deg); }
+    100% { transform: translate3d(var(--drift, 0px), 116vh, 0) rotate(var(--spin, 540deg)); }
   }
-  /* Posities van de voetballen — vooral langs de randen voor de leesbaarheid */
-  .wk-ball-1  { top: 11%;    left: 2.5%;  --ball: 60px; --dur: 9s;    --delay: 0s;   }
-  .wk-ball-2  { top: 24%;    right: 3%;   --ball: 46px; --dur: 11s;   --delay: 1.2s; }
-  .wk-ball-3  { top: 52%;    left: 3.5%;  --ball: 52px; --dur: 10s;   --delay: 0.6s; }
-  .wk-ball-4  { top: 66%;    right: 4%;   --ball: 66px; --dur: 12s;   --delay: 2s;   }
-  .wk-ball-5  { bottom: 5%;  left: 8%;    --ball: 44px; --dur: 8.5s;  --delay: 0.3s; }
-  .wk-ball-6  { bottom: 8%;  right: 10%;  --ball: 56px; --dur: 10.5s; --delay: 1.6s; }
-  .wk-ball-7  { top: 38%;    right: 1.5%; --ball: 40px; --dur: 13s;   --delay: 0.9s; }
-  .wk-ball-8  { bottom: 26%; left: 4%;    --ball: 48px; --dur: 11.5s; --delay: 2.4s; }
-  .wk-ball-9  { top: 6%;     right: 22%;  --ball: 34px; --dur: 12.5s; --delay: 1s; opacity: 0.32; }
-  .wk-ball-10 { bottom: 4%;  left: 38%;   --ball: 36px; --dur: 9.5s;  --delay: 1.8s; opacity: 0.3; }
+  /* Per bal: horizontale positie, grootte, valduur, draai, drift en (negatieve) vertraging
+     zodat er meteen een doorlopende 'regen' van draaiende ballen is */
+  .wk-ball-1  { left: 4%;  --ball: 60px; --dur: 13s;  --delay: -1s;   --spin: 540deg;  --drift: 18px;  }
+  .wk-ball-2  { left: 13%; --ball: 40px; --dur: 16s;  --delay: -7s;   --spin: 720deg;  --drift: -22px; --op: 0.7; }
+  .wk-ball-3  { left: 22%; --ball: 70px; --dur: 11s;  --delay: -4s;   --spin: 420deg;  --drift: 30px;  }
+  .wk-ball-4  { left: 31%; --ball: 46px; --dur: 15s;  --delay: -10s;  --spin: 900deg;  --drift: -14px; --op: 0.75; }
+  .wk-ball-5  { left: 41%; --ball: 54px; --dur: 12.5s;--delay: -2.5s; --spin: 600deg;  --drift: 24px;  }
+  .wk-ball-6  { left: 50%; --ball: 38px; --dur: 17s;  --delay: -13s;  --spin: 1080deg; --drift: -28px; --op: 0.65; }
+  .wk-ball-7  { left: 60%; --ball: 64px; --dur: 12s;  --delay: -6s;   --spin: 480deg;  --drift: 16px;  }
+  .wk-ball-8  { left: 69%; --ball: 44px; --dur: 14.5s;--delay: -9s;   --spin: 780deg;  --drift: -20px; --op: 0.75; }
+  .wk-ball-9  { left: 79%; --ball: 56px; --dur: 11.5s;--delay: -3.5s; --spin: 600deg;  --drift: 26px;  }
+  .wk-ball-10 { left: 88%; --ball: 42px; --dur: 16s;  --delay: -11s;  --spin: 840deg;  --drift: -16px; --op: 0.7; }
+  .wk-ball-11 { left: 95%; --ball: 50px; --dur: 13.5s;--delay: -5s;   --spin: 660deg;  --drift: -24px; }
+  .wk-ball-12 { left: 35%; --ball: 34px; --dur: 18s;  --delay: -15s;  --spin: 960deg;  --drift: 20px;  --op: 0.6; }
 
   @media (max-width: 700px) {
-    /* op smalle schermen wat minder en kleiner, blijft rustig leesbaar */
-    .wk-ball { opacity: 0.3; }
-    .wk-ball-3, .wk-ball-4, .wk-ball-7, .wk-ball-8, .wk-ball-9, .wk-ball-10 { display: none; }
+    /* op smalle schermen wat minder ballen + kleiner, blijft rustig leesbaar */
+    .wk-ball { opacity: 0.6; }
+    .wk-ball-3, .wk-ball-6, .wk-ball-8, .wk-ball-10, .wk-ball-12 { display: none; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .wk-ball, .wk-bunting span { animation: none !important; }
+    .wk-ball { animation: none !important; opacity: 0 !important; }
+    .wk-bunting span { animation: none !important; }
   }
 
   /* ============ NESTOR — bankplekken ============ */
@@ -3319,6 +3327,8 @@
   <span class="wk-ball wk-ball-8"></span>
   <span class="wk-ball wk-ball-9"></span>
   <span class="wk-ball wk-ball-10"></span>
+  <span class="wk-ball wk-ball-11"></span>
+  <span class="wk-ball wk-ball-12"></span>
 </div>
 
 <header>
@@ -8034,6 +8044,8 @@ async function init() {
   render();
   // Toon de Nestor-tab alleen voor huidige bewoners (jaar 2017–2026)
   if (typeof updateNestorTabVisibility === 'function') updateNestorTabVisibility();
+  // Nu de gebruiker bekend is: thema herberekenen (WK alleen voor bewoners 2011–2026)
+  if (typeof window.refreshTheme === 'function') window.refreshTheme();
   // Onthul de eerste (Personen) panel-blokken zacht
   if (typeof revealPanel === 'function') revealPanel('panel-personen');
   // Registreer dit bezoek (eenmalig per sessie) voor het bezoekers-dashboard
@@ -9213,6 +9225,15 @@ Met vriendelijke groet,"></textarea>
 
 <script>
 // ==================== THEME PICKER ====================
+// Mag de huidige gebruiker het WK-thema zien? Alleen ingelogde bewoners
+// met aankomstjaar 2011 t/m 2026. Niet ingelogd (inlogpagina) = nooit.
+function wkEligible() {
+  if (!currentUserEmail) return false;
+  const p = (typeof personByEmail === 'function') ? personByEmail(currentUserEmail) : null;
+  const j = p && p['Aankomstjaar'] ? Number(p['Aankomstjaar']) : null;
+  return j !== null && j >= 2011 && j <= 2026;
+}
+
 (function() {
   const THEME_KEY = 'od35_theme';
   const valid = ['bibliotheca', 'gatsby', 'atelier', 'wk'];
@@ -9222,23 +9243,35 @@ Met vriendelijke groet,"></textarea>
     const map = { delft: 'bibliotheca', marine: 'gatsby', sapphire: 'atelier', bordeaux: 'bibliotheca', forest: 'atelier' };
     localStorage.setItem('od35_theme', map[oldKey] || 'bibliotheca');
   }
-  function applyTheme(name) {
-    if (!valid.includes(name)) name = 'wk';
-    document.documentElement.setAttribute('data-theme', name);
-    localStorage.setItem(THEME_KEY, name);
+  // Effectief thema: WK alleen voor wie er recht op heeft (bewoner 2011–2026 én ingelogd).
+  function computeTheme() {
+    let t = localStorage.getItem(THEME_KEY);
+    if (!valid.includes(t)) t = null;
+    const elig = wkEligible();
+    if (t === 'wk' && !elig) t = null;            // WK weigeren voor niet-bewoners / inlogpagina
+    if (!t) t = elig ? 'wk' : 'bibliotheca';        // standaard: WK voor bewoners, anders normaal
+    return t;
+  }
+  function refreshTheme() {
+    const t = computeTheme();
+    document.documentElement.setAttribute('data-theme', t);
     document.querySelectorAll('.theme-option').forEach(b => {
-      b.classList.toggle('active', b.dataset.themeChoice === name);
+      b.classList.toggle('active', b.dataset.themeChoice === t);
     });
+    // WK-optie in de kiezer alleen tonen aan wie het mag zien
+    const wkBtn = document.querySelector('.theme-option[data-theme-choice="wk"]');
+    if (wkBtn) wkBtn.style.display = wkEligible() ? '' : 'none';
   }
-  // WK is nu het standaardthema voor iedereen. Eenmalig forceren we het ook bij
-  // wie al een ander thema had gekozen; daarna kan iedereen weer vrij wisselen.
-  const WK_PROMO = 'od35_wk_promo_v1';
-  let saved = localStorage.getItem(THEME_KEY);
-  if (!localStorage.getItem(WK_PROMO)) {
-    saved = 'wk';
-    localStorage.setItem(WK_PROMO, '1');
+  function pickTheme(name) {
+    if (!valid.includes(name)) return;
+    if (name === 'wk' && !wkEligible()) return;     // niet kiesbaar voor niet-bewoners
+    localStorage.setItem(THEME_KEY, name);
+    refreshTheme();
   }
-  applyTheme(saved || 'wk');
+  // Globaal beschikbaar zodat init() het thema na inloggen kan herberekenen
+  window.refreshTheme = refreshTheme;
+
+  refreshTheme();   // initieel — op de inlogpagina is niemand ingelogd → normaal thema
 
   // Wire up popover
   const fab = document.getElementById('theme-fab');
@@ -9250,7 +9283,7 @@ Met vriendelijke groet,"></textarea>
     });
     document.querySelectorAll('.theme-option').forEach(btn => {
       btn.addEventListener('click', () => {
-        applyTheme(btn.dataset.themeChoice);
+        pickTheme(btn.dataset.themeChoice);
         pop.classList.remove('open');
       });
     });
