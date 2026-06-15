@@ -2224,6 +2224,61 @@
   @media (prefers-reduced-motion: reduce) {
     .wk-ball, .wk-bunting span { animation: none !important; }
   }
+
+  /* ============ NESTOR — bankplekken ============ */
+  .nestor-head h2 { margin: 0; }
+  .nestor-sub { color: var(--gray); margin: 0.3rem 0 1rem; font-style: italic; }
+  .nestor-status {
+    background: var(--paper-warm); border: 1px solid var(--line); border-left: 3px solid var(--burgundy);
+    border-radius: 2px; padding: 0.6rem 0.9rem; margin-bottom: 1.25rem; font-size: 0.9rem; color: var(--ink);
+  }
+  .nestor-room { max-width: 780px; margin: 0 auto 1.5rem; }
+  .nestor-zone { display: flex; gap: 1rem; margin-bottom: 1rem; }
+  .nestor-top { justify-content: space-between; align-items: flex-start; }
+  .nestor-chairs { display: flex; flex-direction: column; gap: 1rem; }
+  .nestor-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .bank {
+    background: var(--paper-warm); border: 1px solid var(--line); border-radius: 10px;
+    padding: 7px; display: flex; gap: 7px;
+  }
+  .bank.vert  { flex-direction: column; width: 128px; flex: 0 0 auto; }
+  .bank.horiz { flex: 1; }
+  .bank.chair { width: 128px; flex: 0 0 auto; }
+  .bank-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .bank-label { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gray-light); text-align: center; }
+  .seat {
+    flex: 1; min-height: 68px; border-radius: 7px; border: 1px solid var(--line);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; cursor: pointer; font-size: 0.8rem; padding: 5px 4px;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s; line-height: 1.2;
+  }
+  .bank.vert .seat { min-height: 84px; }
+  .seat:active { transform: scale(0.97); }
+  .seat.vrij { background: #fff; color: var(--gray); border-style: dashed; }
+  .seat.vrij:hover { border-color: var(--burgundy); color: var(--burgundy); background: var(--highlight); }
+  .seat.bezet { background: var(--paper); color: var(--ink); cursor: not-allowed; }
+  .seat.jij { background: #4a8c4a; color: #fff; border-color: #3f7d3f; cursor: pointer; }
+  .seat.overneembaar { background: #fff4e6; border-color: #e2680f; color: #a8500d; }
+  .seat.overneembaar:hover { background: #ffe1c2; }
+  .seat .seat-naam { font-weight: 600; }
+  .seat .seat-jaar { font-size: 0.7rem; opacity: 0.85; font-family: var(--font-mono); }
+  .seat .seat-vrij-tekst { font-size: 0.72rem; }
+  .nestor-legend { display: flex; flex-wrap: wrap; gap: 1rem 1.4rem; justify-content: center; font-size: 0.82rem; color: var(--gray); margin-bottom: 1rem; }
+  .nestor-legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .seat-demo { width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--line); display: inline-block; }
+  .seat-demo.vrij { background: #fff; border-style: dashed; }
+  .seat-demo.jij { background: #4a8c4a; border-color: #3f7d3f; }
+  .seat-demo.overneembaar { background: #fff4e6; border-color: #e2680f; }
+  .seat-demo.bezet { background: var(--paper); }
+  .nestor-uitleg { max-width: 680px; margin: 0 auto; font-size: 0.85rem; color: var(--gray); line-height: 1.55; text-align: center; }
+  @media (max-width: 640px) {
+    .nestor-top { flex-direction: column; }
+    .nestor-chairs { flex-direction: row; width: 100%; }
+    .bank.vert, .bank.chair { width: auto; flex: 1; }
+    .bank.vert { flex-direction: row; }
+    .nestor-bottom { grid-template-columns: 1fr; }
+    .seat { min-height: 60px; }
+  }
   .modal-overlay {
     position: fixed; inset: 0;
     background: rgba(26,24,18,0.65);
@@ -3297,6 +3352,7 @@
     </div>
     <nav class="tab-nav" id="tab-nav">
       <button class="tab-btn active" data-tab="personen">Personen</button>
+      <button class="tab-btn nestor-only" data-tab="nestor" style="display:none">⚽ Nestor</button>
       <button class="tab-btn" data-tab="fotos">Foto's</button>
       <button class="tab-btn" data-tab="agenda">Agenda</button>
       <button class="tab-btn" data-tab="contacten">Contacten</button>
@@ -3341,6 +3397,27 @@
 <div class="bestaan-timer" id="bestaan-timer"></div>
 
 </div><!-- /panel-personen -->
+
+<!-- ==================== TAB: NESTOR (bankplekken WK) ==================== -->
+<div class="tab-panel" id="panel-nestor">
+  <div class="nestor-head">
+    <h2>⚽ Nestor — bankplekken</h2>
+    <p class="nestor-sub" id="nestor-wedstrijd">De eerstvolgende Oranje-wedstrijd…</p>
+  </div>
+  <div class="nestor-status" id="nestor-status"></div>
+  <div class="nestor-room" id="nestor-room"></div>
+  <div class="nestor-legend">
+    <span><i class="seat-demo vrij"></i> Vrij</span>
+    <span><i class="seat-demo jij"></i> Jouw plek</span>
+    <span><i class="seat-demo overneembaar"></i> Over te nemen (jonger jaar)</span>
+    <span><i class="seat-demo bezet"></i> Bezet (ouder/gelijk jaar)</span>
+  </div>
+  <p class="nestor-uitleg">
+    Reserveer één bankplek voor de wedstrijd. We werken met <strong>anciënniteit</strong>:
+    heb je een ouder (lager) aankomstjaar, dan kun je de plek van een jongere bewoner overnemen —
+    diegene krijgt daar automatisch een mailtje over en kan dan een andere vrije plek pakken.
+  </p>
+</div><!-- /panel-nestor -->
 
 <!-- ==================== TAB: AGENDA ==================== -->
 <div class="tab-panel" id="panel-agenda">
@@ -5218,6 +5295,7 @@ document.getElementById('tab-nav').addEventListener('click', e => {
   if (tab === 'verjaardagen') { renderVerjaardagen(); }
   if (tab === 'adminbeheer') { loadAdmins(); }
   if (tab === 'bezoekers') { loadBezoekers(); startBezoekersAutoRefresh(); } else { stopBezoekersAutoRefresh(); }
+  if (tab === 'nestor') { loadNestor(); startNestorAutoRefresh(); } else { stopNestorAutoRefresh(); }
   // Zachte reveal van de panel-blokken bij het wisselen van tab
   if (typeof revealPanel === 'function') revealPanel('panel-' + tab);
 });
@@ -5234,6 +5312,188 @@ function startBezoekersAutoRefresh() {
 }
 function stopBezoekersAutoRefresh() {
   if (_bezoekersTimer) { clearInterval(_bezoekersTimer); _bezoekersTimer = null; }
+}
+
+// ==================== NESTOR — bankplekken (WK) ====================
+// Eerstvolgende Oranje-wedstrijden (auto: de eerstvolgende die nog niet voorbij is)
+const NESTOR_MATCHES = [
+  { id: 'nl-zweden-2026-06-20',  tegenstander: 'Zweden',  datum: '2026-06-20T19:00:00+02:00', locatie: 'NRG Stadium, Houston' },
+  { id: 'nl-tunesie-2026-06-26', tegenstander: 'Tunesië', datum: '2026-06-26T01:00:00+02:00', locatie: 'Arrowhead Stadium, Kansas City' },
+];
+// Plattegrond van de tv-kamer
+const NESTOR_BANKEN = [
+  { id: 'vbank',   label: 'Hoekbank links', klasse: 'vert',  plekken: ['vbank-1','vbank-2','vbank-3'] },
+  { id: 'stoel-1', label: 'Stoel 1',        klasse: 'chair', plekken: ['stoel-1'] },
+  { id: 'stoel-2', label: 'Stoel 2',        klasse: 'chair', plekken: ['stoel-2'] },
+  { id: 'a', label: 'Bank A', klasse: 'horiz', plekken: ['a-1','a-2','a-3'] },
+  { id: 'b', label: 'Bank B', klasse: 'horiz', plekken: ['b-1','b-2','b-3'] },
+  { id: 'c', label: 'Bank C', klasse: 'horiz', plekken: ['c-1','c-2','c-3'] },
+  { id: 'd', label: 'Bank D', klasse: 'horiz', plekken: ['d-1','d-2','d-3'] },
+];
+const NESTOR_SEAT_LABELS = {
+  'vbank-1':'Hoekbank links · plek 1','vbank-2':'Hoekbank links · plek 2','vbank-3':'Hoekbank links · plek 3',
+  'stoel-1':'Stoel 1','stoel-2':'Stoel 2',
+  'a-1':'Bank A · plek 1','a-2':'Bank A · plek 2','a-3':'Bank A · plek 3',
+  'b-1':'Bank B · plek 1','b-2':'Bank B · plek 2','b-3':'Bank B · plek 3',
+  'c-1':'Bank C · plek 1','c-2':'Bank C · plek 2','c-3':'Bank C · plek 3',
+  'd-1':'Bank D · plek 1','d-2':'Bank D · plek 2','d-3':'Bank D · plek 3',
+};
+let nestorReserveringen = [];
+let nestorBusy = false;
+
+function activeNestorMatch() {
+  const now = Date.now();
+  for (const m of NESTOR_MATCHES) {
+    const eind = new Date(m.datum).getTime() + 2.5 * 3600 * 1000;
+    if (now < eind) return m;
+  }
+  return NESTOR_MATCHES[NESTOR_MATCHES.length - 1];
+}
+function nestorWedstrijdNaam(m) {
+  const d = new Date(m.datum);
+  const dag = d.toLocaleDateString('nl-NL', { weekday:'long', day:'numeric', month:'long' });
+  const tijd = d.toLocaleTimeString('nl-NL', { hour:'2-digit', minute:'2-digit' });
+  return `Nederland–${m.tegenstander} · ${dag} ${tijd}`;
+}
+function eigenAankomstjaar() {
+  const p = currentUserEmail ? personByEmail(currentUserEmail) : null;
+  return p && p['Aankomstjaar'] ? Number(p['Aankomstjaar']) : null;
+}
+function isNestorResident() {
+  const j = eigenAankomstjaar();
+  return j !== null && j >= 2017 && j <= 2026;
+}
+function updateNestorTabVisibility() {
+  const show = isNestorResident();
+  document.querySelectorAll('.nestor-only').forEach(el => { el.style.display = show ? '' : 'none'; });
+}
+
+async function loadNestor() {
+  if (!isNestorResident()) return;
+  const m = activeNestorMatch();
+  const sub = document.getElementById('nestor-wedstrijd');
+  if (sub) sub.innerHTML = `Reserveer je plek voor <strong>${escapeHtml(nestorWedstrijdNaam(m))}</strong> &middot; ${escapeHtml(m.locatie)}`;
+  try {
+    const { data, error } = await db.from('bankreserveringen').select('*').eq('wedstrijd', m.id);
+    if (error) throw error;
+    nestorReserveringen = data || [];
+  } catch (e) {
+    nestorReserveringen = [];
+    const room = document.getElementById('nestor-room');
+    if (room) room.innerHTML = `<div style="color:#c0392b;text-align:center;">Kon reserveringen niet laden: ${escapeHtml(e.message||String(e))}<br><small>Is de tabel "bankreserveringen" al aangemaakt? Zie de SQL.</small></div>`;
+    return;
+  }
+  renderNestor();
+}
+
+function renderNestor() {
+  const room = document.getElementById('nestor-room');
+  if (!room) return;
+  const mijnJaar = eigenAankomstjaar();
+  const mijnEmail = (currentUserEmail || '').toLowerCase();
+  const byPlek = {};
+  nestorReserveringen.forEach(r => { byPlek[r.plek] = r; });
+
+  function seatHtml(plek) {
+    const r = byPlek[plek];
+    if (!r) return `<div class="seat vrij" data-plek="${plek}" title="Vrij — klik om te reserveren"><span class="seat-vrij-tekst">Vrij</span></div>`;
+    const isJij = (r.email || '').toLowerCase() === mijnEmail;
+    const kanOvernemen = !isJij && mijnJaar !== null && Number(mijnJaar) < Number(r.aankomstjaar);
+    const klasse = isJij ? 'jij' : kanOvernemen ? 'overneembaar' : 'bezet';
+    const titel = isJij ? 'Jouw plek — klik om te verlaten'
+                : kanOvernemen ? `Plek van ${r.naam} (jaar ${r.aankomstjaar}) — klik om over te nemen`
+                : `Bezet door ${r.naam} (jaar ${r.aankomstjaar})`;
+    return `<div class="seat ${klasse}" data-plek="${plek}" title="${escapeHtml(titel)}">
+      <span class="seat-naam">${escapeHtml(r.naam || '')}${isJij ? ' (jij)' : ''}</span>
+      <span class="seat-jaar">'${String(r.aankomstjaar || '').slice(-2)}</span>
+    </div>`;
+  }
+  function bankHtml(b) {
+    return `<div class="bank-wrap"><div class="bank-label">${escapeHtml(b.label)}</div><div class="bank ${b.klasse}">${b.plekken.map(seatHtml).join('')}</div></div>`;
+  }
+  const get = id => NESTOR_BANKEN.find(b => b.id === id);
+  room.innerHTML = `
+    <div class="nestor-zone nestor-top">
+      ${bankHtml(get('vbank'))}
+      <div class="nestor-chairs">${bankHtml(get('stoel-1'))}${bankHtml(get('stoel-2'))}</div>
+    </div>
+    <div class="nestor-zone nestor-bottom">
+      ${bankHtml(get('a'))}${bankHtml(get('c'))}${bankHtml(get('b'))}${bankHtml(get('d'))}
+    </div>`;
+
+  const statusEl = document.getElementById('nestor-status');
+  if (statusEl) {
+    const mijn = nestorReserveringen.find(r => (r.email||'').toLowerCase() === mijnEmail);
+    statusEl.innerHTML = mijn
+      ? `✅ Jij hebt <strong>${escapeHtml(NESTOR_SEAT_LABELS[mijn.plek] || mijn.plek)}</strong> gereserveerd. Klik op je groene plek om die te verlaten.`
+      : `Je hebt nog geen plek. Klik op een vrije plek om te reserveren${mijnJaar ? ` (jouw jaar: ${mijnJaar})` : ''}.`;
+  }
+}
+
+async function nestorCall(payload) {
+  if (nestorBusy) return;
+  nestorBusy = true;
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    const token = session?.access_token;
+    if (!token) { alert('Log opnieuw in.'); return; }
+    const res = await fetch('/api/reserveer-plek', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { alert(data.error || 'Mislukt.'); return; }
+    if (data.verdrongen) {
+      alert(`Plek overgenomen van ${data.verdrongen.naam || 'iemand'} (jaar ${data.verdrongen.aankomstjaar || '?'}).` + (data.mailVerstuurd ? '\nDiegene heeft een mailtje gekregen.' : ''));
+    }
+    await loadNestor();
+  } catch (e) {
+    alert('Netwerkfout: ' + (e.message || e));
+  } finally {
+    nestorBusy = false;
+  }
+}
+
+let _nestorRoomBound = false;
+function bindNestorRoom() {
+  if (_nestorRoomBound) return;
+  const room = document.getElementById('nestor-room');
+  if (!room) return;
+  _nestorRoomBound = true;
+  room.addEventListener('click', async e => {
+    const seat = e.target.closest('.seat');
+    if (!seat || nestorBusy || !isNestorResident()) return;
+    const plek = seat.dataset.plek;
+    const mijnEmail = (currentUserEmail || '').toLowerCase();
+    const mijnJaar = eigenAankomstjaar();
+    const m = activeNestorMatch();
+    const r = nestorReserveringen.find(x => x.plek === plek);
+    if (r && (r.email||'').toLowerCase() === mijnEmail) {
+      if (confirm('Je plek verlaten?')) await nestorCall({ wedstrijd: m.id, actie: 'verlaat' });
+      return;
+    }
+    if (r) {
+      if (!(mijnJaar !== null && Number(mijnJaar) < Number(r.aankomstjaar))) {
+        alert(`Deze plek is bezet door ${r.naam} (jaar ${r.aankomstjaar}). Je kunt alleen plekken van jongere bewoners overnemen.`);
+        return;
+      }
+      if (!confirm(`Plek overnemen van ${r.naam} (jaar ${r.aankomstjaar})?\n\n${r.naam} raakt deze plek kwijt en krijgt automatisch een mailtje.`)) return;
+    }
+    await nestorCall({ wedstrijd: m.id, wedstrijdNaam: nestorWedstrijdNaam(m), plek });
+  });
+}
+
+let _nestorTimer = null;
+function startNestorAutoRefresh() {
+  bindNestorRoom();
+  stopNestorAutoRefresh();
+  _nestorTimer = setInterval(() => {
+    if (document.visibilityState === 'visible' && document.getElementById('panel-nestor')?.classList.contains('active')) loadNestor();
+  }, 20000);
+}
+function stopNestorAutoRefresh() {
+  if (_nestorTimer) { clearInterval(_nestorTimer); _nestorTimer = null; }
 }
 
 // ==================== WANDELGANGEN (forum) ====================
@@ -7772,6 +8032,8 @@ async function init() {
 
   updateStats();
   render();
+  // Toon de Nestor-tab alleen voor huidige bewoners (jaar 2017–2026)
+  if (typeof updateNestorTabVisibility === 'function') updateNestorTabVisibility();
   // Onthul de eerste (Personen) panel-blokken zacht
   if (typeof revealPanel === 'function') revealPanel('panel-personen');
   // Registreer dit bezoek (eenmalig per sessie) voor het bezoekers-dashboard
