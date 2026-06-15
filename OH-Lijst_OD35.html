@@ -2280,12 +2280,22 @@
   .seat-demo.bezet { background: var(--paper); }
   .nestor-uitleg { max-width: 680px; margin: 0 auto; font-size: 0.85rem; color: var(--gray); line-height: 1.55; text-align: center; }
   @media (max-width: 640px) {
-    .nestor-top { flex-direction: column; }
-    .nestor-chairs { flex-direction: row; width: 100%; }
-    .bank.vert, .bank.chair { width: auto; flex: 1; }
-    .bank.vert { flex-direction: row; }
-    .nestor-bottom { grid-template-columns: 1fr; }
-    .seat { min-height: 60px; }
+    /* Zelfde opstelling als op de laptop, alleen kleiner geschaald (niet herschikken) */
+    .nestor-room { max-width: 100%; }
+    .nestor-zone { gap: 0.45rem; margin-bottom: 0.6rem; }
+    .nestor-chairs { gap: 0.45rem; }
+    .bank { padding: 4px; gap: 4px; border-radius: 8px; }
+    .bank.vert, .bank.chair { width: 92px; }
+    .seat { min-height: 46px; font-size: 0.6rem; padding: 3px 2px; border-radius: 5px; }
+    .bank.vert .seat { min-height: 58px; }
+    .seat .seat-naam { font-size: 0.6rem; }
+    .seat .seat-jaar { font-size: 0.56rem; }
+    .seat .seat-vrij-tekst { font-size: 0.56rem; }
+    .bank-label { font-size: 0.5rem; }
+  }
+  @media (max-width: 360px) {
+    .bank.vert, .bank.chair { width: 78px; }
+    .seat { font-size: 0.54rem; }
   }
   .modal-overlay {
     position: fixed; inset: 0;
