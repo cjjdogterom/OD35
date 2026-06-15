@@ -2208,25 +2208,26 @@
     0%   { transform: translate3d(0, -16vh, 0) rotate(0deg); }
     100% { transform: translate3d(var(--drift, 0px), 116vh, 0) rotate(var(--spin, 540deg)); }
   }
-  /* Per bal: horizontale positie, grootte, valduur, draai, drift en (negatieve) vertraging
-     zodat er meteen een doorlopende 'regen' van draaiende ballen is */
-  .wk-ball-1  { left: 4%;  --ball: 60px; --dur: 13s;  --delay: -1s;   --spin: 540deg;  --drift: 18px;  }
-  .wk-ball-2  { left: 13%; --ball: 40px; --dur: 16s;  --delay: -7s;   --spin: 720deg;  --drift: -22px; --op: 0.7; }
-  .wk-ball-3  { left: 22%; --ball: 70px; --dur: 11s;  --delay: -4s;   --spin: 420deg;  --drift: 30px;  }
-  .wk-ball-4  { left: 31%; --ball: 46px; --dur: 15s;  --delay: -10s;  --spin: 900deg;  --drift: -14px; --op: 0.75; }
-  .wk-ball-5  { left: 41%; --ball: 54px; --dur: 12.5s;--delay: -2.5s; --spin: 600deg;  --drift: 24px;  }
-  .wk-ball-6  { left: 50%; --ball: 38px; --dur: 17s;  --delay: -13s;  --spin: 1080deg; --drift: -28px; --op: 0.65; }
-  .wk-ball-7  { left: 60%; --ball: 64px; --dur: 12s;  --delay: -6s;   --spin: 480deg;  --drift: 16px;  }
-  .wk-ball-8  { left: 69%; --ball: 44px; --dur: 14.5s;--delay: -9s;   --spin: 780deg;  --drift: -20px; --op: 0.75; }
-  .wk-ball-9  { left: 79%; --ball: 56px; --dur: 11.5s;--delay: -3.5s; --spin: 600deg;  --drift: 26px;  }
-  .wk-ball-10 { left: 88%; --ball: 42px; --dur: 16s;  --delay: -11s;  --spin: 840deg;  --drift: -16px; --op: 0.7; }
-  .wk-ball-11 { left: 95%; --ball: 50px; --dur: 13.5s;--delay: -5s;   --spin: 660deg;  --drift: -24px; }
-  .wk-ball-12 { left: 35%; --ball: 34px; --dur: 18s;  --delay: -15s;  --spin: 960deg;  --drift: 20px;  --op: 0.6; }
+  /* Ballen alleen aan de LINKER- en RECHTERrand (niet over de inhoud in het midden).
+     Per bal: randpositie, grootte, valduur, draai, drift, (negatieve) vertraging, opacity. */
+  .wk-ball-1  { left: 1%;   --ball: 58px; --dur: 13s;  --delay: -1s;   --spin: 540deg;  --drift: 14px;  }
+  .wk-ball-2  { left: 5.5%; --ball: 38px; --dur: 16s;  --delay: -7s;   --spin: 720deg;  --drift: -12px; --op: 0.7; }
+  .wk-ball-3  { left: 0.5%; --ball: 66px; --dur: 11s;  --delay: -4s;   --spin: 420deg;  --drift: 10px;  }
+  .wk-ball-4  { left: 7%;   --ball: 44px; --dur: 15s;  --delay: -10s;  --spin: 900deg;  --drift: -16px; --op: 0.75; }
+  .wk-ball-5  { left: 3%;   --ball: 50px; --dur: 12.5s;--delay: -2.5s; --spin: 600deg;  --drift: 16px;  }
+  .wk-ball-6  { left: 8%;   --ball: 34px; --dur: 17s;  --delay: -13s;  --spin: 1080deg; --drift: -10px; --op: 0.65; }
+  .wk-ball-7  { right: 1%;  --ball: 60px; --dur: 12s;  --delay: -6s;   --spin: 480deg;  --drift: -14px; }
+  .wk-ball-8  { right: 5.5%;--ball: 40px; --dur: 14.5s;--delay: -9s;   --spin: 780deg;  --drift: 12px;  --op: 0.75; }
+  .wk-ball-9  { right: 0.5%;--ball: 56px; --dur: 11.5s;--delay: -3.5s; --spin: 600deg;  --drift: -10px; }
+  .wk-ball-10 { right: 7%;  --ball: 42px; --dur: 16s;  --delay: -11s;  --spin: 840deg;  --drift: 16px;  --op: 0.7; }
+  .wk-ball-11 { right: 3%;  --ball: 48px; --dur: 13.5s;--delay: -5s;   --spin: 660deg;  --drift: -16px; }
+  .wk-ball-12 { right: 8.5%;--ball: 32px; --dur: 18s;  --delay: -15s;  --spin: 960deg;  --drift: 10px;  --op: 0.6; }
 
   @media (max-width: 700px) {
-    /* op smalle schermen wat minder ballen + kleiner, blijft rustig leesbaar */
-    .wk-ball { opacity: 0.6; }
-    .wk-ball-3, .wk-ball-6, .wk-ball-8, .wk-ball-10, .wk-ball-12 { display: none; }
+    /* Op de telefoon rustig: alleen 4 kleine, doorzichtige ballen aan de randen */
+    .wk-ball { width: 38px; height: 38px; opacity: 0.4; }
+    .wk-ball-2, .wk-ball-3, .wk-ball-5, .wk-ball-6,
+    .wk-ball-8, .wk-ball-9, .wk-ball-11, .wk-ball-12 { display: none; }
   }
   @media (prefers-reduced-motion: reduce) {
     .wk-ball { animation: none !important; opacity: 0 !important; }
@@ -2561,6 +2562,8 @@
 .wg-msg-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 0.4rem; flex-wrap: wrap; }
 .wg-msg-author { font-family: var(--font-display); font-weight: 600; color: var(--burgundy); font-size: 1.05rem; }
 .wg-msg-author .jaar { font-family: var(--font-mono); font-size: 0.75rem; color: var(--gray); font-weight: 400; margin-left: 0.35rem; }
+button.wg-author-link { background: none; border: none; padding: 0; cursor: pointer; text-align: left; }
+button.wg-author-link:hover { text-decoration: underline; text-underline-offset: 2px; }
 .wg-msg-date { font-size: 0.78rem; color: var(--gray); white-space: nowrap; }
 .wg-msg-body { color: var(--ink); line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
 .wg-del-btn {
@@ -5545,6 +5548,29 @@ async function loadWandelgangen() {
   }
 }
 
+// Open het volledige profiel van een plaatser: ga naar de Personen-tab,
+// wis de filters en klap die persoon uit (scrollt erheen).
+function openPersonDetailsByEmail(email) {
+  const p = personByEmail(email);
+  if (!p) { alert('Geen profiel in de ledenlijst gevonden voor deze persoon.'); return; }
+  document.querySelector('.tab-btn[data-tab="personen"]')?.click();
+  currentQuery = ''; currentJaar = ''; currentStatus = ''; currentLetter = '';
+  if (typeof searchInput !== 'undefined' && searchInput) searchInput.value = '';
+  if (typeof jaarFilter !== 'undefined' && jaarFilter) jaarFilter.value = '';
+  if (typeof statusFilter !== 'undefined' && statusFilter) statusFilter.value = '';
+  document.querySelectorAll('.alpha-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.alpha-btn[data-letter=""]')?.classList.add('active');
+  const id = getPersonId(p);
+  expandedSet.clear();
+  expandedSet.add(id);
+  render();
+  setTimeout(() => {
+    const sel = (window.CSS && CSS.escape) ? CSS.escape(id) : id;
+    const el = document.querySelector(`.person[data-id="${sel}"]`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 120);
+}
+
 function renderWandelgangen() {
   const list = document.getElementById('wg-list');
   if (!list) return;
@@ -5559,9 +5585,13 @@ function renderWandelgangen() {
     const d = new Date(m.aangemaakt_op);
     const datum = d.toLocaleString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     const magWeg = isAdmin() || (currentUserEmail && (m.email || '').toLowerCase() === currentUserEmail);
+    const heeftProfiel = !!personByEmail(m.email);
+    const auteur = heeftProfiel
+      ? `<button class="wg-msg-author wg-author-link" data-action="wg-author" data-email="${escapeHtml(m.email || '')}" title="Bekijk profiel van ${escapeHtml(naam)}">${escapeHtml(naam)}${jaar}</button>`
+      : `<span class="wg-msg-author">${escapeHtml(naam)}${jaar}</span>`;
     return `<div class="wg-msg">
       <div class="wg-msg-head">
-        <span class="wg-msg-author">${escapeHtml(naam)}${jaar}</span>
+        ${auteur}
         <span class="wg-msg-date">${escapeHtml(datum)}</span>
       </div>
       <div class="wg-msg-body">${escapeHtml(m.bericht)}</div>
@@ -5593,6 +5623,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   const wgList = document.getElementById('wg-list');
   if (wgList) wgList.addEventListener('click', async e => {
+    // Klik op de naam van de plaatser → toon zijn/haar volledige profiel
+    const auteur = e.target.closest('[data-action="wg-author"]');
+    if (auteur) { openPersonDetailsByEmail(auteur.dataset.email); return; }
     if (!e.target.matches('[data-action="wg-del"]')) return;
     const id = e.target.dataset.id;
     if (!confirm('Dit bericht verwijderen?')) return;
@@ -8610,53 +8643,52 @@ async function uploadFotos(files, albumId) {
   const fileArr = Array.from(files).filter(f => f.type.startsWith('image/') || isPdfFile(f));
   if (fileArr.length === 0) { setProgress('Geen afbeeldingen of PDF\'s geselecteerd.', true); return; }
 
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
   let done = 0;
   const total = fileArr.length;
+  const mislukt = [];
   setProgress(`Bezig met uploaden: 0 / ${total}…`, false);
 
-  for (const file of fileArr) {
-    try {
-      const pdf = isPdfFile(file);
-      const ext = pdf ? 'pdf' : (file.name.split('.').pop().replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg');
-      const uid = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '_' + Math.random().toString(36).slice(2));
-      const path = `${albumId}/${uid}.${ext}`;
+  for (let i = 0; i < fileArr.length; i++) {
+    const file = fileArr[i];
+    const pdf = isPdfFile(file);
+    const ext = pdf ? 'pdf' : (file.name.split('.').pop().replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg');
+    setProgress(`Uploaden ${i + 1} / ${total}: ${file.name}…`, false);
 
-      setProgress(`Uploaden ${done + 1} / ${total}: ${file.name}…`, false);
-
-      const { error: upErr } = await db.storage.from('fotos').upload(path, file, {
-        cacheControl: '3600',
-        upsert: true,
-        contentType: file.type,
-      });
-      if (upErr) {
-        console.error('Storage upload fout:', upErr);
-        setProgress(`Fout bij "${file.name}": ${upErr.message || JSON.stringify(upErr)}`, true);
-        continue;
+    let ok = false, laatsteFout = '';
+    // Tot 3 pogingen per bestand met oplopende wachttijd — vangt tijdelijke
+    // fouten / rate-limiting op die anders een foto stilletjes lieten vallen.
+    for (let poging = 1; poging <= 3 && !ok; poging++) {
+      try {
+        const uid = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '_' + Math.random().toString(36).slice(2));
+        const path = `${albumId}/${uid}.${ext}`;
+        const { error: upErr } = await db.storage.from('fotos').upload(path, file, {
+          cacheControl: '3600', upsert: true, contentType: file.type || undefined,
+        });
+        if (upErr) throw upErr;
+        const { data: urlData } = db.storage.from('fotos').getPublicUrl(path);
+        if (!urlData?.publicUrl) throw new Error('geen publieke URL ontvangen');
+        const { error: insErr } = await db.from('fotos').insert({
+          album_id: albumId, url: urlData.publicUrl, volgorde: done,
+          uploaded_by: currentUserEmail || null,
+          bijschrift: pdf ? file.name.replace(/\.pdf$/i, '') : null,
+        });
+        if (insErr) throw insErr;
+        ok = true;
+      } catch (e) {
+        laatsteFout = (e && (e.message || e.error_description)) || JSON.stringify(e) || String(e);
+        console.error(`Upload poging ${poging}/3 mislukt voor ${file.name}:`, e);
+        if (poging < 3) await sleep(700 * poging);
       }
-
-      const { data: urlData } = db.storage.from('fotos').getPublicUrl(path);
-      if (!urlData?.publicUrl) {
-        setProgress(`Kon URL niet ophalen voor "${file.name}".`, true);
-        continue;
-      }
-
-      const { error: insErr } = await db.from('fotos').insert({ album_id: albumId, url: urlData.publicUrl, volgorde: done, uploaded_by: currentUserEmail || null, bijschrift: pdf ? file.name.replace(/\.pdf$/i, '') : null });
-      if (insErr) {
-        console.error('DB insert fout:', insErr);
-        setProgress(`Fout bij opslaan "${file.name}": ${insErr.message}`, true);
-        continue;
-      }
-
-      done++;
-      setProgress(`Geüpload: ${done} / ${total}`, false);
-    } catch (e) {
-      console.error('Upload fout:', e);
-      setProgress(`Onverwachte fout bij "${file.name}": ${e.message}`, true);
     }
+
+    if (ok) { done++; setProgress(`Geüpload: ${done} / ${total}…`, false); }
+    else { mislukt.push(`${file.name}: ${laatsteFout}`); }
+    await sleep(150); // kleine adempauze tegen rate-limiting bij veel bestanden
   }
 
   if (done === total) setProgress(`Klaar! ${done} bestand${done !== 1 ? 'en' : ''} geüpload.`, false);
-  else if (done > 0) setProgress(`${done} van ${total} bestanden geüpload (${total - done} mislukt).`, true);
+  else setProgress(`${done} van ${total} geüpload — mislukt: ${mislukt.slice(0, 6).join(' | ')}${mislukt.length > 6 ? ' …' : ''}`, true);
 
   await loadFotos(albumId);
   await loadAlbums();
