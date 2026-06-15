@@ -2,6 +2,9 @@
   "rewrites": [
     { "source": "/", "destination": "/OH-Lijst_OD35.html" }
   ],
+  "functions": {
+    "api/heic-to-jpeg.js": { "maxDuration": 60 }
+  },
   "headers": [
     {
       "source": "/(.*)",

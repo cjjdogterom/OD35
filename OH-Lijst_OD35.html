@@ -8628,21 +8628,6 @@ function closeLightbox() {
   if (_lightboxKeyHandler) { document.removeEventListener('keydown', _lightboxKeyHandler); _lightboxKeyHandler = null; }
 }
 
-// HEIC→JPEG omzetter (iPhone-formaat), lazy geladen vanaf CDN
-let _heic2anyPromise = null;
-function loadHeic2any() {
-  if (window.heic2any) return Promise.resolve(window.heic2any);
-  if (_heic2anyPromise) return _heic2anyPromise;
-  _heic2anyPromise = new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
-    s.onload = () => window.heic2any ? resolve(window.heic2any) : reject(new Error('heic2any niet beschikbaar'));
-    s.onerror = () => reject(new Error('heic2any kon niet laden'));
-    document.head.appendChild(s);
-  });
-  return _heic2anyPromise;
-}
-
 // Upload
 async function uploadFotos(files, albumId) {
   if (!files || files.length === 0) return;
@@ -8670,25 +8655,8 @@ async function uploadFotos(files, albumId) {
     const file = fileArr[i];
     const pdf = isPdfFile(file);
     const heic = !pdf && isHeicFile(file);
-    let uploadBlob = file;
-    let ext = pdf ? 'pdf' : (file.name.split('.').pop().replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg');
-    let ctype = file.type || (pdf ? 'application/pdf' : undefined);
-    setProgress(`Uploaden ${i + 1} / ${total}: ${file.name}…`, false);
-
-    // HEIC (iPhone) → JPEG omzetten; anders niet te tonen in de meeste browsers
-    if (heic) {
-      try {
-        setProgress(`iPhone-foto (HEIC) omzetten: ${file.name}…`, false);
-        const heic2any = await loadHeic2any();
-        const out = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
-        uploadBlob = Array.isArray(out) ? out[0] : out;
-        ext = 'jpg'; ctype = 'image/jpeg';
-      } catch (e) {
-        mislukt.push(`${file.name}: HEIC omzetten mislukt (${(e && e.message) || e})`);
-        await sleep(120);
-        continue;
-      }
-    }
+    const bijschrift = pdf ? file.name.replace(/\.pdf$/i, '') : null;
+    setProgress(`Uploaden ${i + 1} / ${total}: ${file.name}${heic ? ' (HEIC omzetten…)' : ''}…`, false);
 
     let ok = false, laatsteFout = '';
     // Tot 3 pogingen per bestand met oplopende wachttijd — vangt tijdelijke
@@ -8696,17 +8664,39 @@ async function uploadFotos(files, albumId) {
     for (let poging = 1; poging <= 3 && !ok; poging++) {
       try {
         const uid = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '_' + Math.random().toString(36).slice(2));
-        const path = `${albumId}/${uid}.${ext}`;
-        const { error: upErr } = await db.storage.from('fotos').upload(path, uploadBlob, {
-          cacheControl: '3600', upsert: true, contentType: ctype,
-        });
-        if (upErr) throw upErr;
-        const { data: urlData } = db.storage.from('fotos').getPublicUrl(path);
-        if (!urlData?.publicUrl) throw new Error('geen publieke URL ontvangen');
+        let url;
+        if (heic) {
+          // HEIC: origineel uploaden; de server zet het om naar JPEG (geen bevriezing op de telefoon)
+          const heicPath = `${albumId}/${uid}.heic`;
+          const { error: upErr } = await db.storage.from('fotos').upload(heicPath, file, {
+            cacheControl: '3600', upsert: true, contentType: 'application/octet-stream',
+          });
+          if (upErr) throw upErr;
+          const { data: { session } } = await db.auth.getSession();
+          const tok = session?.access_token;
+          if (!tok) throw new Error('geen actieve sessie');
+          const r = await fetch('/api/heic-to-jpeg', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tok}` },
+            body: JSON.stringify({ path: heicPath }),
+          });
+          const out = await r.json().catch(() => ({}));
+          if (!r.ok || !out.url) throw new Error(out.error || 'HEIC-conversie mislukt');
+          url = out.url;
+        } else {
+          const ext = pdf ? 'pdf' : (file.name.split('.').pop().replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg');
+          const path = `${albumId}/${uid}.${ext}`;
+          const { error: upErr } = await db.storage.from('fotos').upload(path, file, {
+            cacheControl: '3600', upsert: true, contentType: file.type || (pdf ? 'application/pdf' : undefined),
+          });
+          if (upErr) throw upErr;
+          const { data: urlData } = db.storage.from('fotos').getPublicUrl(path);
+          if (!urlData?.publicUrl) throw new Error('geen publieke URL ontvangen');
+          url = urlData.publicUrl;
+        }
         const { error: insErr } = await db.from('fotos').insert({
-          album_id: albumId, url: urlData.publicUrl, volgorde: done,
-          uploaded_by: currentUserEmail || null,
-          bijschrift: pdf ? file.name.replace(/\.pdf$/i, '') : null,
+          album_id: albumId, url, volgorde: done,
+          uploaded_by: currentUserEmail || null, bijschrift,
         });
         if (insErr) throw insErr;
         ok = true;
