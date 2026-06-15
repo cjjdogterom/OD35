@@ -8467,8 +8467,8 @@ function renderAlbumFotos(albumId) {
       <div class="foto-upload-area" id="foto-upload-area">
         <div class="foto-upload-icon">📷</div>
         <div>Klik om foto's of PDF's te kiezen, of sleep ze hierheen</div>
-        <div style="font-size:0.8rem;margin-top:0.3rem;opacity:0.7;">JPG, PNG, WEBP of PDF — meerdere tegelijk mogelijk</div>
-        <input type="file" id="foto-file-input" accept="image/*,application/pdf" multiple>
+        <div style="font-size:0.8rem;margin-top:0.3rem;opacity:0.7;">JPG, PNG, WEBP, HEIC (iPhone) of PDF — meerdere tegelijk mogelijk</div>
+        <input type="file" id="foto-file-input" accept="image/*,.heic,.heif,application/pdf" multiple>
       </div>
       <div class="foto-upload-progress" id="foto-upload-progress"></div>
     </div>`;
@@ -8628,6 +8628,21 @@ function closeLightbox() {
   if (_lightboxKeyHandler) { document.removeEventListener('keydown', _lightboxKeyHandler); _lightboxKeyHandler = null; }
 }
 
+// HEIC→JPEG omzetter (iPhone-formaat), lazy geladen vanaf CDN
+let _heic2anyPromise = null;
+function loadHeic2any() {
+  if (window.heic2any) return Promise.resolve(window.heic2any);
+  if (_heic2anyPromise) return _heic2anyPromise;
+  _heic2anyPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
+    s.onload = () => window.heic2any ? resolve(window.heic2any) : reject(new Error('heic2any niet beschikbaar'));
+    s.onerror = () => reject(new Error('heic2any kon niet laden'));
+    document.head.appendChild(s);
+  });
+  return _heic2anyPromise;
+}
+
 // Upload
 async function uploadFotos(files, albumId) {
   if (!files || files.length === 0) return;
@@ -8640,7 +8655,9 @@ async function uploadFotos(files, albumId) {
   };
 
   const isPdfFile = f => f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
-  const fileArr = Array.from(files).filter(f => f.type.startsWith('image/') || isPdfFile(f));
+  const isHeicFile = f => { const t = (f.type || '').toLowerCase(); return t === 'image/heic' || t === 'image/heif' || /\.(heic|heif)$/i.test(f.name); };
+  // HEIC ook accepteren, ook al geeft de browser geen MIME-type mee
+  const fileArr = Array.from(files).filter(f => (f.type && f.type.startsWith('image/')) || isPdfFile(f) || isHeicFile(f));
   if (fileArr.length === 0) { setProgress('Geen afbeeldingen of PDF\'s geselecteerd.', true); return; }
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -8652,8 +8669,26 @@ async function uploadFotos(files, albumId) {
   for (let i = 0; i < fileArr.length; i++) {
     const file = fileArr[i];
     const pdf = isPdfFile(file);
-    const ext = pdf ? 'pdf' : (file.name.split('.').pop().replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg');
+    const heic = !pdf && isHeicFile(file);
+    let uploadBlob = file;
+    let ext = pdf ? 'pdf' : (file.name.split('.').pop().replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg');
+    let ctype = file.type || (pdf ? 'application/pdf' : undefined);
     setProgress(`Uploaden ${i + 1} / ${total}: ${file.name}…`, false);
+
+    // HEIC (iPhone) → JPEG omzetten; anders niet te tonen in de meeste browsers
+    if (heic) {
+      try {
+        setProgress(`iPhone-foto (HEIC) omzetten: ${file.name}…`, false);
+        const heic2any = await loadHeic2any();
+        const out = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
+        uploadBlob = Array.isArray(out) ? out[0] : out;
+        ext = 'jpg'; ctype = 'image/jpeg';
+      } catch (e) {
+        mislukt.push(`${file.name}: HEIC omzetten mislukt (${(e && e.message) || e})`);
+        await sleep(120);
+        continue;
+      }
+    }
 
     let ok = false, laatsteFout = '';
     // Tot 3 pogingen per bestand met oplopende wachttijd — vangt tijdelijke
@@ -8662,8 +8697,8 @@ async function uploadFotos(files, albumId) {
       try {
         const uid = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '_' + Math.random().toString(36).slice(2));
         const path = `${albumId}/${uid}.${ext}`;
-        const { error: upErr } = await db.storage.from('fotos').upload(path, file, {
-          cacheControl: '3600', upsert: true, contentType: file.type || undefined,
+        const { error: upErr } = await db.storage.from('fotos').upload(path, uploadBlob, {
+          cacheControl: '3600', upsert: true, contentType: ctype,
         });
         if (upErr) throw upErr;
         const { data: urlData } = db.storage.from('fotos').getPublicUrl(path);
