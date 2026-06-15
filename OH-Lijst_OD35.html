@@ -81,6 +81,27 @@
     --display-letter-spacing: -0.01em;
     --display-text-transform: none;
   }
+  [data-theme="wk"] {
+    /* WK — Oranje feest (tijdelijk) */
+    --ink: #2a1c0e;
+    --paper: #fff7ee;
+    --paper-warm: #ffe7cf;
+    --burgundy: #e2680f;
+    --burgundy-deep: #c2540a;
+    --gold: #1565c0;
+    --gold-soft: #5b94d6;
+    --moss: #e2680f;
+    --gray: #936b45;
+    --gray-light: #cba883;
+    --line: rgba(42, 28, 14, 0.14);
+    --line-soft: rgba(42, 28, 14, 0.05);
+    --highlight: #ffd9b0;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'Lora', Georgia, serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --display-letter-spacing: 0;
+    --display-text-transform: none;
+  }
   body { font-family: var(--font-body); }
   /* Display elementen krijgen letter-spacing en transform van het thema */
   h1, h2, h3, h4, .hero-title {
@@ -2121,6 +2142,35 @@
   .theme-swatch-bibliotheca { background: linear-gradient(135deg, #2a4d82 50%, #f4f1e8 50%); }
   .theme-swatch-gatsby      { background: linear-gradient(135deg, #1f6b82 50%, #f6f3e8 50%); }
   .theme-swatch-atelier     { background: linear-gradient(135deg, #3d527a 50%, #f4f3ee 50%); }
+  .theme-swatch-wk          { background: linear-gradient(135deg, #e2680f 50%, #ff9d4d 50%); }
+
+  /* WK — oranje vlaggetjes (alleen zichtbaar in het WK-thema) */
+  .wk-bunting { display: none; }
+  [data-theme="wk"] .wk-bunting {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0;
+    padding: 0.3rem 0 0.6rem;
+    line-height: 0;
+  }
+  .wk-bunting span {
+    width: 0; height: 0;
+    border-left: 15px solid transparent;
+    border-right: 15px solid transparent;
+    border-top: 24px solid #e2680f;
+    margin: 0 4px;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.18));
+    transform-origin: top center;
+    animation: wk-wave 3s ease-in-out infinite;
+  }
+  .wk-bunting span:nth-child(even) { border-top-color: #ff9d33; animation-delay: 0.4s; }
+  .wk-bunting span:nth-child(3n)   { border-top-color: #ffffff; animation-delay: 0.8s; }
+  @keyframes wk-wave {
+    0%, 100% { transform: rotate(-3deg); }
+    50% { transform: rotate(3deg); }
+  }
   .modal-overlay {
     position: fixed; inset: 0;
     background: rgba(26,24,18,0.65);
@@ -3147,6 +3197,8 @@
 <div id="main-content" style="display:none">
 <div class="container">
 
+
+<div class="wk-bunting" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
 
 <header>
   <img src="logo_od35.png" alt="OD35" class="house-logo">
@@ -8541,6 +8593,13 @@ async function submitAlbumForm() {
       <div style="font-size:0.72rem;color:var(--gray);font-family:Inter,sans-serif">modern hotel · staalblauw</div>
     </div>
   </button>
+  <button class="theme-option" data-theme-choice="wk">
+    <div class="theme-swatch theme-swatch-wk"></div>
+    <div>
+      <div style="font-family:'Playfair Display',serif;font-weight:600;font-size:1.05rem">WK 🟧</div>
+      <div style="font-size:0.72rem;color:var(--gray)">oranje feest · met vlaggetjes</div>
+    </div>
+  </button>
 </div>
 
 <!-- Jaargangen toevoegen aan event modal -->
@@ -8828,7 +8887,7 @@ Met vriendelijke groet,"></textarea>
 // ==================== THEME PICKER ====================
 (function() {
   const THEME_KEY = 'od35_theme';
-  const valid = ['bibliotheca', 'gatsby', 'atelier'];
+  const valid = ['bibliotheca', 'gatsby', 'atelier', 'wk'];
   // Migreer oude theme-namen
   const oldKey = localStorage.getItem('od35_theme');
   if (oldKey && !valid.includes(oldKey)) {
