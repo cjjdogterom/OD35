@@ -9494,7 +9494,7 @@ function wkEligible() {
     // WK-optie in de kiezer alleen tonen aan wie het mag zien
     const wkBtn = document.querySelector('.theme-option[data-theme-choice="wk"]');
     if (wkBtn) wkBtn.style.display = wkEligible() ? '' : 'none';
-    // WK-thema: huislogo krijgt het voetbalpatroon (vorm blijft gelijk).
+    // WK-thema: huislogo krijgt de Nederlandse vlag (vorm blijft gelijk).
     // Alleen het logo IN de app (niet het inlogscherm-logo).
     document.querySelectorAll('.house-logo, .nav-brand-logo').forEach(img => {
       img.src = (t === 'wk') ? 'archief/wk-logo.png' : 'logo_od35.png';
