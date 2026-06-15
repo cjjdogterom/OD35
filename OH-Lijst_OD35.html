@@ -3496,7 +3496,15 @@ const FORM_ENDPOINT = '/api/wijziging';
 // ── Supabase configuratie ────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://mxbtmbcgycjqapjzulrp.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14YnRtYmNneWNqcWFwanp1bHJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MDQ4MzgsImV4cCI6MjA5MzQ4MDgzOH0.6Qowa_mqhH7YtrljF5fZnQzUaG_u4N5TodcnLzRhYSM';
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Sessie blijft bewaard in de browser en wordt automatisch vernieuwd,
+// zodat een lid na inloggen ingelogd blijft (geen herhaald inloggen).
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  }
+});
 
 // Supabase rij → persoon object (Dutch veldnamen)
 function dbRowToPerson(row) {
