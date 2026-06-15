@@ -100,7 +100,12 @@ module.exports = async function handler(req, res) {
         subject,
         ...(html ? { html } : {}),
         ...(text ? { text } : {}),
-        ...(replyTo ? { replyTo } : {}),
+        replyTo: replyTo || GMAIL_USER,
+        // List-Unsubscribe maakt de mail "legitiem bulk" voor Gmail/Outlook,
+        // wat helpt om uit de spam-/promotiesmap te blijven.
+        headers: {
+          'List-Unsubscribe': `<mailto:${GMAIL_USER}?subject=Uitschrijven oud-huisgenoten Oude Delft 35>`,
+        },
       });
       results.ok++;
     } catch (err) {
