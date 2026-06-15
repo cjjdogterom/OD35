@@ -1155,6 +1155,14 @@
     margin-right: 0.4em;
     filter: drop-shadow(0 1px 0 rgba(0,0,0,0.15));
   }
+  .oudste-bal {
+    display: inline-block;
+    width: 0.85em;
+    height: 0.85em;
+    vertical-align: -0.1em;
+    margin-right: 0.4em;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25));
+  }
   .huis-oudste-toggle {
     background: transparent;
     border: 1px solid var(--line);
@@ -2232,6 +2240,39 @@
   @media (prefers-reduced-motion: reduce) {
     .wk-ball { animation: none !important; opacity: 0 !important; }
     .wk-bunting span { animation: none !important; }
+  }
+
+  /* ============ WK easter eggs (GOAL / Hup Holland) ============ */
+  .wk-goal-overlay {
+    position: fixed; inset: 0; z-index: 5000; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .wk-goal-text {
+    font-family: var(--font-display, Georgia, serif); font-weight: 800;
+    font-size: clamp(3rem, 13vw, 9rem); color: #e2680f; letter-spacing: 0.02em;
+    text-align: center; line-height: 1;
+    text-shadow: 0 3px 0 #fff, 0 7px 20px rgba(0,0,0,0.3);
+    transform: scale(0); animation: wk-goal-pop 1.9s ease forwards;
+  }
+  @keyframes wk-goal-pop {
+    0% { transform: scale(0) rotate(-8deg); opacity: 0; }
+    15% { transform: scale(1.15) rotate(3deg); opacity: 1; }
+    70% { transform: scale(1) rotate(0); opacity: 1; }
+    100% { transform: scale(1.12); opacity: 0; }
+  }
+  .wk-shoot-ball {
+    position: fixed; top: 60%; left: -130px; width: 90px; height: 90px;
+    background: url("archief/wk-bal.png") center/contain no-repeat;
+    z-index: 5001; pointer-events: none;
+    animation: wk-shoot 1.1s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  @keyframes wk-shoot {
+    0% { left: -130px; top: 62%; transform: rotate(0); }
+    100% { left: 106vw; top: 34%; transform: rotate(1080deg); }
+  }
+  @keyframes wk-rain {
+    0% { transform: translateY(0) rotate(0); }
+    100% { transform: translateY(118vh) rotate(720deg); }
   }
 
   /* ============ NESTOR — bankplekken ============ */
@@ -4159,6 +4200,11 @@ function saveState(key, value) {
 
 // Heineken-style 5-pointed star, dark red — for Huis Oudste marker
 const STAR_SVG = '<svg class="oudste-star" viewBox="0 0 24 24" aria-label="Huis Oudste"><polygon points="12,2 14.9,8.9 22.4,9.5 16.7,14.4 18.5,21.7 12,17.7 5.5,21.7 7.3,14.4 1.6,9.5 9.1,8.9"/></svg>';
+// WK-easter-egg: in het WK-thema krijgt de Huis Oudste een voetbal i.p.v. een ster.
+const OUDSTE_BAL_SVG = '<svg class="oudste-bal" viewBox="0 0 24 24" aria-label="Huis Oudste"><circle cx="12" cy="12" r="11" fill="#fff" stroke="#1a1a1a" stroke-width="1.4"/><polygon points="12,8 14.8,10.1 13.7,13.5 10.3,13.5 9.2,10.1" fill="#1a1a1a"/><polygon points="12,2.4 13.6,4.9 10.4,4.9" fill="#1a1a1a"/><polygon points="3.2,9.6 6,8.9 6.3,11.8" fill="#1a1a1a"/><polygon points="20.8,9.6 18,8.9 17.7,11.8" fill="#1a1a1a"/><polygon points="6.4,19.2 7.7,16.4 9.7,18.3" fill="#1a1a1a"/><polygon points="17.6,19.2 16.3,16.4 14.3,18.3" fill="#1a1a1a"/></svg>';
+function oudsteMarker() {
+  return document.documentElement.getAttribute('data-theme') === 'wk' ? OUDSTE_BAL_SVG : STAR_SVG;
+}
 
 // Mailbox met kruis — geen e-mailadres bekend
 const NO_EMAIL_SVG = '<span class="no-email-icon" title="Geen e-mailadres bekend"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5L4 8V6l8 5 8-5v2z"/><path stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M5 5l14 14"/></svg></span>';
@@ -4683,7 +4729,7 @@ function render() {
 
     html += `<div class="person ${expanded ? 'expanded' : ''} ${deceased ? 'deceased' : ''}" data-id="${escapeHtml(personId)}">`;
     html += `<div class="person-summary">`;
-    html += `<div class="person-jaar ${jaarClass}">${isHuisOudste(p) ? STAR_SVG : ''}${escapeHtml(String(jaar))}</div>`;
+    html += `<div class="person-jaar ${jaarClass}">${isHuisOudste(p) ? oudsteMarker() : ''}${escapeHtml(String(jaar))}</div>`;
     html += `<div class="person-name">${fullName(p)}${!hasAnyEmail(p) ? NO_EMAIL_SVG : ''}${deceased ? '<span class="deceased-cross" title="Overleden">✝</span>' : ''}${p['Gearchiveerd'] ? '<span class="deceased-badge">gearchiveerd</span>' : ''}</div>`;
     html += `<div class="person-toggle">▾</div>`;
     html += `</div>`;
@@ -9356,6 +9402,61 @@ Met vriendelijke groet,"></textarea>
 </div> <!-- #main-content -->
 
 <script>
+// ==================== WK EASTER EGGS ====================
+(function() {
+  const isWk = () => document.documentElement.getAttribute('data-theme') === 'wk';
+
+  function goal(tekst) {
+    const ball = document.createElement('div');
+    ball.className = 'wk-shoot-ball';
+    document.body.appendChild(ball);
+    const ov = document.createElement('div');
+    ov.className = 'wk-goal-overlay';
+    const t = document.createElement('div');
+    t.className = 'wk-goal-text';
+    t.textContent = tekst || 'GOAAAL!';
+    ov.appendChild(t);
+    document.body.appendChild(ov);
+    setTimeout(() => ball.remove(), 1300);
+    setTimeout(() => ov.remove(), 2000);
+  }
+
+  // 1) Klik op het huislogo (in het WK-thema) → een bal schiet over het scherm + GOAAAL!
+  document.addEventListener('click', e => {
+    if (isWk() && e.target.closest('.house-logo, .nav-brand-logo')) goal('GOAAAL!');
+  });
+
+  // 2) Konami-code (↑↑↓↓←→←→ b a) → Hup Holland Hup! + ballenregen
+  const seq = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+  let idx = 0;
+  document.addEventListener('keydown', e => {
+    const k = e.key && e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (k === seq[idx]) { idx++; } else { idx = (k === seq[0]) ? 1 : 0; }
+    if (idx === seq.length) {
+      idx = 0;
+      if (!isWk()) return;
+      goal('HUP HOLLAND HUP!');
+      for (let i = 0; i < 26; i++) {
+        const b = document.createElement('div');
+        const s = 28 + Math.random() * 52;
+        b.className = 'wk-shoot-ball';
+        b.style.cssText = `top:-110px;left:${Math.random()*100}vw;width:${s}px;height:${s}px;` +
+          `animation:wk-rain ${(2 + Math.random()*2.2).toFixed(2)}s linear forwards;animation-delay:${(Math.random()*0.6).toFixed(2)}s;`;
+        document.body.appendChild(b);
+        setTimeout(() => b.remove(), 5000);
+      }
+    }
+  });
+
+  // 3) Verlaat je het tabblad in het WK-thema, dan port de titel je naar de wedstrijd
+  let origTitle = null;
+  document.addEventListener('visibilitychange', () => {
+    if (!isWk()) return;
+    if (document.hidden) { origTitle = document.title; document.title = '⚽ Kom je kijken?! · OD35'; }
+    else if (origTitle !== null) { document.title = origTitle; origTitle = null; }
+  });
+})();
+
 // ==================== THEME PICKER ====================
 // Mag de huidige gebruiker het WK-thema zien? Alleen ingelogde bewoners
 // met aankomstjaar 2011 t/m 2026. Niet ingelogd (inlogpagina) = nooit.
@@ -9393,6 +9494,11 @@ function wkEligible() {
     // WK-optie in de kiezer alleen tonen aan wie het mag zien
     const wkBtn = document.querySelector('.theme-option[data-theme-choice="wk"]');
     if (wkBtn) wkBtn.style.display = wkEligible() ? '' : 'none';
+    // WK-thema: huislogo krijgt het voetbalpatroon (vorm blijft gelijk).
+    // Alleen het logo IN de app (niet het inlogscherm-logo).
+    document.querySelectorAll('.house-logo, .nav-brand-logo').forEach(img => {
+      img.src = (t === 'wk') ? 'archief/wk-logo.png' : 'logo_od35.png';
+    });
   }
   function pickTheme(name) {
     if (!valid.includes(name)) return;
