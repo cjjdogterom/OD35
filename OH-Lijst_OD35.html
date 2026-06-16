@@ -2275,6 +2275,50 @@
     100% { transform: translateY(118vh) rotate(720deg); }
   }
 
+  /* ============ HUISPLATTEGROND (miniatuur poppenhuis) ============ */
+  .huis-head h2 { margin: 0; }
+  .huis-sub { color: var(--gray); margin: 0.3rem 0 1.25rem; font-style: italic; max-width: 640px; }
+  .huis-layout { display: flex; gap: 1.5rem; align-items: flex-start; }
+  .huis-svg-wrap { flex: 1 1 58%; min-width: 0; }
+  .huis-svg { width: 100%; height: auto; display: block; }
+  .huis-floor-label { font-family: var(--font-mono); font-size: 11px; fill: var(--gray); letter-spacing: 0.04em; }
+  .huis-kamer { cursor: pointer; }
+  .huis-kamer rect { transition: filter 0.12s; }
+  .huis-kamer:hover rect { filter: brightness(1.05); }
+  .huis-kamer:focus-visible rect { stroke: #9c3b2e; stroke-width: 3; }
+  .huis-kamer-naam { font-family: var(--font-body); font-size: 12.5px; font-weight: 600; fill: #3a2e22; }
+  .huis-kamer-bew { font-family: var(--font-body); font-size: 10.5px; fill: #9c3b2e; }
+  .huis-kamer-leeg { font-family: var(--font-body); font-size: 10px; fill: #b3a892; font-style: italic; }
+  .huis-detail { flex: 1 1 40%; min-width: 240px; background: var(--paper-warm); border: 1px solid var(--line); border-radius: 8px; padding: 1.1rem 1.2rem; position: sticky; top: 90px; }
+  .huis-detail-verdieping { font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--gray); }
+  .huis-detail-head h3 { margin: 0.2rem 0 1rem; font-family: var(--font-display); color: var(--ink); }
+  .huis-detail-sectie { margin-bottom: 1.1rem; }
+  .huis-detail-sectie h4 { margin: 0 0 0.4rem; font-size: 0.82rem; color: var(--burgundy); }
+  .huis-bew-lijst { list-style: none; margin: 0; padding: 0; }
+  .huis-bew-lijst li { display: flex; justify-content: space-between; gap: 0.6rem; padding: 0.32rem 0; border-bottom: 1px solid var(--line-soft); font-size: 0.9rem; }
+  .huis-bew-naam { color: var(--ink); }
+  .huis-bew-periode { color: var(--gray); font-family: var(--font-mono); font-size: 0.78rem; white-space: nowrap; }
+  .huis-detail-leeg { color: var(--gray); font-style: italic; font-size: 0.88rem; margin: 0; }
+  .huis-edit-btn { margin-top: 0.4rem; background: var(--burgundy); color: var(--paper); border: none; padding: 0.5rem 1rem; border-radius: 2px; cursor: pointer; font-family: var(--font-body); }
+  .hk-label { display:block; font-size:0.78rem; color:var(--gray); margin-bottom:0.3rem; }
+  .hk-input { width:100%; box-sizing:border-box; padding:0.5rem; border:1px solid var(--line); border-radius:2px; font-family:var(--font-body); margin-bottom:1rem; }
+  .hk-sectie { margin-bottom:1rem; }
+  .hk-sectie-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; }
+  .hk-add { background:transparent; border:1px solid var(--line); color:var(--burgundy); border-radius:2px; padding:0.2rem 0.6rem; cursor:pointer; font-size:0.78rem; }
+  .hk-row { display:flex; gap:0.4rem; margin-bottom:0.4rem; }
+  .hk-row .hk-naam { flex:2; }
+  .hk-row .hk-periode { flex:1.5; }
+  .hk-row input { padding:0.4rem 0.5rem; border:1px solid var(--line); border-radius:2px; font-family:var(--font-body); min-width:0; }
+  .hk-del { flex:0 0 auto; background:transparent; border:1px solid var(--line); color:#c0392b; border-radius:2px; cursor:pointer; width:32px; }
+  .hk-actions { display:flex; gap:0.5rem; margin-top:0.8rem; }
+  .hk-save { background:var(--burgundy); color:var(--paper); border:none; padding:0.5rem 1.1rem; border-radius:2px; cursor:pointer; font-family:var(--font-body); }
+  .hk-cancel { background:transparent; border:1px solid var(--line); color:var(--gray); padding:0.5rem 1rem; border-radius:2px; cursor:pointer; font-family:var(--font-body); }
+  .hk-status { margin-top:0.5rem; font-size:0.85rem; color:var(--gray); }
+  @media (max-width: 760px) {
+    .huis-layout { flex-direction: column; }
+    .huis-detail { position: static; width: 100%; box-sizing: border-box; }
+  }
+
   /* ============ NESTOR — bankplekken ============ */
   .nestor-head h2 { margin: 0; }
   .nestor-sub { color: var(--gray); margin: 0.3rem 0 1rem; font-style: italic; }
@@ -3427,6 +3471,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
       <button class="tab-btn" data-tab="agenda">Agenda</button>
       <button class="tab-btn" data-tab="contacten">Contacten</button>
       <button class="tab-btn" data-tab="wandelgangen">Wandelgangen</button>
+      <button class="tab-btn" data-tab="huisplattegrond">🏠 Huisplattegrond</button>
       <button class="tab-btn" data-tab="geschiedenis">Geschiedenis</button>
       <button class="tab-btn admin-only" data-tab="wijzigingen" style="display:none">Verzoeken <span id="wijzigingen-badge" class="tab-badge"></span></button>
       <button class="tab-btn admin-only" data-tab="verjaardagen" style="display:none">Verjaardagen</button>
@@ -3592,6 +3637,18 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
 
   <div id="wg-list" class="wg-list"></div>
 </div><!-- /panel-wandelgangen -->
+
+<!-- ==================== TAB: HUISPLATTEGROND ==================== -->
+<div class="tab-panel" id="panel-huisplattegrond">
+  <div class="huis-head">
+    <h2>🏠 Huisplattegrond — Oude Delft 35</h2>
+    <p class="huis-sub">Klik op een kamer om te zien wie er nu woont en wie er vroeger zaten. Naar de bouwtekening van Architectenbureau Postel.</p>
+  </div>
+  <div class="huis-layout">
+    <div class="huis-svg-wrap" id="huis-svg-wrap"></div>
+    <aside class="huis-detail" id="huis-detail"></aside>
+  </div>
+</div><!-- /panel-huisplattegrond -->
 
 <!-- ==================== TAB: FOTO'S ==================== -->
 <div class="tab-panel" id="panel-fotos">
@@ -5377,6 +5434,7 @@ document.getElementById('tab-nav').addEventListener('click', e => {
   if (tab === 'agenda') renderEvents();
   if (tab === 'contacten') renderContacts();
   if (tab === 'wandelgangen') loadWandelgangen();
+  if (tab === 'huisplattegrond') loadHuis();
   if (tab === 'geschiedenis') renderHistory();
   if (tab === 'fotos') { loadAlbums().then(renderFotosTab); }
   if (tab === 'wijzigingen') { loadWijzigingen(); }
@@ -5583,6 +5641,149 @@ function startNestorAutoRefresh() {
 function stopNestorAutoRefresh() {
   if (_nestorTimer) { clearInterval(_nestorTimer); _nestorTimer = null; }
 }
+
+// ==================== HUISPLATTEGROND (miniatuur poppenhuis) ====================
+// Indeling naar de bouwtekening van Architectenbureau Postel (pand O.D. 35).
+const HUIS_VERDIEPINGEN = [
+  { id:'zolder', label:'Zolder',        kamers:[ {id:'zolder-voor',naam:'Voorzolder'}, {id:'zolder-achter',naam:'Achterzolder'} ] },
+  { id:'v2',     label:'2e verdieping', kamers:[ {id:'v2-voor',naam:'Voorkamer'}, {id:'v2-midden',naam:'Middenkamer'}, {id:'v2-achter',naam:'Achterkamer'} ] },
+  { id:'v1',     label:'1e verdieping', kamers:[ {id:'v1-voor',naam:'Voorkamer'}, {id:'v1-midden',naam:'Middenkamer'}, {id:'v1-achter',naam:'Achterkamer'} ] },
+  { id:'bg',     label:'Begane grond',  kamers:[ {id:'bg-voor',naam:'Voorhuis'}, {id:'bg-midden',naam:'Eetzaal'}, {id:'bg-achter',naam:'Keuken'} ] },
+  { id:'sout',   label:'Souterrain',    kamers:[ {id:'sout-voor',naam:'Bodega'}, {id:'sout-achter',naam:'Kelder'} ] },
+];
+let huisKamers = {};
+let huisGeselecteerd = null;
+
+function huisLayoutKamer(id){
+  for (const v of HUIS_VERDIEPINGEN) for (const k of v.kamers) if (k.id===id) return { ...k, verdieping:v.label };
+  return null;
+}
+function huisKamerNaam(id, def){ const d=huisKamers[id]; return (d && d.naam) ? d.naam : def; }
+function huisBewoners(id){ const d=huisKamers[id]; return (d && Array.isArray(d.bewoners)) ? d.bewoners : []; }
+function huisHuidig(id){ return huisBewoners(id).filter(b => b && b.huidig && b.naam); }
+function huisVroeger(id){ return huisBewoners(id).filter(b => b && !b.huidig && b.naam); }
+
+async function loadHuis(){
+  try {
+    const { data, error } = await db.from('kamers').select('*');
+    if (error) throw error;
+    huisKamers = {};
+    (data||[]).forEach(r => { huisKamers[r.kamer_id] = { naam: r.naam, bewoners: Array.isArray(r.bewoners) ? r.bewoners : [] }; });
+  } catch(e){ huisKamers = {}; console.warn('kamers laden mislukt:', e.message||e); }
+  if (!huisGeselecteerd) huisGeselecteerd = 'bg-voor';
+  renderHuis();
+  renderHuisDetail(huisGeselecteerd);
+}
+
+function renderHuis(){
+  const wrap = document.getElementById('huis-svg-wrap');
+  if (!wrap) return;
+  const W=720, H=700, bx0=95, bx1=625, bw=bx1-bx0, bTop=205, bBot=645;
+  const fh=(bBot-bTop)/HUIS_VERDIEPINGEN.length, esc=escapeHtml;
+  let s = `<svg viewBox="0 0 ${W} ${H}" class="huis-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Miniatuur van Oude Delft 35">`;
+  s += `<ellipse cx="360" cy="664" rx="300" ry="18" fill="rgba(0,0,0,0.12)"/>`;
+  // straatlijn (souterrain ligt half onder straatniveau)
+  const soutTop = bTop + 4*fh;
+  s += `<line x1="24" y1="${soutTop}" x2="696" y2="${soutTop}" stroke="#b7a98f" stroke-width="2"/>`;
+  // dak / klassiek fronton
+  s += `<polygon points="${bx0-14},${bTop+2} 360,108 ${bx1+14},${bTop+2}" fill="#bb7c50" stroke="#7a4a2c" stroke-width="3" stroke-linejoin="round"/>`;
+  for (let i=1;i<5;i++){ const t=i/5, lx=(bx0-14)+(360-(bx0-14))*t, ly=(bTop+2)+(108-(bTop+2))*t, rx=(bx1+14)-((bx1+14)-360)*t; s+=`<line x1="${lx}" y1="${ly}" x2="${rx}" y2="${ly}" stroke="#a5683f" stroke-width="1" opacity="0.5"/>`; }
+  s += `<polygon points="360,108 365,120 355,120" fill="#5e3d28"/>`; // klein topornament
+  s += `<rect x="${bx0-16}" y="${bTop-12}" width="${bw+32}" height="14" rx="2" fill="#cea572" stroke="#7a4a2c" stroke-width="2"/>`; // kroonlijst
+  s += `<rect x="${bx1-72}" y="132" width="26" height="58" fill="#9c6b46" stroke="#5e3d28" stroke-width="2"/><rect x="${bx1-76}" y="127" width="34" height="9" fill="#7a4a2c"/>`;
+  s += `<circle cx="360" cy="168" r="15" fill="#ecd9b3" stroke="#7a4a2c" stroke-width="2.5"/><line x1="345" y1="168" x2="375" y2="168" stroke="#7a4a2c" stroke-width="1.4"/><line x1="360" y1="153" x2="360" y2="183" stroke="#7a4a2c" stroke-width="1.4"/>`;
+  // huisromp (muren/vloeren achter de kamers)
+  s += `<rect x="${bx0-6}" y="${bTop}" width="${bw+12}" height="${bBot-bTop}" rx="5" fill="#6b513c" stroke="#4a3526" stroke-width="3"/>`;
+  // kamers
+  HUIS_VERDIEPINGEN.forEach((v, fi) => {
+    const fy=bTop+fi*fh, n=v.kamers.length, gap=7, cellW=(bw-gap*(n+1))/n;
+    s += `<text x="${bx0-22}" y="${fy+fh/2+3}" text-anchor="end" class="huis-floor-label">${esc(v.label)}</text>`;
+    v.kamers.forEach((k, ri) => {
+      const cx=bx0+gap+ri*(cellW+gap), ry0=fy+6, rh=fh-12, sel=(huisGeselecteerd===k.id);
+      const huidig=huisHuidig(k.id), naam=huisKamerNaam(k.id,k.naam), sout=v.id==='sout';
+      const fill = sout ? '#d7c8ad' : (huidig.length ? '#f0e1c5' : '#f7f0e2');
+      s += `<g class="huis-kamer${sel?' sel':''}" data-kamer="${esc(k.id)}" tabindex="0" role="button" aria-label="${esc(naam)}">`;
+      s += `<rect x="${cx}" y="${ry0}" width="${cellW}" height="${rh}" rx="4" fill="${fill}" stroke="${sel?'#9c3b2e':'#bca382'}" stroke-width="${sel?3:1.2}"/>`;
+      s += `<text x="${cx+cellW/2}" y="${ry0+19}" text-anchor="middle" class="huis-kamer-naam">${esc(naam)}</text>`;
+      if (huidig.length){
+        const extra=huidig.length>1?` +${huidig.length-1}`:'';
+        s += `<circle cx="${cx+11}" cy="${ry0+rh-12}" r="3.6" fill="#9c3b2e"/>`;
+        s += `<text x="${cx+cellW/2}" y="${ry0+rh-8}" text-anchor="middle" class="huis-kamer-bew">${esc((huidig[0].naam||'')+extra)}</text>`;
+      } else {
+        s += `<text x="${cx+cellW/2}" y="${ry0+rh-8}" text-anchor="middle" class="huis-kamer-leeg">leeg</text>`;
+      }
+      s += `</g>`;
+    });
+  });
+  // voordeur + stoep op de begane grond (links = straatzijde)
+  const bgY = bTop + HUIS_VERDIEPINGEN.findIndex(v=>v.id==='bg')*fh;
+  s += `<rect x="${bx0+13}" y="${bgY+fh-42}" width="22" height="36" rx="2" fill="#5e3d28" stroke="#3a2417" stroke-width="1.5"/><circle cx="${bx0+30}" cy="${bgY+fh-24}" r="1.8" fill="#caa06f"/>`;
+  s += `<rect x="${bx0+7}" y="${bgY+fh-6}" width="34" height="5" fill="#9b8a72"/><rect x="${bx0+10}" y="${bgY+fh-1}" width="28" height="5" fill="#897a64"/>`;
+  s += `</svg>`;
+  wrap.innerHTML = s;
+}
+
+function renderHuisDetail(id){
+  const el = document.getElementById('huis-detail');
+  if (!el) return;
+  const lay = huisLayoutKamer(id);
+  if (!lay){ el.innerHTML = '<p class="huis-detail-leeg">Klik op een kamer in het huis.</p>'; return; }
+  const naam=huisKamerNaam(id,lay.naam), huidig=huisHuidig(id), vroeger=huisVroeger(id);
+  const lijst=(arr,leeg)=> arr.length
+    ? `<ul class="huis-bew-lijst">${arr.map(b=>`<li><span class="huis-bew-naam">${escapeHtml(b.naam||'')}</span>${b.periode?`<span class="huis-bew-periode">${escapeHtml(b.periode)}</span>`:''}</li>`).join('')}</ul>`
+    : `<p class="huis-detail-leeg">${leeg}</p>`;
+  el.innerHTML = `
+    <div class="huis-detail-head"><div class="huis-detail-verdieping">${escapeHtml(lay.verdieping)}</div><h3>${escapeHtml(naam)}</h3></div>
+    <div class="huis-detail-sectie"><h4>👤 Wie woont hier nu</h4>${lijst(huidig,'Nu niemand bekend.')}</div>
+    <div class="huis-detail-sectie"><h4>🕰 Wie woonden hier eerder</h4>${lijst(vroeger,'Nog geen geschiedenis ingevuld.')}</div>
+    ${isAdmin()?`<button class="huis-edit-btn" data-action="huis-edit" data-kamer="${escapeHtml(id)}">✎ Kamer bewerken</button>`:''}`;
+}
+
+function openHuisKamerModal(id){
+  if (!isAdmin()) return;
+  const lay=huisLayoutKamer(id); if(!lay) return;
+  const naam=huisKamerNaam(id,lay.naam), huidig=huisHuidig(id), vroeger=huisVroeger(id);
+  const row=(b)=>`<div class="hk-row"><input class="hk-naam" placeholder="Naam" value="${escapeHtml(b&&b.naam||'')}"><input class="hk-periode" placeholder="Periode (bijv. 2021–2023)" value="${escapeHtml(b&&b.periode||'')}"><button type="button" class="hk-del" title="Verwijderen">✕</button></div>`;
+  const ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='huis-kamer-modal';
+  ov.innerHTML=`<div class="modal-box" style="max-width:560px; text-align:left;">
+    <button class="modal-close" id="hk-close">✕</button>
+    <h3 style="margin-top:0;">Kamer bewerken · ${escapeHtml(lay.verdieping)}</h3>
+    <label class="hk-label">Naam van de kamer</label>
+    <input id="hk-kamernaam" class="hk-input" value="${escapeHtml(naam)}" placeholder="${escapeHtml(lay.naam)}">
+    <div class="hk-sectie"><div class="hk-sectie-head"><span>Wie woont hier nu</span><button type="button" class="hk-add" data-target="hk-huidig">+ toevoegen</button></div><div id="hk-huidig">${(huidig.length?huidig:[null]).map(row).join('')}</div></div>
+    <div class="hk-sectie"><div class="hk-sectie-head"><span>Wie woonden hier eerder</span><button type="button" class="hk-add" data-target="hk-vroeger">+ toevoegen</button></div><div id="hk-vroeger">${vroeger.map(row).join('')}</div></div>
+    <div class="hk-actions"><button class="hk-save" id="hk-save">Opslaan</button><button class="hk-cancel" id="hk-cancel">Annuleren</button></div>
+    <div id="hk-status" class="hk-status"></div></div>`;
+  ov.addEventListener('click', e=>{ if(e.target===ov) ov.remove(); if(e.target.classList.contains('hk-del')) e.target.closest('.hk-row').remove(); });
+  document.body.appendChild(ov);
+  const close=()=>ov.remove();
+  ov.querySelector('#hk-close').onclick=close; ov.querySelector('#hk-cancel').onclick=close;
+  ov.querySelectorAll('.hk-add').forEach(btn=>btn.onclick=()=>ov.querySelector('#'+btn.dataset.target).insertAdjacentHTML('beforeend', row(null)));
+  ov.querySelector('#hk-save').onclick=async ()=>{
+    const kamernaam=ov.querySelector('#hk-kamernaam').value.trim()||null;
+    const collect=(cid,h)=>[...ov.querySelectorAll('#'+cid+' .hk-row')].map(r=>({naam:r.querySelector('.hk-naam').value.trim(),periode:r.querySelector('.hk-periode').value.trim(),huidig:h})).filter(b=>b.naam);
+    const bewoners=[...collect('hk-huidig',true), ...collect('hk-vroeger',false)];
+    const st=ov.querySelector('#hk-status'); st.style.color='var(--gray)'; st.textContent='Opslaan…';
+    try{
+      const { data, error } = await db.from('kamers').upsert({ kamer_id:id, naam:kamernaam, bewoners }, { onConflict:'kamer_id' }).select();
+      if(error) throw error;
+      if(!data || !data.length) throw new Error('Geen rechten om op te slaan — draai de SQL voor de kamers-tabel.');
+      huisKamers[id]={ naam:kamernaam, bewoners };
+      renderHuis(); renderHuisDetail(id); close();
+    }catch(e){ st.style.color='#c0392b'; st.textContent='Mislukt: '+(e.message||e); }
+  };
+}
+
+(function(){
+  const wrap=document.getElementById('huis-svg-wrap');
+  if (wrap){
+    const kies=g=>{ huisGeselecteerd=g.dataset.kamer; renderHuis(); renderHuisDetail(huisGeselecteerd); };
+    wrap.addEventListener('click', e=>{ const g=e.target.closest('.huis-kamer'); if(g) kies(g); });
+    wrap.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ const g=e.target.closest('.huis-kamer'); if(g){ e.preventDefault(); kies(g); } } });
+  }
+  const det=document.getElementById('huis-detail');
+  if (det) det.addEventListener('click', e=>{ const b=e.target.closest('[data-action="huis-edit"]'); if(b) openHuisKamerModal(b.dataset.kamer); });
+})();
 
 // ==================== WANDELGANGEN (forum) ====================
 let wandelgangenList = [];
