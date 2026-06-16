@@ -56,6 +56,15 @@ module.exports = async function handler(req, res) {
     return res.status(429).json({ error: 'Er is net een code aangevraagd. Wacht even voor je het opnieuw probeert.' });
   }
 
+  // Geblokkeerde adressen: geen toegang meer tot de site (krijgen nooit een inlogcode,
+  // ook niet als ze nog in de ledenlijst staan). Adres in kleine letters.
+  const GEBLOKKEERD = [
+    'boele@cdehg.nl',
+  ];
+  if (GEBLOKKEERD.includes(email)) {
+    return res.status(403).json({ error: 'Dit account heeft geen toegang meer tot de site.' });
+  }
+
   const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!SERVICE) {
     return res.status(500).json({ error: 'Server niet geconfigureerd (service key ontbreekt).' });
