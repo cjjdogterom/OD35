@@ -2299,17 +2299,25 @@
   .huis-bew-naam { color: var(--ink); }
   .huis-bew-periode { color: var(--gray); font-family: var(--font-mono); font-size: 0.78rem; white-space: nowrap; }
   .huis-detail-leeg { color: var(--gray); font-style: italic; font-size: 0.88rem; margin: 0; }
+  .huis-detail-hint { color: var(--gray); font-style: italic; font-size: 0.76rem; margin: -0.2rem 0 0.5rem; }
+  .huis-bew-rang { color: var(--gray); font-family: var(--font-mono); font-size: 0.72rem; margin-right: 0.3rem; }
+  .huis-bew-nu { background: var(--burgundy); color: var(--paper); font-size: 0.6rem; padding: 0.05rem 0.4rem; border-radius: 8px; margin-left: 0.45rem; text-transform: uppercase; letter-spacing: 0.04em; vertical-align: middle; }
+  [data-theme="wk"] .huis-bew-nu { color: var(--ink); }
   .huis-edit-btn { margin-top: 0.4rem; background: var(--burgundy); color: var(--paper); border: none; padding: 0.5rem 1rem; border-radius: 2px; cursor: pointer; font-family: var(--font-body); }
   .hk-label { display:block; font-size:0.78rem; color:var(--gray); margin-bottom:0.3rem; }
   .hk-input { width:100%; box-sizing:border-box; padding:0.5rem; border:1px solid var(--line); border-radius:2px; font-family:var(--font-body); margin-bottom:1rem; }
   .hk-sectie { margin-bottom:1rem; }
   .hk-sectie-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; }
   .hk-add { background:transparent; border:1px solid var(--line); color:var(--burgundy); border-radius:2px; padding:0.2rem 0.6rem; cursor:pointer; font-size:0.78rem; }
-  .hk-row { display:flex; gap:0.4rem; margin-bottom:0.4rem; }
+  .hk-row { display:flex; align-items:center; gap:0.4rem; margin-bottom:0.4rem; }
   .hk-row .hk-naam { flex:2; }
   .hk-row .hk-periode { flex:1.5; }
   .hk-row input { padding:0.4rem 0.5rem; border:1px solid var(--line); border-radius:2px; font-family:var(--font-body); min-width:0; }
   .hk-del { flex:0 0 auto; background:transparent; border:1px solid var(--line); color:#c0392b; border-radius:2px; cursor:pointer; width:32px; }
+  .hk-move { display:flex; flex-direction:column; gap:2px; flex:0 0 auto; }
+  .hk-up, .hk-down { background:transparent; border:1px solid var(--line); color:var(--gray); border-radius:2px; cursor:pointer; width:30px; height:22px; line-height:1; font-size:0.72rem; padding:0; }
+  .hk-up:hover, .hk-down:hover { color:var(--burgundy); border-color:var(--burgundy); }
+  .hk-hint { font-size:0.74rem; color:var(--gray); font-style:italic; margin:0 0 0.5rem; }
   .hk-actions { display:flex; gap:0.5rem; margin-top:0.8rem; }
   .hk-save { background:var(--burgundy); color:var(--paper); border:none; padding:0.5rem 1.1rem; border-radius:2px; cursor:pointer; font-family:var(--font-body); }
   .hk-cancel { background:transparent; border:1px solid var(--line); color:var(--gray); padding:0.5rem 1rem; border-radius:2px; cursor:pointer; font-family:var(--font-body); }
@@ -3471,7 +3479,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
       <button class="tab-btn" data-tab="agenda">Agenda</button>
       <button class="tab-btn" data-tab="contacten">Contacten</button>
       <button class="tab-btn" data-tab="wandelgangen">Wandelgangen</button>
-      <button class="tab-btn" data-tab="huisplattegrond">🏠 Huisplattegrond</button>
+      <button class="tab-btn admin-only" data-tab="huisplattegrond" style="display:none">🏠 Huisplattegrond</button>
       <button class="tab-btn" data-tab="geschiedenis">Geschiedenis</button>
       <button class="tab-btn admin-only" data-tab="wijzigingen" style="display:none">Verzoeken <span id="wijzigingen-badge" class="tab-badge"></span></button>
       <button class="tab-btn admin-only" data-tab="verjaardagen" style="display:none">Verjaardagen</button>
@@ -5434,7 +5442,7 @@ document.getElementById('tab-nav').addEventListener('click', e => {
   if (tab === 'agenda') renderEvents();
   if (tab === 'contacten') renderContacts();
   if (tab === 'wandelgangen') loadWandelgangen();
-  if (tab === 'huisplattegrond') loadHuis();
+  if (tab === 'huisplattegrond' && isAdmin()) loadHuis();
   if (tab === 'geschiedenis') renderHistory();
   if (tab === 'fotos') { loadAlbums().then(renderFotosTab); }
   if (tab === 'wijzigingen') { loadWijzigingen(); }
@@ -5662,8 +5670,8 @@ function huisLayoutKamer(id){
 }
 function huisKamerNaam(id, def){ const d=huisKamers[id]; return (d && d.naam) ? d.naam : def; }
 function huisBewoners(id){ const d=huisKamers[id]; return (d && Array.isArray(d.bewoners)) ? d.bewoners : []; }
-function huisHuidig(id){ return huisBewoners(id).filter(b => b && b.huidig && b.naam); }
-function huisVroeger(id){ return huisBewoners(id).filter(b => b && !b.huidig && b.naam); }
+// Eén geordende lijst: index 0 = bovenaan = wie er nu woont; verder naar onder = wie er vroeger zaten.
+function huisBewonersGevuld(id){ return huisBewoners(id).filter(b => b && b.naam); }
 
 async function loadHuis(){
   try {
@@ -5714,17 +5722,17 @@ function renderHuis(){
         s += `<text x="${cx+cellW/2}" y="${ry0+rh/2+4}" text-anchor="middle" class="huis-kamer-leeg">trap</text>`;
         return;
       }
-      const sel=(huisGeselecteerd===k.id), huidig=huisHuidig(k.id), naam=huisKamerNaam(k.id,k.naam), sout=v.id==='sout';
-      const fill = sout ? '#d7c8ad' : (huidig.length ? '#f0e1c5' : '#f7f0e2');
+      const sel=(huisGeselecteerd===k.id), bews=huisBewonersGevuld(k.id), naam=huisKamerNaam(k.id,k.naam), sout=v.id==='sout';
+      const fill = sout ? '#d7c8ad' : (bews.length ? '#f0e1c5' : '#f7f0e2');
       const nameTL = (naam.length*7 > cellW-8) ? ` textLength="${(cellW-8).toFixed(0)}" lengthAdjust="spacingAndGlyphs"` : '';
       s += `<g class="huis-kamer${sel?' sel':''}" data-kamer="${esc(k.id)}" tabindex="0" role="button" aria-label="${esc(naam)}">`;
       s += `<rect x="${cx}" y="${ry0}" width="${cellW}" height="${rh}" rx="4" fill="${fill}" style="stroke:${sel?'var(--burgundy,#9c3b2e)':'#bca382'}" stroke-width="${sel?3:1.2}"/>`;
       s += `<text x="${cx+cellW/2}" y="${ry0+18}" text-anchor="middle" class="huis-kamer-naam"${nameTL}>${esc(naam)}</text>`;
-      if (huidig.length){
-        const extra=huidig.length>1?` +${huidig.length-1}`:'';
-        const disp=(huidig[0].naam||'')+extra;
+      if (bews.length){
+        const extra=bews.length>1?` +${bews.length-1}`:'';
+        const disp=(bews[0].naam||'')+extra;
         const bewTL = (disp.length*5.6 > cellW-14) ? ` textLength="${(cellW-14).toFixed(0)}" lengthAdjust="spacingAndGlyphs"` : '';
-        s += `<circle cx="${cx+10}" cy="${ry0+rh-12}" r="3.4" style="fill:var(--burgundy,#9c3b2e)"/>`;
+        s += `<circle cx="${cx+10}" cy="${ry0+rh-12}" r="3.6" style="fill:var(--burgundy-deep,#9c3b2e)"/>`;
         s += `<text x="${cx+cellW/2}" y="${ry0+rh-8}" text-anchor="middle" class="huis-kamer-bew"${bewTL}>${esc(disp)}</text>`;
       } else {
         s += `<text x="${cx+cellW/2}" y="${ry0+rh-8}" text-anchor="middle" class="huis-kamer-leeg">leeg</text>`;
@@ -5745,41 +5753,48 @@ function renderHuisDetail(id){
   if (!el) return;
   const lay = huisLayoutKamer(id);
   if (!lay){ el.innerHTML = '<p class="huis-detail-leeg">Klik op een kamer in het huis.</p>'; return; }
-  const naam=huisKamerNaam(id,lay.naam), huidig=huisHuidig(id), vroeger=huisVroeger(id);
-  const lijst=(arr,leeg)=> arr.length
-    ? `<ul class="huis-bew-lijst">${arr.map(b=>`<li><span class="huis-bew-naam">${escapeHtml(b.naam||'')}</span>${b.periode?`<span class="huis-bew-periode">${escapeHtml(b.periode)}</span>`:''}</li>`).join('')}</ul>`
-    : `<p class="huis-detail-leeg">${leeg}</p>`;
+  const naam=huisKamerNaam(id,lay.naam), bews=huisBewonersGevuld(id);
+  const lijst = bews.length
+    ? `<ol class="huis-bew-lijst huis-bew-volgorde">${bews.map((b,i)=>`<li><span class="huis-bew-naam"><span class="huis-bew-rang">${i+1}.</span>${escapeHtml(b.naam||'')}${i===0?'<span class="huis-bew-nu">nu</span>':''}</span>${b.periode?`<span class="huis-bew-periode">${escapeHtml(b.periode)}</span>`:''}</li>`).join('')}</ol>`
+    : `<p class="huis-detail-leeg">Nog niemand ingevuld.</p>`;
   el.innerHTML = `
     <div class="huis-detail-head"><div class="huis-detail-verdieping">${escapeHtml(lay.verdieping)}</div><h3>${escapeHtml(naam)}</h3></div>
-    <div class="huis-detail-sectie"><h4>👤 Wie woont hier nu</h4>${lijst(huidig,'Nu niemand bekend.')}</div>
-    <div class="huis-detail-sectie"><h4>🕰 Wie woonden hier eerder</h4>${lijst(vroeger,'Nog geen geschiedenis ingevuld.')}</div>
+    <div class="huis-detail-sectie"><h4>🛏 Wie de kamer bewoond heeft</h4><p class="huis-detail-hint">Van boven (nu) naar onder (vroeger).</p>${lijst}</div>
     ${isAdmin()?`<button class="huis-edit-btn" data-action="huis-edit" data-kamer="${escapeHtml(id)}">✎ Kamer bewerken</button>`:''}`;
 }
 
 function openHuisKamerModal(id){
   if (!isAdmin()) return;
   const lay=huisLayoutKamer(id); if(!lay) return;
-  const naam=huisKamerNaam(id,lay.naam), huidig=huisHuidig(id), vroeger=huisVroeger(id);
-  const row=(b)=>`<div class="hk-row"><input class="hk-naam" placeholder="Naam" value="${escapeHtml(b&&b.naam||'')}"><input class="hk-periode" placeholder="Periode (bijv. 2021–2023)" value="${escapeHtml(b&&b.periode||'')}"><button type="button" class="hk-del" title="Verwijderen">✕</button></div>`;
+  const naam=huisKamerNaam(id,lay.naam), bews=huisBewonersGevuld(id);
+  const row=(b)=>`<div class="hk-row"><span class="hk-move"><button type="button" class="hk-up" title="Naar boven">▲</button><button type="button" class="hk-down" title="Naar onder">▼</button></span><input class="hk-naam" placeholder="Naam" value="${escapeHtml(b&&b.naam||'')}"><input class="hk-periode" placeholder="Periode (bijv. 2021–2023)" value="${escapeHtml(b&&b.periode||'')}"><button type="button" class="hk-del" title="Verwijderen">✕</button></div>`;
   const ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='huis-kamer-modal';
   ov.innerHTML=`<div class="modal-box" style="max-width:560px; text-align:left;">
     <button class="modal-close" id="hk-close">✕</button>
     <h3 style="margin-top:0;">Kamer bewerken · ${escapeHtml(lay.verdieping)}</h3>
     <label class="hk-label">Naam van de kamer</label>
     <input id="hk-kamernaam" class="hk-input" value="${escapeHtml(naam)}" placeholder="${escapeHtml(lay.naam)}">
-    <div class="hk-sectie"><div class="hk-sectie-head"><span>Wie woont hier nu</span><button type="button" class="hk-add" data-target="hk-huidig">+ toevoegen</button></div><div id="hk-huidig">${(huidig.length?huidig:[null]).map(row).join('')}</div></div>
-    <div class="hk-sectie"><div class="hk-sectie-head"><span>Wie woonden hier eerder</span><button type="button" class="hk-add" data-target="hk-vroeger">+ toevoegen</button></div><div id="hk-vroeger">${vroeger.map(row).join('')}</div></div>
+    <div class="hk-sectie">
+      <div class="hk-sectie-head"><span>Wie de kamer bewoond heeft</span><button type="button" class="hk-add" data-target="hk-bewoners">+ persoon</button></div>
+      <p class="hk-hint">Bovenaan staat wie er nu woont. Met ▲▼ zet je iemand boven of onder een ander — dat is de volgorde van wie de kamer bewoond heeft.</p>
+      <div id="hk-bewoners">${(bews.length?bews:[null]).map(row).join('')}</div>
+    </div>
     <div class="hk-actions"><button class="hk-save" id="hk-save">Opslaan</button><button class="hk-cancel" id="hk-cancel">Annuleren</button></div>
     <div id="hk-status" class="hk-status"></div></div>`;
-  ov.addEventListener('click', e=>{ if(e.target===ov) ov.remove(); if(e.target.classList.contains('hk-del')) e.target.closest('.hk-row').remove(); });
+  ov.addEventListener('click', e=>{
+    if(e.target===ov){ ov.remove(); return; }
+    const r=e.target.closest('.hk-row'); if(!r) return;
+    if(e.target.classList.contains('hk-del')){ r.remove(); return; }
+    if(e.target.classList.contains('hk-up')){ const p=r.previousElementSibling; if(p) r.parentNode.insertBefore(r,p); return; }
+    if(e.target.classList.contains('hk-down')){ const nx=r.nextElementSibling; if(nx) r.parentNode.insertBefore(nx,r); return; }
+  });
   document.body.appendChild(ov);
   const close=()=>ov.remove();
   ov.querySelector('#hk-close').onclick=close; ov.querySelector('#hk-cancel').onclick=close;
   ov.querySelectorAll('.hk-add').forEach(btn=>btn.onclick=()=>ov.querySelector('#'+btn.dataset.target).insertAdjacentHTML('beforeend', row(null)));
   ov.querySelector('#hk-save').onclick=async ()=>{
     const kamernaam=ov.querySelector('#hk-kamernaam').value.trim()||null;
-    const collect=(cid,h)=>[...ov.querySelectorAll('#'+cid+' .hk-row')].map(r=>({naam:r.querySelector('.hk-naam').value.trim(),periode:r.querySelector('.hk-periode').value.trim(),huidig:h})).filter(b=>b.naam);
-    const bewoners=[...collect('hk-huidig',true), ...collect('hk-vroeger',false)];
+    const bewoners=[...ov.querySelectorAll('#hk-bewoners .hk-row')].map(r=>({naam:r.querySelector('.hk-naam').value.trim(),periode:r.querySelector('.hk-periode').value.trim()})).filter(b=>b.naam);
     const st=ov.querySelector('#hk-status'); st.style.color='var(--gray)'; st.textContent='Opslaan…';
     try{
       const { data, error } = await db.from('kamers').upsert({ kamer_id:id, naam:kamernaam, bewoners }, { onConflict:'kamer_id' }).select();
