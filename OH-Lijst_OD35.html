@@ -5808,9 +5808,21 @@ function openHuisKamerModal(id){
   if (!isAdmin()) return;
   const lay=huisLayoutKamer(id); if(!lay) return;
   const naam=huisKamerNaam(id,lay.naam), bews=huisBewonersGevuld(id);
-  const row=(b)=>`<div class="hk-row"><span class="hk-move"><button type="button" class="hk-up" title="Naar boven">▲</button><button type="button" class="hk-down" title="Naar onder">▼</button></span><input class="hk-naam" placeholder="Naam" value="${escapeHtml(b&&b.naam||'')}"><input class="hk-periode" placeholder="Periode (bijv. 2021–2023)" value="${escapeHtml(b&&b.periode||'')}"><button type="button" class="hk-del" title="Verwijderen">✕</button></div>`;
+  // Bouw ledenlijst voor autocomplete (gesorteerd op aankomstjaar nieuwste eerst)
+  const ledenOpts=(PEOPLE||[])
+    .filter(p=>p['Achternaam'])
+    .sort((a,b)=>(parseInt(b['Aankomstjaar'])||0)-(parseInt(a['Aankomstjaar'])||0))
+    .map(p=>{
+      const vn=p['Roepnaam']||p['Voornaam']||p['Voorletters']||'';
+      const tv=p['Tussenvoegsel']?p['Tussenvoegsel']+' ':'';
+      const voluit=(vn+' '+tv+p['Achternaam']).trim();
+      const jaar=p['Aankomstjaar']||'';
+      return `<option value="${escapeHtml(voluit)}">${escapeHtml(jaar?jaar:'')}</option>`;
+    }).join('');
+  const row=(b)=>`<div class="hk-row"><span class="hk-move"><button type="button" class="hk-up" title="Naar boven">▲</button><button type="button" class="hk-down" title="Naar onder">▼</button></span><input class="hk-naam" list="hk-ledenlist" placeholder="Kies of typ naam" value="${escapeHtml(b&&b.naam||'')}"><input class="hk-periode" placeholder="Periode (bijv. 2021–2023)" value="${escapeHtml(b&&b.periode||'')}"><button type="button" class="hk-del" title="Verwijderen">✕</button></div>`;
   const ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='huis-kamer-modal';
   ov.innerHTML=`<div class="modal-box" style="max-width:560px; text-align:left;">
+    <datalist id="hk-ledenlist">${ledenOpts}</datalist>
     <button class="modal-close" id="hk-close">✕</button>
     <h3 style="margin-top:0;">Kamer bewerken · ${escapeHtml(lay.verdieping)}</h3>
     <label class="hk-label">Naam van de kamer</label>
