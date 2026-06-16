@@ -2285,9 +2285,9 @@
   .huis-kamer { cursor: pointer; }
   .huis-kamer rect { transition: filter 0.12s; }
   .huis-kamer:hover rect { filter: brightness(1.05); }
-  .huis-kamer:focus-visible rect { stroke: #9c3b2e; stroke-width: 3; }
+  .huis-kamer:focus-visible rect { stroke: var(--burgundy, #9c3b2e); stroke-width: 3; }
   .huis-kamer-naam { font-family: var(--font-body); font-size: 12.5px; font-weight: 600; fill: #3a2e22; }
-  .huis-kamer-bew { font-family: var(--font-body); font-size: 10.5px; fill: #9c3b2e; }
+  .huis-kamer-bew { font-family: var(--font-body); font-size: 10.5px; fill: var(--burgundy, #9c3b2e); }
   .huis-kamer-leeg { font-family: var(--font-body); font-size: 10px; fill: #b3a892; font-style: italic; }
   .huis-detail { flex: 1 1 40%; min-width: 240px; background: var(--paper-warm); border: 1px solid var(--line); border-radius: 8px; padding: 1.1rem 1.2rem; position: sticky; top: 90px; }
   .huis-detail-verdieping { font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--gray); }
@@ -5716,13 +5716,16 @@ function renderHuis(){
       }
       const sel=(huisGeselecteerd===k.id), huidig=huisHuidig(k.id), naam=huisKamerNaam(k.id,k.naam), sout=v.id==='sout';
       const fill = sout ? '#d7c8ad' : (huidig.length ? '#f0e1c5' : '#f7f0e2');
+      const nameTL = (naam.length*7 > cellW-8) ? ` textLength="${(cellW-8).toFixed(0)}" lengthAdjust="spacingAndGlyphs"` : '';
       s += `<g class="huis-kamer${sel?' sel':''}" data-kamer="${esc(k.id)}" tabindex="0" role="button" aria-label="${esc(naam)}">`;
-      s += `<rect x="${cx}" y="${ry0}" width="${cellW}" height="${rh}" rx="4" fill="${fill}" stroke="${sel?'#9c3b2e':'#bca382'}" stroke-width="${sel?3:1.2}"/>`;
-      s += `<text x="${cx+cellW/2}" y="${ry0+18}" text-anchor="middle" class="huis-kamer-naam">${esc(naam)}</text>`;
+      s += `<rect x="${cx}" y="${ry0}" width="${cellW}" height="${rh}" rx="4" fill="${fill}" style="stroke:${sel?'var(--burgundy,#9c3b2e)':'#bca382'}" stroke-width="${sel?3:1.2}"/>`;
+      s += `<text x="${cx+cellW/2}" y="${ry0+18}" text-anchor="middle" class="huis-kamer-naam"${nameTL}>${esc(naam)}</text>`;
       if (huidig.length){
         const extra=huidig.length>1?` +${huidig.length-1}`:'';
-        s += `<circle cx="${cx+10}" cy="${ry0+rh-12}" r="3.4" fill="#9c3b2e"/>`;
-        s += `<text x="${cx+cellW/2}" y="${ry0+rh-8}" text-anchor="middle" class="huis-kamer-bew">${esc((huidig[0].naam||'')+extra)}</text>`;
+        const disp=(huidig[0].naam||'')+extra;
+        const bewTL = (disp.length*5.6 > cellW-14) ? ` textLength="${(cellW-14).toFixed(0)}" lengthAdjust="spacingAndGlyphs"` : '';
+        s += `<circle cx="${cx+10}" cy="${ry0+rh-12}" r="3.4" style="fill:var(--burgundy,#9c3b2e)"/>`;
+        s += `<text x="${cx+cellW/2}" y="${ry0+rh-8}" text-anchor="middle" class="huis-kamer-bew"${bewTL}>${esc(disp)}</text>`;
       } else {
         s += `<text x="${cx+cellW/2}" y="${ry0+rh-8}" text-anchor="middle" class="huis-kamer-leeg">leeg</text>`;
       }
