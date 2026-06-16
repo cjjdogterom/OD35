@@ -5659,44 +5659,42 @@ function stopNestorAutoRefresh() {
 // Elk vakje met een id is een kamer; admin kan naam + bewoners beheren.
 // Coördinaten in een viewBox van 1400×760 (x→rechts = gracht, y→onder = lager).
 const HUIS_KAMERS = [
-  // — Hoofdhuis · zolder — 07 en 04 zitten in de kap; 06 in de kil ertussen —
-  {id:'k07', naam:'07', verdieping:'Hoofdhuis · zolder', x:772, y:118, w:250, h:58, dak:'punt'},
-  {id:'k09', naam:'09', verdieping:'Hoofdhuis · zolder', x:772, y:176, w:250, h:54},
-  {id:'k06', naam:'06', verdieping:'Hoofdhuis · zolder', x:1026,y:118, w:52,  h:112},
-  {id:'k04', naam:'04', verdieping:'Hoofdhuis · zolder', x:1082,y:118, w:250, h:58, dak:'punt'},
-  {id:'k05', naam:'05', verdieping:'Hoofdhuis · zolder', x:1082,y:176, w:250, h:54},
-  // — Hoofdhuis · achterkolom —
-  {id:'k7', naam:'7', verdieping:'Hoofdhuis · achterzijde', x:772, y:230, w:250, h:80},
-  {id:'k8', naam:'8', verdieping:'Hoofdhuis · achterzijde', x:772, y:310, w:250, h:80},
-  {id:'k4', naam:'4', verdieping:'Hoofdhuis · achterzijde', x:772, y:390, w:250, h:80},
-  {id:'k3', naam:'3', verdieping:'Hoofdhuis · achterzijde', x:772, y:470, w:250, h:80},
-  {id:'k2b',naam:'2', verdieping:'Hoofdhuis · achterzijde', x:772, y:550, w:250, h:80},
-  // — Hoofdhuis · voorkolom (grachtzijde) — voorkamer + 6 zijn één kamer —
-  {id:'k03', naam:'03', verdieping:'Hoofdhuis · voorzijde', x:1082,y:230, w:250, h:80},
-  {id:'k02', naam:'02', verdieping:'Hoofdhuis · voorzijde', x:1082,y:310, w:250, h:80},
-  {id:'voorkamer', naam:'Voorkamer', verdieping:'Hoofdhuis · voorzijde', x:1082,y:390, w:250, h:80},
-  {id:'k5',  naam:'5',  verdieping:'Hoofdhuis · voorzijde', x:1082,y:470, w:250, h:80},
-  {id:'k2v', naam:'2',  verdieping:'Hoofdhuis · voorzijde', x:1082,y:550, w:250, h:80},
-  // — Tussenhuis — 003 zit in de kap —
-  {id:'k003', naam:'003', verdieping:'Tussenhuis', x:560,y:300, w:190, h:70, dak:'punt'},
-  {id:'k002', naam:'002', verdieping:'Tussenhuis', x:560,y:370, w:190, h:90},
-  {id:'keuken', naam:'Keuken 1', verdieping:'Tussenhuis', x:448,y:460, w:302, h:172, kelder:true},
-  // — Achterhuis — 000 zit in de kap —
-  {id:'k000', naam:'000', verdieping:'Achterhuis', x:62,y:236, w:156, h:84, dak:'stip', kelder:true},
-  {id:'k006', naam:'006', verdieping:'Achterhuis', x:62,y:320, w:156, h:88, kelder:true},
-  {id:'k004', naam:'004', verdieping:'Achterhuis', x:62,y:408, w:112, h:92, kelder:true},
-  {id:'k007', naam:'007', verdieping:'Achterhuis', x:62,y:500, w:156, h:74, kelder:true},
-  {id:'tvkamer', naam:'TV-kamer 01', verdieping:'Achterhuis', x:62,y:574, w:210, h:58, kelder:true},
+  // — Achterhuis · links (2×2 grid) — 000 en 006 naast elkaar; 004 en 007 naast elkaar —
+  {id:'k000', naam:'000', verdieping:'Achterhuis', x:46,  y:250, w:114, h:80, dak:'stip', kelder:true},
+  {id:'k006', naam:'006', verdieping:'Achterhuis', x:160, y:250, w:114, h:80,              kelder:true},
+  {id:'k004', naam:'004', verdieping:'Achterhuis', x:46,  y:330, w:114, h:80,              kelder:true},
+  {id:'k007', naam:'007', verdieping:'Achterhuis', x:160, y:330, w:114, h:80,              kelder:true},
+  {id:'tvkamer', naam:'TV-kamer 01', verdieping:'Achterhuis', x:46, y:410, w:228, h:70,   kelder:true},
+  // — Achterhuis · rechts (was Tussenhuis) — 003 in kap; 002 + slaapgang; keuken —
+  {id:'k003',    naam:'003',      verdieping:'Achterhuis', x:314, y:280, w:240, h:70, dak:'punt'},
+  {id:'k002',    naam:'002',      verdieping:'Achterhuis', x:314, y:350, w:162, h:80},
+  {id:'slaapgang',naam:'Slaapgang',verdieping:'Achterhuis', x:476, y:350, w:78,  h:80},
+  {id:'keuken',  naam:'Keuken 1', verdieping:'Achterhuis', x:314, y:430, w:240, h:120, kelder:true},
+  // — Hoofdhuis · zolder — 07 en 04 in de kap; 09 en 05 eronder; 06 = trap ertussen (decor) —
+  {id:'k07', naam:'07', verdieping:'Hoofdhuis · zolder', x:772, y:118, w:254, h:58, dak:'punt'},
+  {id:'k04', naam:'04', verdieping:'Hoofdhuis · zolder', x:1082,y:118, w:258, h:58, dak:'punt'},
+  {id:'k09', naam:'09', verdieping:'Hoofdhuis · zolder', x:772, y:176, w:254, h:54},
+  {id:'k05', naam:'05', verdieping:'Hoofdhuis · zolder', x:1082,y:176, w:258, h:54},
+  // — Hoofdhuis · verdiepingen — elk paar naast elkaar —
+  {id:'k7',  naam:'7',  verdieping:'Hoofdhuis', x:772, y:230, w:254, h:80},
+  {id:'k8',  naam:'8',  verdieping:'Hoofdhuis', x:1082,y:230, w:258, h:80},
+  {id:'k3',  naam:'3',  verdieping:'Hoofdhuis', x:772, y:310, w:254, h:80},
+  {id:'k4',  naam:'4',  verdieping:'Hoofdhuis', x:1082,y:310, w:258, h:80},
+  {id:'k02', naam:'02', verdieping:'Hoofdhuis', x:772, y:390, w:254, h:80},
+  {id:'k03', naam:'03', verdieping:'Hoofdhuis', x:1082,y:390, w:258, h:80},
+  {id:'voorkamer', naam:'Voorkamer', verdieping:'Hoofdhuis', x:772, y:470, w:568, h:80},
 ];
 const HUIS_DECOR = {
   trappen:[
-    {x:1026, y:230, w:52, h:400, label:true},   // hoofdtrap (verticaal, naast 06)
-    {x:174,  y:408, w:44, h:92},                 // achterhuis-trap
+    {x:1026, y:118, w:52, h:352, label:true},   // hoofdtrap (zolder t/m verdiepingen)
   ],
-  gang:{x:218, y:518, w:230, h:56},              // gang tussen 007 en de keuken
-  verbindingen:[ '750,520 772,520' ],            // tussenhuis ↔ hoofdhuis
-  grond:{x:46, y:632, w:1326, h:22},
-  labels:[ {x:1080,y:666,t:'Hoofdhuis'}, {x:600,y:666,t:'Tussenhuis'}, {x:165,y:666,t:'Achterhuis'} ],
+  gang:{x:274, y:430, w:40, h:70},              // gang tussen achterhuis en keuken
+  verbindingen:[ '554,480 772,480' ],           // achterhuis rechts ↔ hoofdhuis
+  grond:{x:46, y:558, w:1294, h:20},
+  labels:[
+    {x:310, y:592, t:'Achterhuis'},
+    {x:1056,y:592, t:'Hoofdhuis'},
+  ],
 };
 let huisKamers = {};
 let huisGeselecteerd = null;
@@ -5725,10 +5723,10 @@ async function loadHuis(){
 function renderHuis(){
   const wrap = document.getElementById('huis-svg-wrap');
   if (!wrap) return;
-  const VB_W=1380, VB_H=700, esc=escapeHtml;
+  const VB_W=1380, VB_H=620, esc=escapeHtml;
   let s = `<svg viewBox="0 0 ${VB_W} ${VB_H}" class="huis-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Doorsnede van Oude Delft 35 met alle kamers">`;
   s += `<defs><pattern id="traphatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#a08a6a" stroke-width="2"/></pattern><pattern id="stipdak" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="2.5" cy="2.5" r="1.2" fill="#9c8463"/></pattern></defs>`;
-  s += `<ellipse cx="690" cy="650" rx="650" ry="14" fill="rgba(0,0,0,0.10)"/>`;
+  s += `<ellipse cx="690" cy="574" rx="650" ry="12" fill="rgba(0,0,0,0.10)"/>`;
   // grond / straatlijn
   const g=HUIS_DECOR.grond;
   s += `<rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" fill="#b7a98f"/>`;
