@@ -5651,15 +5651,15 @@ function stopNestorAutoRefresh() {
 }
 
 // ==================== HUISPLATTEGROND (miniatuur poppenhuis) ====================
-// Indeling naar de bouwtekening van Architectenbureau Postel (pand O.D. 35).
-// Indeling gereconstrueerd naar de kamernummering-plattegrond van OD35.
-// (trap:true = trappenhuis, niet-klikbaar. Namen/nummers door admin aan te passen.)
+// Indeling exact overgenomen van de kamernummering-plattegrond van OD35.
+// vast:true = geen bewoonbare kamer (trap of wc), niet-klikbaar.
+// Namen/nummers van de echte kamers kan de admin aanpassen.
 const HUIS_VERDIEPINGEN = [
-  { id:'zolder', label:'Zolder',        kamers:[ {id:'k04',naam:'04'}, {id:'k05',naam:'05'}, {id:'k03',naam:'03'}, {id:'k02z',naam:'02'}, {id:'k07',naam:'07'}, {id:'k09',naam:'09'} ] },
-  { id:'v2',     label:'2e verdieping', kamers:[ {id:'k7',naam:'7'}, {id:'k8',naam:'8'}, {id:'trap2',naam:'trap',trap:true}, {id:'k4',naam:'4'}, {id:'k3',naam:'3'}, {id:'k06',naam:'06'} ] },
-  { id:'v1',     label:'1e verdieping', kamers:[ {id:'voorkamer',naam:'Voorkamer'}, {id:'k6',naam:'6'}, {id:'k5',naam:'5'}, {id:'trap1',naam:'trap',trap:true}, {id:'k2',naam:'2'} ] },
-  { id:'bg',     label:'Begane grond',  kamers:[ {id:'tvkamer',naam:'TV-kamer'}, {id:'keuken',naam:'Keuken'}, {id:'k000',naam:'000'}, {id:'k002',naam:'002'}, {id:'k003',naam:'003'} ] },
-  { id:'sout',   label:'Souterrain',    kamers:[ {id:'k01',naam:'01'}, {id:'k004',naam:'004'}, {id:'k006',naam:'006'}, {id:'k007',naam:'007'} ] },
+  { id:'zolder', label:'Zolder',        kamers:[ {id:'k04',naam:'04'}, {id:'k05',naam:'05'}, {id:'k03',naam:'03'}, {id:'k02z',naam:'02'}, {id:'k06',naam:'06'}, {id:'k07',naam:'07'}, {id:'k09',naam:'09'} ] },
+  { id:'v2',     label:'2e verdieping', kamers:[ {id:'k7',naam:'7'}, {id:'k8',naam:'8'}, {id:'trap2',naam:'trap',vast:true,soort:'trap'}, {id:'k4',naam:'4'}, {id:'k3',naam:'3'}, {id:'k2b',naam:'2'} ] },
+  { id:'v1',     label:'1e verdieping', kamers:[ {id:'voorkamer',naam:'Voorkamer'}, {id:'k6',naam:'6'}, {id:'k5',naam:'5'}, {id:'k2a',naam:'2'}, {id:'wc',naam:'wc',vast:true,soort:'wc'} ] },
+  { id:'bg',     label:'Begane grond',  kamers:[ {id:'k003',naam:'003'}, {id:'k002',naam:'002'}, {id:'keuken',naam:'Keuken 1'} ] },
+  { id:'sout',   label:'Souterrain',    kamers:[ {id:'k000',naam:'000'}, {id:'k006',naam:'006'}, {id:'k004',naam:'004'}, {id:'trapS',naam:'trap',vast:true,soort:'trap'}, {id:'k007',naam:'007'}, {id:'tvkamer',naam:'TV-kamer 01'} ] },
 ];
 let huisKamers = {};
 let huisGeselecteerd = null;
@@ -5717,9 +5717,10 @@ function renderHuis(){
     s += `<text x="${bx0-22}" y="${fy+fh/2+3}" text-anchor="end" class="huis-floor-label">${esc(v.label)}</text>`;
     v.kamers.forEach((k, ri) => {
       const cx=bx0+gap+ri*(cellW+gap), ry0=fy+6, rh=fh-12;
-      if (k.trap){
-        s += `<rect x="${cx}" y="${ry0}" width="${cellW}" height="${rh}" rx="3" fill="url(#traphatch)" stroke="#a08a6a" stroke-width="1"/>`;
-        s += `<text x="${cx+cellW/2}" y="${ry0+rh/2+4}" text-anchor="middle" class="huis-kamer-leeg">trap</text>`;
+      if (k.vast){
+        const isWc = k.soort==='wc';
+        s += `<rect x="${cx}" y="${ry0}" width="${cellW}" height="${rh}" rx="3" fill="${isWc?'#e7ddc8':'url(#traphatch)'}" stroke="#a08a6a" stroke-width="1"/>`;
+        s += `<text x="${cx+cellW/2}" y="${ry0+rh/2+4}" text-anchor="middle" class="huis-kamer-leeg">${esc(k.naam)}</text>`;
         return;
       }
       const sel=(huisGeselecteerd===k.id), bews=huisBewonersGevuld(k.id), naam=huisKamerNaam(k.id,k.naam), sout=v.id==='sout';
