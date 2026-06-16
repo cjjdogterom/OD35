@@ -5650,23 +5650,68 @@ function stopNestorAutoRefresh() {
   if (_nestorTimer) { clearInterval(_nestorTimer); _nestorTimer = null; }
 }
 
-// ==================== HUISPLATTEGROND (miniatuur poppenhuis) ====================
-// Indeling exact overgenomen van de kamernummering-plattegrond van OD35.
-// vast:true = geen bewoonbare kamer (trap of wc), niet-klikbaar.
-// Namen/nummers van de echte kamers kan de admin aanpassen.
-const HUIS_VERDIEPINGEN = [
-  { id:'zolder', label:'Zolder',        kamers:[ {id:'k04',naam:'04'}, {id:'k05',naam:'05'}, {id:'k03',naam:'03'}, {id:'k02z',naam:'02'}, {id:'k06',naam:'06'}, {id:'k07',naam:'07'}, {id:'k09',naam:'09'} ] },
-  { id:'v2',     label:'2e verdieping', kamers:[ {id:'k7',naam:'7'}, {id:'k8',naam:'8'}, {id:'trap2',naam:'trap',vast:true,soort:'trap'}, {id:'k4',naam:'4'}, {id:'k3',naam:'3'}, {id:'k2b',naam:'2'} ] },
-  { id:'v1',     label:'1e verdieping', kamers:[ {id:'voorkamer',naam:'Voorkamer'}, {id:'k6',naam:'6'}, {id:'k5',naam:'5'}, {id:'k2a',naam:'2'}, {id:'wc',naam:'wc',vast:true,soort:'wc'} ] },
-  { id:'bg',     label:'Begane grond',  kamers:[ {id:'k003',naam:'003'}, {id:'k002',naam:'002'}, {id:'keuken',naam:'Keuken 1'} ] },
-  { id:'sout',   label:'Souterrain',    kamers:[ {id:'k000',naam:'000'}, {id:'k006',naam:'006'}, {id:'k004',naam:'004'}, {id:'trapS',naam:'trap',vast:true,soort:'trap'}, {id:'k007',naam:'007'}, {id:'tvkamer',naam:'TV-kamer 01'} ] },
+// ==================== HUISPLATTEGROND (doorsnede OD35) ====================
+// Letterlijk overgetrokken van de kamernummering-tekening (90° gedraaid):
+//   rechts het HOOFDHUIS — achterkolom (7·8·4·3·2) | trappenhuis | voorkolom
+//   (03·02·voorkamer+6·5·2), met de dubbele kap (07/09 · 06 · 04/05) en de wc.
+//   daarachter het TUSSENHUIS (003·002·keuken 1) en links het ACHTERHUIS
+//   (000·006·004·007·tv-kamer 01) met eigen kap en trap.
+// Elk vakje met een id is een kamer; admin kan naam + bewoners beheren.
+// Coördinaten in een viewBox van 1400×760 (x→rechts = gracht, y→onder = lager).
+const HUIS_KAMERS = [
+  // — Hoofdhuis · zolder (onder de dubbele kap) —
+  {id:'k07', naam:'07', verdieping:'Hoofdhuis · zolder', x:767, y:96,  w:186, h:42},
+  {id:'k09', naam:'09', verdieping:'Hoofdhuis · zolder', x:767, y:138, w:186, h:42},
+  {id:'k06', naam:'06', verdieping:'Hoofdhuis · zolder', x:955, y:96,  w:61,  h:84},
+  {id:'k04', naam:'04', verdieping:'Hoofdhuis · zolder', x:1018,y:96,  w:322, h:42},
+  {id:'k05', naam:'05', verdieping:'Hoofdhuis · zolder', x:1018,y:138, w:322, h:42},
+  // — Hoofdhuis · achterkolom —
+  {id:'k7', naam:'7', verdieping:'Hoofdhuis · achterzijde', x:767, y:185, w:186, h:93},
+  {id:'k8', naam:'8', verdieping:'Hoofdhuis · achterzijde', x:767, y:278, w:186, h:93},
+  {id:'k4', naam:'4', verdieping:'Hoofdhuis · achterzijde', x:767, y:371, w:186, h:93},
+  {id:'k3', naam:'3', verdieping:'Hoofdhuis · achterzijde', x:767, y:464, w:186, h:93},
+  {id:'k2b',naam:'2', verdieping:'Hoofdhuis · achterzijde', x:767, y:557, w:186, h:93},
+  // — Hoofdhuis · voorkolom (grachtzijde) —
+  {id:'k03', naam:'03', verdieping:'Hoofdhuis · voorzijde', x:1018,y:185, w:322, h:93},
+  {id:'k02', naam:'02', verdieping:'Hoofdhuis · voorzijde', x:1018,y:278, w:322, h:93},
+  {id:'voorkamer', naam:'Voorkamer', verdieping:'Hoofdhuis · voorzijde', x:1018,y:371, w:236, h:93},
+  {id:'k6',  naam:'6',  verdieping:'Hoofdhuis · voorzijde', x:1256,y:371, w:84,  h:93},
+  {id:'k5',  naam:'5',  verdieping:'Hoofdhuis · voorzijde', x:1018,y:464, w:322, h:93},
+  {id:'k2v', naam:'2',  verdieping:'Hoofdhuis · voorzijde', x:1018,y:557, w:322, h:93},
+  // — Tussenhuis —
+  {id:'k003', naam:'003', verdieping:'Tussenhuis', x:562,y:312, w:185, h:96},
+  {id:'k002', naam:'002', verdieping:'Tussenhuis', x:562,y:408, w:185, h:96},
+  {id:'keuken', naam:'Keuken 1', verdieping:'Tussenhuis', x:447,y:504, w:300, h:184, kelder:true},
+  // — Achterhuis —
+  {id:'k000', naam:'000', verdieping:'Achterhuis', x:62,y:236, w:156, h:92, kelder:true},
+  {id:'k006', naam:'006', verdieping:'Achterhuis', x:62,y:328, w:156, h:88, kelder:true},
+  {id:'k004', naam:'004', verdieping:'Achterhuis', x:62,y:416, w:112, h:92, kelder:true},
+  {id:'k007', naam:'007', verdieping:'Achterhuis', x:62,y:508, w:156, h:92, kelder:true},
+  {id:'tvkamer', naam:'TV-kamer 01', verdieping:'Achterhuis', x:62,y:600, w:210, h:88, kelder:true},
 ];
+const HUIS_DECOR = {
+  gevels:[
+    {pts:'758,96 860,42 962,96',     soort:'dak'},   // hoofdhuis — achtergevel
+    {pts:'1014,96 1180,42 1344,96',  soort:'dak'},   // hoofdhuis — voorgevel
+    {pts:'445,310 596,256 749,310',  soort:'dak'},   // tussenhuis
+    {pts:'56,236 90,176 190,176 224,236', soort:'stip'}, // achterhuis (gestippeld)
+  ],
+  trappen:[
+    {x:955, y:185, w:61, h:465, label:true},   // hoofdtrap (verticaal, naast 06)
+    {x:174, y:416, w:44, h:118},               // achterhuis-trap
+  ],
+  verbindingen:[ '224,610 447,560', '749,504 767,504' ],
+  wc:{x:1348, y:500, w:44, h:46},
+  traptoren:{x:1348, y:560, w:44, h:42},
+  grond:{x:46, y:688, w:1326, h:24},
+  labels:[ {x:1052,y:736,t:'Hoofdhuis'}, {x:596,y:736,t:'Tussenhuis'}, {x:165,y:736,t:'Achterhuis'} ],
+};
 let huisKamers = {};
 let huisGeselecteerd = null;
 
 function huisLayoutKamer(id){
-  for (const v of HUIS_VERDIEPINGEN) for (const k of v.kamers) if (k.id===id) return { ...k, verdieping:v.label };
-  return null;
+  const k = HUIS_KAMERS.find(k => k.id === id);
+  return k ? { ...k } : null;
 }
 function huisKamerNaam(id, def){ const d=huisKamers[id]; return (d && d.naam) ? d.naam : def; }
 function huisBewoners(id){ const d=huisKamers[id]; return (d && Array.isArray(d.bewoners)) ? d.bewoners : []; }
@@ -5688,63 +5733,59 @@ async function loadHuis(){
 function renderHuis(){
   const wrap = document.getElementById('huis-svg-wrap');
   if (!wrap) return;
-  const W=720, H=700, bx0=95, bx1=625, bw=bx1-bx0, bTop=205, bBot=645;
-  const fh=(bBot-bTop)/HUIS_VERDIEPINGEN.length, esc=escapeHtml;
-  let s = `<svg viewBox="0 0 ${W} ${H}" class="huis-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Miniatuur van Oude Delft 35">`;
-  s += `<ellipse cx="360" cy="664" rx="300" ry="18" fill="rgba(0,0,0,0.12)"/>`;
-  // straatlijn (souterrain ligt half onder straatniveau)
-  const soutTop = bTop + 4*fh;
-  s += `<line x1="24" y1="${soutTop}" x2="696" y2="${soutTop}" stroke="#b7a98f" stroke-width="2"/>`;
-  // arcering voor het trappenhuis
-  s += `<defs><pattern id="traphatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#a08a6a" stroke-width="2"/></pattern></defs>`;
-  // dak: dubbele topgevel (zoals de doorsnede van OD35)
-  const eaveY=bTop, peakY=118, mid=(bx0+bx1)/2, lpx=(bx0-12+mid)/2, rpx=(mid+bx1+12)/2;
-  s += `<polygon points="${bx0-12},${eaveY} ${lpx},${peakY} ${mid},${eaveY}" fill="#bb7c50" stroke="#7a4a2c" stroke-width="3" stroke-linejoin="round"/>`;
-  s += `<polygon points="${mid},${eaveY} ${rpx},${peakY} ${bx1+12},${eaveY}" fill="#bb7c50" stroke="#7a4a2c" stroke-width="3" stroke-linejoin="round"/>`;
-  for (let i=1;i<4;i++){ const t=i/4, ly=eaveY+(peakY-eaveY)*t;
-    s += `<line x1="${((bx0-12)+(lpx-(bx0-12))*t).toFixed(1)}" y1="${ly.toFixed(1)}" x2="${(mid-(mid-lpx)*t).toFixed(1)}" y2="${ly.toFixed(1)}" stroke="#a5683f" stroke-width="1" opacity="0.5"/>`;
-    s += `<line x1="${(mid+(rpx-mid)*t).toFixed(1)}" y1="${ly.toFixed(1)}" x2="${((bx1+12)-((bx1+12)-rpx)*t).toFixed(1)}" y2="${ly.toFixed(1)}" stroke="#a5683f" stroke-width="1" opacity="0.5"/>`;
-  }
-  s += `<circle cx="${lpx}" cy="${peakY+36}" r="9" fill="#ecd9b3" stroke="#7a4a2c" stroke-width="2"/>`;
-  s += `<circle cx="${rpx}" cy="${peakY+36}" r="9" fill="#ecd9b3" stroke="#7a4a2c" stroke-width="2"/>`;
-  s += `<rect x="${mid-13}" y="${peakY-20}" width="26" height="${(eaveY-(peakY-20)).toFixed(0)}" fill="#9c6b46" stroke="#5e3d28" stroke-width="2"/><rect x="${mid-17}" y="${peakY-25}" width="34" height="9" fill="#7a4a2c"/>`;
-  s += `<rect x="${bx0-16}" y="${eaveY-12}" width="${bw+32}" height="14" rx="2" fill="#cea572" stroke="#7a4a2c" stroke-width="2"/>`; // kroonlijst
-  // huisromp (muren/vloeren achter de kamers)
-  s += `<rect x="${bx0-6}" y="${bTop}" width="${bw+12}" height="${bBot-bTop}" rx="5" fill="#6b513c" stroke="#4a3526" stroke-width="3"/>`;
+  const VB_W=1400, VB_H=760, esc=escapeHtml;
+  let s = `<svg viewBox="0 0 ${VB_W} ${VB_H}" class="huis-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Doorsnede van Oude Delft 35 met alle kamers">`;
+  s += `<defs><pattern id="traphatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#a08a6a" stroke-width="2"/></pattern><pattern id="stipdak" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="2.5" cy="2.5" r="1.2" fill="#9c8463"/></pattern></defs>`;
+  s += `<ellipse cx="700" cy="724" rx="660" ry="15" fill="rgba(0,0,0,0.10)"/>`;
+  // grond / straatlijn
+  const g=HUIS_DECOR.grond;
+  s += `<rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" fill="#b7a98f"/>`;
+  // verbindingsmuren tussen de volumes
+  HUIS_DECOR.verbindingen.forEach(p=>{ s += `<polyline points="${p}" fill="none" stroke="#9b8a72" stroke-width="2"/>`; });
+  // daken / gevels
+  HUIS_DECOR.gevels.forEach(gv=>{
+    const fill = gv.soort==='stip' ? 'url(#stipdak)' : '#bb7c50';
+    s += `<polygon points="${gv.pts}" fill="${fill}" stroke="#7a4a2c" stroke-width="2.5" stroke-linejoin="round"/>`;
+  });
+  // trappen
+  HUIS_DECOR.trappen.forEach(t=>{
+    s += `<rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" fill="url(#traphatch)" stroke="#a08a6a" stroke-width="1"/>`;
+    const tcx=t.x+t.w/2, tcy=t.y+t.h/2;
+    s += `<text x="${tcx}" y="${tcy}" text-anchor="middle" class="huis-kamer-leeg"${t.label?` transform="rotate(90 ${tcx} ${tcy})"`:''}>trap</text>`;
+  });
+  // wc
+  const wc=HUIS_DECOR.wc;
+  s += `<rect x="${wc.x}" y="${wc.y}" width="${wc.w}" height="${wc.h}" rx="3" fill="#e7ddc8" stroke="#a08a6a" stroke-width="1"/><text x="${wc.x+wc.w/2}" y="${wc.y+wc.h/2+4}" text-anchor="middle" class="huis-kamer-leeg">wc</text>`;
+  // traptoren (klein trappetje rechtsonder)
+  const tt=HUIS_DECOR.traptoren;
+  s += `<rect x="${tt.x}" y="${tt.y}" width="${tt.w}" height="${tt.h}" rx="3" fill="url(#traphatch)" stroke="#a08a6a" stroke-width="1"/>`;
+  // blok-namen
+  HUIS_DECOR.labels.forEach(l=>{ s += `<text x="${l.x}" y="${l.y}" text-anchor="middle" class="huis-floor-label">${esc(l.t)}</text>`; });
   // kamers
-  HUIS_VERDIEPINGEN.forEach((v, fi) => {
-    const fy=bTop+fi*fh, n=v.kamers.length, gap=6, cellW=(bw-gap*(n+1))/n;
-    s += `<text x="${bx0-22}" y="${fy+fh/2+3}" text-anchor="end" class="huis-floor-label">${esc(v.label)}</text>`;
-    v.kamers.forEach((k, ri) => {
-      const cx=bx0+gap+ri*(cellW+gap), ry0=fy+6, rh=fh-12;
-      if (k.vast){
-        const isWc = k.soort==='wc';
-        s += `<rect x="${cx}" y="${ry0}" width="${cellW}" height="${rh}" rx="3" fill="${isWc?'#e7ddc8':'url(#traphatch)'}" stroke="#a08a6a" stroke-width="1"/>`;
-        s += `<text x="${cx+cellW/2}" y="${ry0+rh/2+4}" text-anchor="middle" class="huis-kamer-leeg">${esc(k.naam)}</text>`;
-        return;
-      }
-      const sel=(huisGeselecteerd===k.id), bews=huisBewonersGevuld(k.id), naam=huisKamerNaam(k.id,k.naam), sout=v.id==='sout';
-      const fill = sout ? '#d7c8ad' : (bews.length ? '#f0e1c5' : '#f7f0e2');
-      const nameTL = (naam.length*7 > cellW-8) ? ` textLength="${(cellW-8).toFixed(0)}" lengthAdjust="spacingAndGlyphs"` : '';
-      s += `<g class="huis-kamer${sel?' sel':''}" data-kamer="${esc(k.id)}" tabindex="0" role="button" aria-label="${esc(naam)}">`;
-      s += `<rect x="${cx}" y="${ry0}" width="${cellW}" height="${rh}" rx="4" fill="${fill}" style="stroke:${sel?'var(--burgundy,#9c3b2e)':'#bca382'}" stroke-width="${sel?3:1.2}"/>`;
-      s += `<text x="${cx+cellW/2}" y="${ry0+18}" text-anchor="middle" class="huis-kamer-naam"${nameTL}>${esc(naam)}</text>`;
+  HUIS_KAMERS.forEach(k=>{
+    const sel=(huisGeselecteerd===k.id), bews=huisBewonersGevuld(k.id), naam=huisKamerNaam(k.id,k.naam);
+    const fill = k.kelder ? (bews.length?'#e7d2a8':'#dccdb0') : (bews.length ? '#f0e1c5' : '#f7f0e2');
+    const small = k.h < 56, cx=k.x+k.w/2;
+    const nameY = small ? k.y+k.h/2+4 : (k.h>120 ? k.y+30 : k.y+24);
+    const nameTL = (naam.length*7.5 > k.w-8) ? ` textLength="${(k.w-8).toFixed(0)}" lengthAdjust="spacingAndGlyphs"` : '';
+    s += `<g class="huis-kamer${sel?' sel':''}" data-kamer="${esc(k.id)}" tabindex="0" role="button" aria-label="${esc(naam)}">`;
+    s += `<rect x="${k.x}" y="${k.y}" width="${k.w}" height="${k.h}" rx="4" fill="${fill}" style="stroke:${sel?'var(--burgundy,#9c3b2e)':'#bca382'}" stroke-width="${sel?3:1.3}"/>`;
+    s += `<text x="${cx}" y="${nameY}" text-anchor="middle" class="huis-kamer-naam"${nameTL}>${esc(naam)}</text>`;
+    if (!small){
       if (bews.length){
         const extra=bews.length>1?` +${bews.length-1}`:'';
         const disp=(bews[0].naam||'')+extra;
-        const bewTL = (disp.length*5.6 > cellW-14) ? ` textLength="${(cellW-14).toFixed(0)}" lengthAdjust="spacingAndGlyphs"` : '';
-        s += `<circle cx="${cx+10}" cy="${ry0+rh-12}" r="3.6" style="fill:var(--burgundy-deep,#9c3b2e)"/>`;
-        s += `<text x="${cx+cellW/2}" y="${ry0+rh-8}" text-anchor="middle" class="huis-kamer-bew"${bewTL}>${esc(disp)}</text>`;
+        const bewTL=(disp.length*5.6 > k.w-14)?` textLength="${(k.w-14).toFixed(0)}" lengthAdjust="spacingAndGlyphs"`:'';
+        s += `<circle cx="${k.x+12}" cy="${k.y+k.h-13}" r="3.6" style="fill:var(--burgundy-deep,#9c3b2e)"/>`;
+        s += `<text x="${cx}" y="${k.y+k.h-9}" text-anchor="middle" class="huis-kamer-bew"${bewTL}>${esc(disp)}</text>`;
       } else {
-        s += `<text x="${cx+cellW/2}" y="${ry0+rh-8}" text-anchor="middle" class="huis-kamer-leeg">leeg</text>`;
+        s += `<text x="${cx}" y="${k.y+k.h-9}" text-anchor="middle" class="huis-kamer-leeg">leeg</text>`;
       }
-      s += `</g>`;
-    });
+    } else if (bews.length){
+      s += `<circle cx="${k.x+k.w-9}" cy="${k.y+9}" r="3" style="fill:var(--burgundy-deep,#9c3b2e)"/>`;
+    }
+    s += `</g>`;
   });
-  // voordeur + stoep op de begane grond (links = straatzijde)
-  const bgY = bTop + HUIS_VERDIEPINGEN.findIndex(v=>v.id==='bg')*fh;
-  s += `<rect x="${bx0+10}" y="${bgY+fh-38}" width="18" height="32" rx="2" fill="#5e3d28" stroke="#3a2417" stroke-width="1.5"/><circle cx="${bx0+24}" cy="${bgY+fh-22}" r="1.6" fill="#caa06f"/>`;
-  s += `<rect x="${bx0+5}" y="${bgY+fh-6}" width="30" height="5" fill="#9b8a72"/><rect x="${bx0+8}" y="${bgY+fh-1}" width="24" height="5" fill="#897a64"/>`;
   s += `</svg>`;
   wrap.innerHTML = s;
 }
