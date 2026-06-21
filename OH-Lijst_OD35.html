@@ -3741,7 +3741,58 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   .kj-toast { position:fixed; left:50%; top:14%; transform:translateX(-50%); background:rgba(20,20,20,.92); color:#fff; padding:.7rem 1.1rem; border-radius:10px; font-size:.95rem; z-index:9999; opacity:0; transition:opacity .2s; pointer-events:none; }
   .kj-toast.show { opacity:1; }
   .kj-players-online { font-size:.75rem; color:var(--gray,#9b8f80); text-align:center; margin-top:.5rem; }
-  @media (max-width:560px){ .kj-seats{grid-template-columns:1fr;} .kj-hand .kj-card{width:46px;height:66px;} }
+  @media (max-width:560px){ .kj-seats{grid-template-columns:1fr;} .kj-hand .kj-card{width:46px;height:66px;} .kj-sb-pts{font-size:1.5rem!important;} }
+
+  /* ---- Animaties ---- */
+  .kj-tc .kj-card { transition:transform .15s; }
+  .kj-tc.played .kj-card { animation:kj-pop-in .28s ease-out; }
+  @keyframes kj-pop-in { from{ transform:scale(.5); opacity:0; } to{ transform:scale(1); opacity:1; } }
+  .kj-tc.s0.played .kj-card { animation:kj-slide-b .26s ease-out; }
+  .kj-tc.s1.played .kj-card { animation:kj-slide-l .26s ease-out; }
+  .kj-tc.s2.played .kj-card { animation:kj-slide-t .26s ease-out; }
+  .kj-tc.s3.played .kj-card { animation:kj-slide-r .26s ease-out; }
+  @keyframes kj-slide-b { from{ transform:translateY(70px) scale(.8); opacity:0; } to{ transform:none; opacity:1; } }
+  @keyframes kj-slide-t { from{ transform:translateY(-70px) scale(.8); opacity:0; } to{ transform:none; opacity:1; } }
+  @keyframes kj-slide-l { from{ transform:translateX(-90px) scale(.8); opacity:0; } to{ transform:none; opacity:1; } }
+  @keyframes kj-slide-r { from{ transform:translateX(90px) scale(.8); opacity:0; } to{ transform:none; opacity:1; } }
+  .kj-pos.turn { animation:kj-turn-pulse 1.1s ease-in-out infinite; }
+  @keyframes kj-turn-pulse { 0%,100%{ text-shadow:0 1px 2px rgba(0,0,0,.4); } 50%{ text-shadow:0 0 10px rgba(255,225,77,.9); } }
+  .kj-pos.win { animation:kj-win-glow .9s ease-in-out infinite; }
+  .kj-pos.win .kj-pname { color:#ffe14d; }
+  @keyframes kj-win-glow { 0%,100%{ transform:var(--kt,translate(0)) scale(1); } 50%{ filter:drop-shadow(0 0 8px rgba(255,225,77,.95)); } }
+  .kj-felt.paused .kj-trickzone { animation:kj-trick-flash .9s ease-in-out; }
+  @keyframes kj-trick-flash { 0%{ transform:translate(-50%,-50%) scale(1); } 40%{ transform:translate(-50%,-50%) scale(1.08); } 100%{ transform:translate(-50%,-50%) scale(1); } }
+  .kj-hand .kj-card.playable { animation:kj-ready .9s ease-out; }
+  @keyframes kj-ready { from{ box-shadow:0 0 0 0 rgba(156,59,46,.5); } to{ box-shadow:0 1px 3px rgba(0,0,0,.25); } }
+  .kj-pop { animation:kj-popbox .35s cubic-bezier(.2,.9,.3,1.3); }
+  @keyframes kj-popbox { from{ transform:scale(.85); opacity:0; } to{ transform:scale(1); opacity:1; } }
+
+  /* ---- Scorebord tijdens het spel ---- */
+  .kj-scorebord { max-width:760px; margin:.9rem auto 0; }
+  .kj-sb-teams { display:flex; align-items:stretch; gap:.6rem; }
+  .kj-sb-team { flex:1; border:1px solid var(--line,#e3dccd); border-radius:12px; padding:.55rem .7rem; text-align:center; background:var(--paper,#fffdf7); position:relative; }
+  .kj-sb-team.tA { border-top:3px solid #1d6fb8; } .kj-sb-team.tB { border-top:3px solid #c0392b; }
+  .kj-sb-team.leidt { box-shadow:0 0 0 2px rgba(255,205,80,.5); }
+  .kj-sb-team.mijn::after { content:""; }
+  .kj-sb-lbl { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--gray,#9b8f80); }
+  .kj-sb-pts { font-size:2rem; font-weight:800; line-height:1.05; font-variant-numeric:tabular-nums; }
+  .kj-sb-team.tA .kj-sb-pts { color:#1d6fb8; } .kj-sb-team.tB .kj-sb-pts { color:#c0392b; }
+  .kj-sb-namen { font-size:.74rem; color:var(--gray,#6b5d4a); }
+  .kj-sb-mid { flex:0 0 130px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.3rem; text-align:center; }
+  .kj-sb-ronde { font-size:.8rem; font-weight:700; color:var(--burgundy,#9c3b2e); }
+  .kj-verloop { max-width:760px; margin:.6rem auto 0; font-size:.82rem; }
+  .kj-verloop summary { cursor:pointer; color:var(--gray,#6b5d4a); }
+  .kj-verloop table { width:100%; border-collapse:collapse; margin-top:.4rem; }
+  .kj-verloop th,.kj-verloop td { padding:.2rem .4rem; border-bottom:1px solid var(--line,#eee5d4); text-align:center; font-variant-numeric:tabular-nums; }
+
+  /* ---- Ranglijst ---- */
+  .kj-lb { margin-top:1.4rem; border:1px solid var(--line,#e3dccd); border-radius:14px; padding:1rem 1.2rem; background:var(--paper,#fffdf7); }
+  .kj-lb h3 { margin:.1rem 0 .6rem; }
+  .kj-lb-tbl { width:100%; border-collapse:collapse; font-size:.9rem; }
+  .kj-lb-tbl th { text-align:left; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; color:var(--gray,#9b8f80); border-bottom:1px solid var(--line,#e3dccd); padding:.3rem .4rem; }
+  .kj-lb-tbl td { padding:.34rem .4rem; border-bottom:1px solid var(--line,#eee5d4); }
+  .kj-lb-tbl td:nth-child(3),.kj-lb-tbl td:nth-child(4),.kj-lb-tbl td:nth-child(5),.kj-lb-tbl th:nth-child(3),.kj-lb-tbl th:nth-child(4),.kj-lb-tbl th:nth-child(5){ text-align:center; font-variant-numeric:tabular-nums; }
+  .kj-lb-rank { width:2rem; text-align:center; font-size:1.05rem; }
 </style>
 
 <!-- ==================== TAB: KLAVERJAS ==================== -->
@@ -6123,7 +6174,7 @@ function openHuisKamerModal(id){
     var hands=deal(); kj.HANDS=hands;
     var dealer=(kj.G.round-1)%4, chooser=(dealer+1)%4;
     kj.G.dealer=dealer; kj.G.turn=chooser; kj.G.maker=null; kj.G.troef=null;
-    kj.G.trick=[]; kj.G.tricks=[]; kj.G.lastTrick=null; kj.G.phase='choose'; kj.G.roundInfo=null;
+    kj.G.trick=[]; kj.G.tricks=[]; kj.G.lastTrick=null; kj.G.lastPlayed=null; kj.G.phase='choose'; kj.G.roundInfo=null;
     kj.G.handCounts=[8,8,8,8];
     broadcast();
   }
@@ -6137,6 +6188,7 @@ function openHuisKamerModal(id){
     if(legal.indexOf(card)<0) card=legal[0]; // veiligheid
     var idx=hand.indexOf(card); if(idx<0)return; hand.splice(idx,1);
     kj.G.trick.push({seat:seat,card:card}); kj.G.handCounts[seat]=hand.length;
+    kj.G.lastPlayed={seat:seat,card:card};
     if(kj.G.trick.length<4){ kj.G.turn=(seat+1)%4; broadcast(); return; }
     // 4e kaart: slag even laten staan zodat iedereen 'm ziet, dan opruimen
     var w=trickWinner(kj.G.trick,kj.G.troef);
@@ -6153,6 +6205,7 @@ function openHuisKamerModal(id){
       var sc=scoreRound(kj.G.tricks,kj.G.troef,kj.G.maker);
       kj.G.scores[0]+=sc.team[0]; kj.G.scores[1]+=sc.team[1];
       kj.G.roundInfo=sc; kj.G.phase='roundend';
+      kj.G.history.push({r:kj.G.round, a:sc.team[0], b:sc.team[1], troef:kj.G.troef, nat:sc.nat, pit:sc.pit, maker:sc.makerTeam});
       broadcast();
       if(kj.roundTimer)clearTimeout(kj.roundTimer);
       kj.roundTimer=setTimeout(function(){ if(kj.isHost&&kj.G&&kj.G.phase==='roundend') nextRound(); },5000);
@@ -6161,7 +6214,7 @@ function openHuisKamerModal(id){
     broadcast();
   }
   function nextRound(){
-    if(kj.G.round>=16){ kj.G.phase='gameover'; broadcast(); return; }
+    if(kj.G.round>=16){ kj.G.phase='gameover'; kj.G.turn=-1; broadcast(); recordGame(); return; }
     kj.G.round++; startRound();
   }
 
@@ -6179,10 +6232,10 @@ function openHuisKamerModal(id){
 
   // ---- Client-acties ----
   function createTable(){
-    if(!isAdmin()){ alert('Alleen admins kunnen een tafel openen.'); return; }
     var code=newCode();
+    kj.recorded=false;
     kj.G={code:code,host:myEmail(),phase:'lobby',seats:[null,null,null,null],dealer:0,turn:0,troef:null,maker:null,
-      trick:[],tricks:[],lastTrick:null,handCounts:[0,0,0,0],round:1,scores:[0,0],roundInfo:null};
+      trick:[],tricks:[],lastTrick:null,lastPlayed:null,handCounts:[0,0,0,0],round:1,scores:[0,0],roundInfo:null,history:[]};
     kj.G.seats[0]={email:myEmail(),naam:myName(),bot:false};
     connect(code,true);
   }
@@ -6190,6 +6243,43 @@ function openHuisKamerModal(id){
   function sit(seat){ send('sit',{seat:seat,naam:myName()}); }
   function playCard(card){ var seat=seatOfEmail(myEmail()); if(seat<0)return; send('play',{seat:seat,card:card}); }
   function choose(suit){ var seat=seatOfEmail(myEmail()); if(seat<0)return; send('choose',{seat:seat,suit:suit}); }
+
+  // ---- Leaderboard (persistente potjes in Supabase) ----
+  function refreshLeaderboardEl(){ var el=document.getElementById('kj-board-lb'); if(el) el.innerHTML=renderLeaderboard(); }
+  function loadLeaderboard(){
+    kj.lbLoading=true; kj.lbError=null; refreshLeaderboardEl();
+    db.from('klaverjas_potjes').select('data').order('gespeeld_op',{ascending:false}).limit(2000)
+      .then(function(res){
+        kj.lbLoading=false;
+        if(res.error){ kj.lbError = /relation|does not exist|schema cache/i.test(res.error.message||'')
+            ? 'Ranglijst nog niet ingericht — draai de SQL uit KLAVERJAS-LEADERBOARD-SETUP.md.'
+            : ('Kon ranglijst niet laden: '+res.error.message); kj.lb=[]; refreshLeaderboardEl(); return; }
+        var agg={};
+        (res.data||[]).forEach(function(row){
+          var d=row.data||{}; (d.spelers||[]).forEach(function(p){
+            if(!p.email) return; var k=p.email.toLowerCase();
+            if(!agg[k]) agg[k]={naam:p.naam||p.email,gewonnen:0,gespeeld:0};
+            agg[k].gespeeld++; if(p.won) agg[k].gewonnen++; if(p.naam) agg[k].naam=p.naam;
+          });
+        });
+        kj.lb=Object.keys(agg).map(function(k){return agg[k];})
+          .sort(function(a,b){ return (b.gewonnen-a.gewonnen)||(b.gespeeld-a.gespeeld)||a.naam.localeCompare(b.naam); });
+        refreshLeaderboardEl();
+      });
+  }
+  function recordGame(){
+    if(!kj.isHost||kj.recorded||!kj.G) return; kj.recorded=true;
+    var s=kj.G.scores, win = s[0]===s[1] ? null : (s[0]>s[1]?0:1);
+    var spelers=[];
+    kj.G.seats.forEach(function(st,i){ if(st&&!st.bot&&st.email){ spelers.push({email:st.email.toLowerCase(),naam:st.naam||st.email,team:i%2,won: win!==null && (i%2===win)}); } });
+    if(!spelers.length) return; // alleen bots — niets te registreren
+    var data={ gespeeld_op:new Date().toISOString(), score_a:s[0], score_b:s[1],
+      winnaar: win===null?'gelijk':(win===0?'A':'B'), spelers:spelers };
+    db.from('klaverjas_potjes').insert({ data:data }).then(function(res){
+      if(res.error){ console.warn('potje opslaan mislukt:', res.error.message); }
+      loadLeaderboard();
+    });
+  }
 
   // ---- UI ----
   function cardHTML(card,cls){ var red=RED[cS(card)]?' red':''; var rank=cR(card);
@@ -6203,19 +6293,33 @@ function openHuisKamerModal(id){
     if(!kj.code||!kj.ch){ app.innerHTML=renderHome(); return; }
     if(!kj.G){ app.innerHTML='<p class="kj-loading">Verbinden met tafel <b>'+esc(kj.code)+'</b>…</p>'; return; }
     if(kj.G.phase==='lobby'){ app.innerHTML=renderLobby(); return; }
+    if(kj.G.phase==='gameover'){ if(!kj._goLoaded){ kj._goLoaded=true; loadLeaderboard(); } } else { kj._goLoaded=false; }
     app.innerHTML=renderBoard();
   }
 
   function renderHome(){
-    var adminBox=isAdmin()
-      ? '<div class="kj-card-box"><h3>Nieuwe tafel openen</h3><p>Open een tafel en deel de code met je huisgenoten. Lege plekken vul je met computerspelers.</p><button class="kj-btn" id="kj-create">Tafel openen</button></div>'
-      : '<div class="kj-card-box"><h3>Nieuwe tafel openen</h3><p>Alleen admins kunnen een tafel openen. Vraag een admin om een tafel te starten en de code te delen.</p><button class="kj-btn" disabled>Alleen admins</button></div>';
-    return '<div class="kj-home">'+adminBox+
+    return '<div class="kj-home">'+
+      '<div class="kj-card-box"><h3>Nieuwe tafel openen</h3><p>Open een tafel en deel de code met je huisgenoten. Lege plekken vul je met computerspelers.</p><button class="kj-btn" id="kj-create">Tafel openen</button></div>'+
       '<div class="kj-card-box"><h3>Aanschuiven met een code</h3><p>Heb je een tafelcode gekregen? Vul \'m in om mee te spelen.</p>'+
       '<input class="kj-input" id="kj-join-code" maxlength="4" placeholder="bijv. K7P3">'+
       '<div class="kj-row"><button class="kj-btn sec" id="kj-join">Aanschuiven</button></div></div>'+
       '</div>'+
-      '<p class="kj-note">We spelen <b>Amsterdams</b>: verplicht bekennen én verplicht (over)troeven — ook als je maat de slag al heeft. Roem telt mee; een potje is 16 ronden.</p>';
+      '<p class="kj-note">We spelen <b>Amsterdams</b>: verplicht bekennen én verplicht (over)troeven — ook als je maat de slag al heeft. Roem telt mee; een potje is 16 ronden.</p>'+
+      '<div id="kj-board-lb">'+renderLeaderboard()+'</div>';
+  }
+  function renderLeaderboard(){
+    if(kj.lbLoading) return '<div class="kj-lb"><h3>🏆 Ranglijst</h3><p class="kj-note">Laden…</p></div>';
+    if(kj.lbError) return '<div class="kj-lb"><h3>🏆 Ranglijst</h3><p class="kj-note">'+esc(kj.lbError)+'</p></div>';
+    var rows=kj.lb||[];
+    if(!rows.length) return '<div class="kj-lb"><h3>🏆 Ranglijst</h3><p class="kj-note">Nog geen gespeelde potjes. Speel het eerste potje uit en je staat hier!</p></div>';
+    var body=rows.map(function(r,i){
+      var medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.';
+      var pct=r.gespeeld?Math.round(100*r.gewonnen/r.gespeeld):0;
+      return '<tr><td class="kj-lb-rank">'+medal+'</td><td>'+esc(r.naam)+'</td><td><b>'+r.gewonnen+'</b></td><td>'+r.gespeeld+'</td><td>'+pct+'%</td></tr>';
+    }).join('');
+    return '<div class="kj-lb"><h3>🏆 Ranglijst — gewonnen potjes</h3>'+
+      '<table class="kj-lb-tbl"><thead><tr><th></th><th>Speler</th><th>Gewonnen</th><th>Gespeeld</th><th>Win%</th></tr></thead><tbody>'+body+'</tbody></table>'+
+      '<p class="kj-note">Alleen echte spelers tellen mee (geen bots). Een potje telt zodra het is uitgespeeld.</p></div>';
   }
 
   function renderLobby(){
@@ -6254,24 +6358,23 @@ function openHuisKamerModal(id){
     var me=seatOfEmail(myEmail()); var base=me<0?0:me;
     var pos=['bottom','right','top','left']; // offset 0,1,2,3 t.o.v. base
     var G=kj.G;
+    var paused=(G.turn===-1 && (typeof G.trickWinner==='number'));
     var posHTML='';
     for(var off=0;off<4;off++){
       var seat=(base+off)%4, s=G.seats[seat]; if(!s)continue;
-      var cls='kj-pos '+pos[off]+(G.turn===seat&&(G.phase==='play'||G.phase==='choose')?' turn':'')+(G.dealer===seat?' dealer':'');
+      var cls='kj-pos '+pos[off]+(G.turn===seat&&(G.phase==='play'||G.phase==='choose')?' turn':'')+(G.dealer===seat?' dealer':'')+(paused&&G.trickWinner===seat?' win':'');
       posHTML+='<div class="'+cls+'"><div class="kj-pname">'+esc(s.naam||s.email)+'</div>'+
-        '<div class="kj-pmeta">'+teamLabel(seat)+' · '+(G.handCounts[seat]||0)+' kaarten</div></div>';
+        '<div class="kj-pmeta">'+teamLabel(seat)+' · '+(G.handCounts[seat]||0)+' kaart'+((G.handCounts[seat]||0)===1?'':'en')+'</div></div>';
     }
     // gespeelde kaarten in de huidige slag, op positie van de speler
     var trickHTML='';
-    G.trick.forEach(function(t){ var off=(t.seat-base+4)%4; trickHTML+='<div class="kj-tc s'+off+'">'+cardHTML(t.card)+'</div>'; });
-    var troef=G.troef?'<div class="kj-troefbadge'+(RED[G.troef]?' red':'')+'">Troef: '+SUIT_SYM[G.troef]+' '+SUIT_NAAM[G.troef]+'</div>':'';
-    var felt='<div class="kj-felt">'+troef+posHTML+'<div class="kj-trickzone">'+trickHTML+'</div></div>';
+    G.trick.forEach(function(t){ var off=(t.seat-base+4)%4;
+      var isLast=G.lastPlayed&&t.seat===G.lastPlayed.seat&&t.card===G.lastPlayed.card;
+      trickHTML+='<div class="kj-tc s'+off+(isLast?' played':'')+'">'+cardHTML(t.card)+'</div>'; });
+    var troef=G.troef?'<div class="kj-troefbadge'+(RED[G.troef]?' red':'')+'">Troef '+SUIT_SYM[G.troef]+'</div>':'';
+    var felt='<div class="kj-felt'+(paused?' paused':'')+'">'+troef+posHTML+'<div class="kj-trickzone">'+trickHTML+'</div></div>';
 
-    var status='<div class="kj-statusbar">'+
-      '<span class="kj-scorechip tA">Team A <b>'+G.scores[0]+'</b></span>'+
-      '<span class="kj-scorechip tB">Team B <b>'+G.scores[1]+'</b></span>'+
-      '<span class="kj-scorechip">Ronde <b>'+G.round+'</b>/16</span>'+
-      turnMsg(me)+'</div>';
+    var status=renderScorebord(me);
 
     var bottom='';
     if(G.phase==='choose'){
@@ -6291,9 +6394,40 @@ function openHuisKamerModal(id){
       (kj.isHost&&G.phase==='roundend'?' <button class="kj-btn" id="kj-next">Volgende ronde</button>':'')+'</div>';
     return '<div class="kj-board">'+felt+status+bottom+bar+'</div>';
   }
+  function teamNames(team){ // team 0 = seats 0&2, team 1 = seats 1&3
+    var a=team===0?0:1, b=team===0?2:3, na=kj.G.seats[a], nb=kj.G.seats[b];
+    return [na?(na.naam||na.email):'—', nb?(nb.naam||nb.email):'—'];
+  }
+  function renderScorebord(me){
+    var G=kj.G, lead = G.scores[0]===G.scores[1] ? '' : (G.scores[0]>G.scores[1]?'tA':'tB');
+    var mij = me<0?-1:me%2; // jouw team
+    function teamCard(team){
+      var nm=teamNames(team), cls=team===0?'tA':'tB';
+      return '<div class="kj-sb-team '+cls+(lead===cls?' leidt':'')+(mij===team?' mijn':'')+'">'+
+        '<div class="kj-sb-lbl">Team '+(team===0?'A':'B')+(mij===team?' · jij':'')+'</div>'+
+        '<div class="kj-sb-pts">'+G.scores[team]+'</div>'+
+        '<div class="kj-sb-namen">'+esc(nm[0])+' &amp; '+esc(nm[1])+'</div></div>';
+    }
+    var verloop='';
+    if(G.history&&G.history.length){
+      var items=G.history.slice(-6).map(function(h){
+        var tag=h.nat?'<span class="kj-nat">nat</span>':(h.pit?'<span class="kj-pit">pit</span>':'');
+        return '<tr><td>'+h.r+'</td><td>'+SUIT_SYM[h.troef]+'</td><td>'+h.a+'</td><td>'+h.b+'</td><td>'+tag+'</td></tr>';
+      }).join('');
+      verloop='<details class="kj-verloop"><summary>Rondeverloop ('+G.history.length+'/16)</summary>'+
+        '<table><thead><tr><th>#</th><th>♣</th><th>A</th><th>B</th><th></th></tr></thead><tbody>'+items+'</tbody></table></details>';
+    }
+    return '<div class="kj-scorebord">'+
+      '<div class="kj-sb-teams">'+teamCard(0)+'<div class="kj-sb-mid"><div class="kj-sb-ronde">Ronde '+G.round+'/16</div>'+turnMsg(me)+'</div>'+teamCard(1)+'</div>'+
+      verloop+'</div>';
+  }
   function turnMsg(me){
-    var G=kj.G; if(G.phase==='choose'){ var who=G.seats[G.turn]; return '<span class="kj-turnmsg">'+(G.turn===me?'Jij maakt de troef':esc((who&&who.naam)||'…')+' maakt de troef')+'</span>'; }
+    var G=kj.G;
+    if(G.turn===-1 && typeof G.trickWinner==='number'){ var ww=G.seats[G.trickWinner]; return '<span class="kj-turnmsg">'+esc((ww&&ww.naam)||'')+' wint de slag</span>'; }
+    if(G.phase==='choose'){ var who=G.seats[G.turn]; return '<span class="kj-turnmsg">'+(G.turn===me?'Jij maakt de troef':esc((who&&who.naam)||'…')+' maakt de troef')+'</span>'; }
     if(G.phase==='play'){ var w=G.seats[G.turn]; return '<span class="kj-turnmsg">'+(G.turn===me?'Jouw beurt':'Beurt: '+esc((w&&w.naam)||'…'))+'</span>'; }
+    if(G.phase==='roundend'){ return '<span class="kj-turnmsg">Ronde afgerond</span>'; }
+    if(G.phase==='gameover'){ return '<span class="kj-turnmsg">Klaar</span>'; }
     return '';
   }
   function renderHand(me,playable){
@@ -6326,10 +6460,11 @@ function openHuisKamerModal(id){
   function renderGameOver(){
     var s=kj.G.scores, winA=s[0]>s[1], gelijk=s[0]===s[1];
     var w=gelijk?'Gelijkspel!':('Team '+(winA?'A':'B')+' wint! 🏆');
-    return '<div class="kj-roundbox"><h3>'+w+'</h3>'+
-      '<table><tr><td>Team A (plek 1 &amp; 3)</td><td><b>'+s[0]+'</b></td></tr>'+
-      '<tr><td>Team B (plek 2 &amp; 4)</td><td><b>'+s[1]+'</b></td></tr></table>'+
-      (kj.isHost?'<div class="kj-row"><button class="kj-btn" id="kj-again">Nieuw potje (zelfde tafel)</button></div>':'')+'</div>';
+    return '<div class="kj-roundbox kj-pop"><h3>'+w+'</h3>'+
+      '<table><tr><td>Team A ('+esc(teamNames(0).join(' & '))+')</td><td><b>'+s[0]+'</b></td></tr>'+
+      '<tr><td>Team B ('+esc(teamNames(1).join(' & '))+')</td><td><b>'+s[1]+'</b></td></tr></table>'+
+      (kj.isHost?'<div class="kj-row"><button class="kj-btn" id="kj-again">Nieuw potje (zelfde tafel)</button></div>':'')+
+      '</div><div id="kj-board-lb">'+renderLeaderboard()+'</div>';
   }
 
   // ---- Event-delegatie ----
@@ -6346,7 +6481,7 @@ function openHuisKamerModal(id){
     if(t.id==='kj-fill'){ send('fillbots'); return; }
     if(t.id==='kj-start'){ send('start'); return; }
     if(t.id==='kj-next'){ send('next'); return; }
-    if(t.id==='kj-again'){ if(kj.isHost){ kj.G.round=1; kj.G.scores=[0,0]; startRound(); } return; }
+    if(t.id==='kj-again'){ if(kj.isHost){ kj.G.round=1; kj.G.scores=[0,0]; kj.G.history=[]; kj.recorded=false; kj._goLoaded=false; startRound(); } return; }
     if(t.dataset.troef){ choose(t.dataset.troef); return; }
     if(t.dataset.card){ // alleen spelen als legaal & jouw beurt
       var me=seatOfEmail(myEmail());
@@ -6371,6 +6506,7 @@ function openHuisKamerModal(id){
       try{ localStorage.removeItem('kj_table'); }catch(_){}
     }
     render();
+    if(!kj.ch) loadLeaderboard(); // ranglijst op de homepagina
   };
   window.kjOnLeaveTab=function(){ /* verbinding blijft staan zodat je beurt doorloopt */ };
 })();
