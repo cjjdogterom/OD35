@@ -3474,13 +3474,13 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
     </div>
     <nav class="tab-nav" id="tab-nav">
       <button class="tab-btn active" data-tab="personen">Personen</button>
-      <button class="tab-btn nestor-only" data-tab="nestor" style="display:none">⚽ Nestor</button>
+      <button class="tab-btn nestor-only" data-tab="nestor" style="display:none">Nestor</button>
       <button class="tab-btn" data-tab="fotos">Foto's</button>
       <button class="tab-btn" data-tab="agenda">Agenda</button>
       <button class="tab-btn" data-tab="contacten">Contacten</button>
       <button class="tab-btn" data-tab="wandelgangen">Wandelgangen</button>
-      <button class="tab-btn" data-tab="klaverjas">🃏 Klaverjas</button>
-      <button class="tab-btn admin-only" data-tab="huisplattegrond" style="display:none">🏠 Huisplattegrond</button>
+      <button class="tab-btn" data-tab="klaverjas">Klaverjas</button>
+      <button class="tab-btn admin-only" data-tab="huisplattegrond" style="display:none">Huisplattegrond</button>
       <button class="tab-btn" data-tab="geschiedenis">Geschiedenis</button>
       <button class="tab-btn admin-only" data-tab="wijzigingen" style="display:none">Verzoeken <span id="wijzigingen-badge" class="tab-badge"></span></button>
       <button class="tab-btn admin-only" data-tab="verjaardagen" style="display:none">Verjaardagen</button>
@@ -3525,7 +3525,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
 <!-- ==================== TAB: NESTOR (bankplekken WK) ==================== -->
 <div class="tab-panel" id="panel-nestor">
   <div class="nestor-head">
-    <h2>⚽ Nestor — bankplekken</h2>
+    <h2>Nestor — bankplekken</h2>
     <p class="nestor-sub" id="nestor-wedstrijd">De eerstvolgende Oranje-wedstrijd…</p>
   </div>
   <div class="nestor-status" id="nestor-status"></div>
@@ -3650,7 +3650,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
 <!-- ==================== TAB: HUISPLATTEGROND ==================== -->
 <div class="tab-panel" id="panel-huisplattegrond">
   <div class="huis-head">
-    <h2>🏠 Huisplattegrond — Oude Delft 35</h2>
+    <h2>Huisplattegrond — Oude Delft 35</h2>
     <p class="huis-sub">Klik op een kamer om te zien wie er nu woont en wie er vroeger zaten. Naar de bouwtekening van Architectenbureau Postel.</p>
   </div>
   <div class="huis-layout">
@@ -3793,12 +3793,48 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   .kj-lb-tbl td { padding:.34rem .4rem; border-bottom:1px solid var(--line,#eee5d4); }
   .kj-lb-tbl td:nth-child(3),.kj-lb-tbl td:nth-child(4),.kj-lb-tbl td:nth-child(5),.kj-lb-tbl th:nth-child(3),.kj-lb-tbl th:nth-child(4),.kj-lb-tbl th:nth-child(5){ text-align:center; font-variant-numeric:tabular-nums; }
   .kj-lb-rank { width:2rem; text-align:center; font-size:1.05rem; }
+
+  /* ---- Vorige slag ---- */
+  .kj-lasttrick { max-width:760px; margin:.7rem auto 0; border:1px solid var(--line,#e3dccd); border-radius:12px; padding:.7rem .9rem; background:var(--paper,#fffdf7); animation:kj-popbox .25s ease-out; }
+  .kj-lt-head { font-size:.82rem; color:var(--gray,#6b5d4a); margin-bottom:.5rem; text-align:center; }
+  .kj-lt-cards { display:flex; gap:.6rem; justify-content:center; flex-wrap:wrap; }
+  .kj-lt-card { text-align:center; opacity:.8; }
+  .kj-lt-card.win { opacity:1; }
+  .kj-lt-card.win .kj-card { box-shadow:0 0 0 2px #1d7a3b, 0 1px 4px rgba(0,0,0,.3); }
+  .kj-lt-naam { font-size:.68rem; color:var(--gray,#6b5d4a); margin-top:.2rem; max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .kj-lt-card.win .kj-lt-naam { color:#1d7a3b; font-weight:700; }
+
+  /* ---- Mobiel ---- */
+  @media (max-width:600px){
+    .kj-home { gap:.7rem; }
+    .kj-card-box { flex-basis:100%; padding:1rem; }
+    .kj-codebig { font-size:1.4rem; letter-spacing:.16em; }
+    .kj-codebar { padding:.6rem .7rem; gap:.4rem .6rem; }
+    .kj-felt { padding:.5rem; aspect-ratio:1/1; max-width:100%; }
+    .kj-pos .kj-pname { font-size:.72rem; } .kj-pos .kj-pmeta { font-size:.6rem; }
+    .kj-pos.left, .kj-pos.right { max-width:74px; }
+    .kj-troefbadge { font-size:.68rem; padding:.2rem .45rem; top:.4rem; left:.4rem; }
+    .kj-trickzone { width:128px; height:120px; }
+    .kj-tc { width:38px; } .kj-tc .kj-card { width:38px; height:54px; }
+    .kj-card .kj-rank { font-size:.82rem; } .kj-card .kj-suit { font-size:1rem; }
+    .kj-hand { gap:.3rem; } .kj-hand .kj-card { width:42px; height:60px; }
+    /* scorebord: ronde/beurt bovenaan, teams eronder naast elkaar */
+    .kj-sb-teams { flex-wrap:wrap; }
+    .kj-sb-mid { flex:0 0 100%; order:-1; flex-direction:row; gap:.6rem; margin-bottom:.2rem; }
+    .kj-sb-team { flex:1 1 44%; padding:.45rem .4rem; }
+    .kj-sb-pts { font-size:1.5rem; } .kj-sb-namen { font-size:.66rem; }
+    .kj-btn { padding:.55rem .8rem; font-size:.88rem; }
+    .kj-row { flex-wrap:wrap; }
+    .kj-roundbox { padding:.9rem 1rem; }
+    .kj-lb { padding:.8rem; } .kj-lb-tbl { font-size:.82rem; }
+    .kj-lt-card .kj-card { width:40px; height:56px; }
+  }
 </style>
 
 <!-- ==================== TAB: KLAVERJAS ==================== -->
 <div class="tab-panel" id="panel-klaverjas">
   <div class="kj-head">
-    <h2>🃏 Klaverjas <span class="kj-variant">Amsterdams</span></h2>
+    <h2>Klaverjas <span class="kj-variant">Amsterdams</span></h2>
     <p class="kj-sub">Speel klaverjassen met huisgenoten. Een admin maakt een tafel; deel de tafelcode en laat anderen aanschuiven. Lege plekken worden door computerspelers ingevuld.</p>
   </div>
   <div id="kj-app"><p class="kj-loading">Laden…</p></div>
@@ -5947,7 +5983,7 @@ function renderHuisDetail(id){
     : `<p class="huis-detail-leeg">Nog niemand ingevuld.</p>`;
   el.innerHTML = `
     <div class="huis-detail-head"><div class="huis-detail-verdieping">${escapeHtml(lay.verdieping)}</div><h3>${escapeHtml(naam)}</h3></div>
-    <div class="huis-detail-sectie"><h4>🛏 Wie de kamer bewoond heeft</h4><p class="huis-detail-hint">Van boven (nu) naar onder (vroeger).</p>${lijst}</div>
+    <div class="huis-detail-sectie"><h4>Wie de kamer bewoond heeft</h4><p class="huis-detail-hint">Van boven (nu) naar onder (vroeger).</p>${lijst}</div>
     ${isAdmin()?`<button class="huis-edit-btn" data-action="huis-edit" data-kamer="${escapeHtml(id)}">✎ Kamer bewerken</button>`:''}`;
 }
 
@@ -6043,7 +6079,14 @@ function openHuisKamerModal(id){
     if(lead===troef){ if(hasLead.length){var hi=highTrump(inTrick,troef);var hg=hasLead.filter(function(c){return trumpIdx(cR(c))<hi;});return hg.length?hg:hasLead;} return hand.slice(); }
     if(hasLead.length)return hasLead;
     var tr=hand.filter(function(c){return cS(c)===troef;});
-    if(tr.length){var hiT=highTrump(inTrick,troef); if(hiT===null)return tr; var ov=tr.filter(function(c){return trumpIdx(cR(c))<hiT;}); return ov.length?ov:tr;}
+    if(tr.length){
+      var hiT=highTrump(inTrick,troef);
+      if(hiT===null)return tr;                 // verplicht troeven (nog geen troef in de slag)
+      var ov=tr.filter(function(c){return trumpIdx(cR(c))<hiT;});
+      if(ov.length)return ov;                  // verplicht overtroeven
+      var nonTr=hand.filter(function(c){return cS(c)!==troef;});
+      return nonTr.length?nonTr:tr;            // niet kunnen overtroeven -> bijgooien; ondertroeven alleen als je niets anders hebt
+    }
     return hand.slice();
   }
   function trickWinner(trick,troef){var lead=cS(trick[0].card),bi=0;for(var i=1;i<trick.length;i++)if(beats(trick[i].card,trick[bi].card,troef,lead))bi=i;return trick[bi].seat;}
@@ -6308,16 +6351,16 @@ function openHuisKamerModal(id){
       '<div id="kj-board-lb">'+renderLeaderboard()+'</div>';
   }
   function renderLeaderboard(){
-    if(kj.lbLoading) return '<div class="kj-lb"><h3>🏆 Ranglijst</h3><p class="kj-note">Laden…</p></div>';
-    if(kj.lbError) return '<div class="kj-lb"><h3>🏆 Ranglijst</h3><p class="kj-note">'+esc(kj.lbError)+'</p></div>';
+    if(kj.lbLoading) return '<div class="kj-lb"><h3>Ranglijst</h3><p class="kj-note">Laden…</p></div>';
+    if(kj.lbError) return '<div class="kj-lb"><h3>Ranglijst</h3><p class="kj-note">'+esc(kj.lbError)+'</p></div>';
     var rows=kj.lb||[];
-    if(!rows.length) return '<div class="kj-lb"><h3>🏆 Ranglijst</h3><p class="kj-note">Nog geen gespeelde potjes. Speel het eerste potje uit en je staat hier!</p></div>';
+    if(!rows.length) return '<div class="kj-lb"><h3>Ranglijst</h3><p class="kj-note">Nog geen gespeelde potjes. Speel het eerste potje uit en je staat hier!</p></div>';
     var body=rows.map(function(r,i){
-      var medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.';
+      var medal=(i+1)+'.';
       var pct=r.gespeeld?Math.round(100*r.gewonnen/r.gespeeld):0;
       return '<tr><td class="kj-lb-rank">'+medal+'</td><td>'+esc(r.naam)+'</td><td><b>'+r.gewonnen+'</b></td><td>'+r.gespeeld+'</td><td>'+pct+'%</td></tr>';
     }).join('');
-    return '<div class="kj-lb"><h3>🏆 Ranglijst — gewonnen potjes</h3>'+
+    return '<div class="kj-lb"><h3>Ranglijst — gewonnen potjes</h3>'+
       '<table class="kj-lb-tbl"><thead><tr><th></th><th>Speler</th><th>Gewonnen</th><th>Gespeeld</th><th>Win%</th></tr></thead><tbody>'+body+'</tbody></table>'+
       '<p class="kj-note">Alleen echte spelers tellen mee (geen bots). Een potje telt zodra het is uitgespeeld.</p></div>';
   }
@@ -6328,7 +6371,7 @@ function openHuisKamerModal(id){
     for(var i=0;i<4;i++){
       var s=kj.G.seats[i], team=i%2===0?'tA':'tB';
       var av,naam,meta,act='';
-      if(s){ av=s.bot?'🤖':(s.naam||'?').charAt(0).toUpperCase(); naam=esc(s.naam||s.email); meta=teamLabel(i)+(s.bot?' · computer':'');
+      if(s){ av=s.bot?'B':(s.naam||'?').charAt(0).toUpperCase(); naam=esc(s.naam||s.email); meta=teamLabel(i)+(s.bot?' · computer':'');
         if(host&&s.bot) act='<button class="kj-btn ghost kj-mini" data-kick="'+i+'">verwijder</button>';
         else if(!s.bot&&s.email===myEmail()) act='<button class="kj-btn ghost kj-mini" data-stand="1">sta op</button>';
       } else { av='+'; naam='<span class="kj-snaam">Lege plek</span>'; meta=teamLabel(i);
@@ -6390,9 +6433,22 @@ function openHuisKamerModal(id){
     } else if(G.phase==='gameover'){
       bottom=renderGameOver();
     }
-    var bar='<div class="kj-row" style="justify-content:center;margin-top:1rem"><button class="kj-btn ghost" id="kj-leave">Verlaat tafel</button>'+
+    var lastBtn = G.lastTrick ? '<button class="kj-btn ghost" id="kj-lasttrick">'+(kj.showLast?'Verberg vorige slag':'Vorige slag')+'</button>' : '';
+    var bar='<div class="kj-row" style="justify-content:center;flex-wrap:wrap;margin-top:1rem">'+lastBtn+
+      '<button class="kj-btn ghost" id="kj-leave">Verlaat tafel</button>'+
       (kj.isHost&&G.phase==='roundend'?' <button class="kj-btn" id="kj-next">Volgende ronde</button>':'')+'</div>';
-    return '<div class="kj-board">'+felt+status+bottom+bar+'</div>';
+    var lastPanel = (kj.showLast && G.lastTrick) ? renderLastTrick() : '';
+    return '<div class="kj-board">'+felt+lastPanel+status+bottom+bar+'</div>';
+  }
+  function renderLastTrick(){
+    var lt=kj.G.lastTrick; if(!lt)return '';
+    var cards=lt.cards.map(function(t){
+      var s=kj.G.seats[t.seat], naam=s?(s.naam||s.email):('plek '+(t.seat+1));
+      var winCls=t.seat===lt.winner?' win':'';
+      return '<div class="kj-lt-card'+winCls+'">'+cardHTML(t.card)+'<div class="kj-lt-naam">'+esc(naam)+(t.seat===lt.winner?' ✓':'')+'</div></div>';
+    }).join('');
+    var wn=kj.G.seats[lt.winner];
+    return '<div class="kj-lasttrick"><div class="kj-lt-head">Vorige slag — gewonnen door '+esc(wn?(wn.naam||wn.email):'')+'</div><div class="kj-lt-cards">'+cards+'</div></div>';
   }
   function teamNames(team){ // team 0 = seats 0&2, team 1 = seats 1&3
     var a=team===0?0:1, b=team===0?2:3, na=kj.G.seats[a], nb=kj.G.seats[b];
@@ -6459,7 +6515,7 @@ function openHuisKamerModal(id){
   }
   function renderGameOver(){
     var s=kj.G.scores, winA=s[0]>s[1], gelijk=s[0]===s[1];
-    var w=gelijk?'Gelijkspel!':('Team '+(winA?'A':'B')+' wint! 🏆');
+    var w=gelijk?'Gelijkspel!':('Team '+(winA?'A':'B')+' wint!');
     return '<div class="kj-roundbox kj-pop"><h3>'+w+'</h3>'+
       '<table><tr><td>Team A ('+esc(teamNames(0).join(' & '))+')</td><td><b>'+s[0]+'</b></td></tr>'+
       '<tr><td>Team B ('+esc(teamNames(1).join(' & '))+')</td><td><b>'+s[1]+'</b></td></tr></table>'+
@@ -6481,6 +6537,7 @@ function openHuisKamerModal(id){
     if(t.id==='kj-fill'){ send('fillbots'); return; }
     if(t.id==='kj-start'){ send('start'); return; }
     if(t.id==='kj-next'){ send('next'); return; }
+    if(t.id==='kj-lasttrick'){ kj.showLast=!kj.showLast; render(); return; }
     if(t.id==='kj-again'){ if(kj.isHost){ kj.G.round=1; kj.G.scores=[0,0]; kj.G.history=[]; kj.recorded=false; kj._goLoaded=false; startRound(); } return; }
     if(t.dataset.troef){ choose(t.dataset.troef); return; }
     if(t.dataset.card){ // alleen spelen als legaal & jouw beurt
