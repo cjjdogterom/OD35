@@ -13,10 +13,13 @@ create table if not exists public.zomerplanning (
   naam       text,
   start_idx  int  not null,
   eind_idx   int  not null,
-  tekening   text,                 -- PNG data-URL van de doodle
+  tekening   text,                 -- PNG data-URL van de doodle (voor weergave)
+  objecten   text,                 -- JSON van de tekenobjecten (om later te kunnen bewerken)
   bijgewerkt timestamptz not null default now()
 );
 create index if not exists zomerplanning_jaar_idx on public.zomerplanning (jaar);
+-- Bestaat de tabel al van een eerdere versie? Voeg de kolom toe:
+alter table public.zomerplanning add column if not exists objecten text;
 
 alter table public.zomerplanning enable row level security;
 

@@ -7160,20 +7160,22 @@ function openHuisKamerModal(id){
 
   // ---- Interactie ----
   function onClick(e){
-    var add=e.target.closest('.zomer-add'); if(add){ openDatumModal(add.dataset.rk); return; }
-    var del=e.target.closest('.zomer-del'); if(del){ verwijder(del.dataset.id); return; }
+    var add=e.target.closest('.zomer-add'); if(add){ openDatumModal(add.dataset.rk, null); return; }
+    var del=e.target.closest('.zomer-del'); if(del){ if(confirm('Deze tegel verwijderen?')) verwijder(del.dataset.id); return; }
     var entry=e.target.closest('.zomer-entry');
-    if(entry && entry.dataset.own==='1'){ if(confirm('Deze tekening verwijderen?')) verwijder(entry.dataset.id); return; }
+    if(entry && entry.dataset.own==='1'){ var ent=Z.entries.filter(function(x){return String(x.id)===entry.dataset.id;})[0]; if(ent) openDatumModal(null, ent); return; }
   }
-  // Periode-modal: begin- en einddatum kiezen, daarna tekenen.
-  function openDatumModal(rk){
+  // Periode-modal: begin- en einddatum kiezen, daarna tekenen. entry = bestaande tegel (bewerken).
+  function openDatumModal(rk, entry){
     var minIso=idxNaarIso(0), maxIso=idxNaarIso(Z.cols.length-1);
+    var begIso = entry ? idxNaarIso(Math.max(0,Math.min(Z.cols.length-1,entry.start_idx))) : minIso;
+    var endIso = entry ? idxNaarIso(Math.max(0,Math.min(Z.cols.length-1,entry.eind_idx))) : minIso;
     var ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='zomer-datum';
     ov.innerHTML='<div class="modal-box zomer-datumbox"><button class="modal-close" id="zd-close">✕</button>'+
-      '<h3 style="margin-top:0">Periode toevoegen</h3>'+
+      '<h3 style="margin-top:0">'+(entry?'Periode bewerken':'Periode toevoegen')+'</h3>'+
       '<p class="zomer-tiphint">Kies je begin- en einddatum (zomer '+Z.jaar+').</p>'+
-      '<div class="zomer-datumvelden"><label>Begin <input type="date" id="zd-begin" min="'+minIso+'" max="'+maxIso+'" value="'+minIso+'"></label>'+
-      '<label>Einde <input type="date" id="zd-eind" min="'+minIso+'" max="'+maxIso+'" value="'+minIso+'"></label></div>'+
+      '<div class="zomer-datumvelden"><label>Begin <input type="date" id="zd-begin" min="'+minIso+'" max="'+maxIso+'" value="'+begIso+'"></label>'+
+      '<label>Einde <input type="date" id="zd-eind" min="'+minIso+'" max="'+maxIso+'" value="'+endIso+'"></label></div>'+
       '<div class="hk-actions"><button class="zomer-btn" id="zd-ok">Volgende: tekenen</button><button class="zomer-btn ghost" id="zd-annuleer">Annuleren</button><span id="zd-status" class="zomer-status"></span></div></div>';
     document.body.appendChild(ov);
     var close=function(){ ov.remove(); };
@@ -7184,12 +7186,12 @@ function openHuisKamerModal(id){
       var st=ov.querySelector('#zd-status');
       if(!bi||!ei){ st.style.color='#c0392b'; st.textContent='Vul beide datums in.'; return; }
       var a=datumNaarIdx(bi), b=datumNaarIdx(ei); if(b<a){ var tmp=a; a=b; b=tmp; }
-      close(); openTeken(rk, a, b);
+      close(); openTeken(rk, a, b, entry);
     };
   }
 
   // ---- Tekenmodal (objectmodel: ondersteunt verslepen + ongedaan maken) ----
-  function openTeken(rk, a, b){
+  function openTeken(rk, a, b, entry){
     var van=dlabel(Z.cols[a].datum), tot=dlabel(Z.cols[b].datum);
     var ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='zomer-modal';
     ov.innerHTML='<div class="modal-box zomer-tekenbox"><button class="modal-close" id="zt-close">✕</button>'+
@@ -7217,7 +7219,7 @@ function openHuisKamerModal(id){
       '<div class="hk-actions"><button class="zomer-btn" id="zt-opslaan">Opslaan</button><button class="zomer-btn ghost" id="zt-annuleer">Annuleren</button><span id="zt-status" class="zomer-status"></span></div></div>';
     document.body.appendChild(ov);
     var canvas=ov.querySelector('#zt-canvas'), ctx=canvas.getContext('2d');
-    var tool='pen', objs=[], hist=[], cur=null, drag=null, selObj=null, bezig=false, x0=0, y0=0, lx=0, ly=0;
+    var tool='pen', objs=[], hist=[], cur=null, drag=null, selObj=null, bezig=false, x0=0, y0=0, lx=0, ly=0, bg=null;
     function kleur(){ return ov.querySelector('#zt-kleur').value; }
     function dikte(){ return parseInt(ov.querySelector('#zt-dikte').value)||4; }
     function gevuld(){ return ov.querySelector('#zt-gevuld').checked; }
@@ -7227,6 +7229,7 @@ function openHuisKamerModal(id){
 
     function teken(){
       ctx.clearRect(0,0,canvas.width,canvas.height); ctx.lineCap='round'; ctx.lineJoin='round';
+      if(bg){ ctx.drawImage(bg,0,0,canvas.width,canvas.height); }
       objs.forEach(function(o){
         ctx.strokeStyle=o.kleur; ctx.fillStyle=o.kleur; ctx.lineWidth=o.dikte||4;
         if(o.type==='pen'){ ctx.beginPath(); o.pts.forEach(function(p,i){ i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); }); ctx.stroke();
@@ -7308,11 +7311,16 @@ function openHuisKamerModal(id){
     function resize(f){ if(!selObj || objs.indexOf(selObj)<0) return; snap(); schaal(selObj,f); teken(); }
     ov.querySelector('#zt-groter').onclick=function(){ resize(1.25); };
     ov.querySelector('#zt-kleiner').onclick=function(){ resize(0.8); };
-    ov.querySelector('#zt-wis').onclick=function(){ if(objs.length){ snap(); objs=[]; teken(); } };
-    ov.querySelector('#zt-opslaan').onclick=function(){ bewaar(rk,a,b,canvas,ov,close); };
+    ov.querySelector('#zt-wis').onclick=function(){ if(objs.length||bg){ snap(); objs=[]; bg=null; teken(); } };
+    // Bestaande tegel laden om te bewerken: objecten (volledig bewerkbaar) of anders de PNG als achtergrond.
+    if(entry){
+      if(entry.objecten){ try{ objs=JSON.parse(entry.objecten)||[]; }catch(_){ objs=[]; } teken(); }
+      else if(entry.tekening){ bg=new Image(); bg.onload=teken; bg.src=entry.tekening; }
+    }
+    ov.querySelector('#zt-opslaan').onclick=function(){ bewaar(a,b,canvas,ov,close,JSON.stringify(objs),entry); };
   }
 
-  function bewaar(rk,a,b,canvas,ov,close){
+  function bewaar(a,b,canvas,ov,close,objJson,entry){
     var st=ov.querySelector('#zt-status'); if(st){st.style.color='var(--gray)'; st.textContent='Opslaan…';}
     // Witte achtergrond eronder leggen (standaard niet transparant), dan exporteren.
     var tmp=document.createElement('canvas'); tmp.width=canvas.width; tmp.height=canvas.height;
@@ -7320,11 +7328,12 @@ function openHuisKamerModal(id){
     var data=tmp.toDataURL('image/png');
     var info=(typeof displayNaam==='function')?displayNaam(myEmail()):null;
     var naam=(info&&info.naam&&info.naam!==myEmail())?info.naam:myEmail();
-    db.from('zomerplanning').insert({ jaar:Z.jaar, email:myEmail(), naam:naam, start_idx:a, eind_idx:b, tekening:data })
-      .then(function(res){
-        if(res.error){ if(st){st.style.color='#c0392b'; st.textContent='Mislukt: '+res.error.message;} return; }
-        close(); load();
-      });
+    var rec={ jaar:Z.jaar, email:myEmail(), naam:naam, start_idx:a, eind_idx:b, tekening:data, objecten:objJson };
+    var q = entry ? db.from('zomerplanning').update(rec).eq('id', entry.id) : db.from('zomerplanning').insert(rec);
+    q.then(function(res){
+      if(res.error){ if(st){st.style.color='#c0392b'; st.textContent='Mislukt: '+res.error.message;} return; }
+      close(); load();
+    });
   }
   function verwijder(id){
     db.from('zomerplanning').delete().eq('id', id).then(function(res){
