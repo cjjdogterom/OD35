@@ -3932,7 +3932,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   .zomer-row.eigen .zomer-cell[data-own] { cursor:pointer; }
   .zomer-row.eigen .zomer-cell[data-own]:hover { background:#fdf3e9; }
   .zomer-cell.sel { background:rgba(156,59,46,.25); box-shadow:inset 0 0 0 2px var(--burgundy,#9c3b2e); }
-  .zomer-entry { position:absolute; top:2px; height:calc(var(--rh) - 5px); pointer-events:none; }
+  .zomer-entry { position:absolute; top:2px; height:calc(var(--rh) - 5px); pointer-events:none; background:#fff; border:1px solid var(--line,#e3dccd); border-radius:3px; overflow:hidden; }
   .zomer-entry img { width:100%; height:100%; object-fit:fill; display:block; }
   .zomer-entry.eigen { pointer-events:auto; cursor:pointer; }
   .zomer-del { position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%; border:none; background:#c0392b; color:#fff; font-size:.7rem; line-height:1; cursor:pointer; display:none; padding:0; }
@@ -7279,7 +7279,10 @@ function openHuisKamerModal(id){
 
   function bewaar(rk,a,b,canvas,ov,close){
     var st=ov.querySelector('#zt-status'); if(st){st.style.color='var(--gray)'; st.textContent='Opslaan…';}
-    var data=canvas.toDataURL('image/png');
+    // Witte achtergrond eronder leggen (standaard niet transparant), dan exporteren.
+    var tmp=document.createElement('canvas'); tmp.width=canvas.width; tmp.height=canvas.height;
+    var tctx=tmp.getContext('2d'); tctx.fillStyle='#ffffff'; tctx.fillRect(0,0,tmp.width,tmp.height); tctx.drawImage(canvas,0,0);
+    var data=tmp.toDataURL('image/png');
     var info=(typeof displayNaam==='function')?displayNaam(myEmail()):null;
     var naam=(info&&info.naam&&info.naam!==myEmail())?info.naam:myEmail();
     db.from('zomerplanning').insert({ jaar:Z.jaar, email:myEmail(), naam:naam, start_idx:a, eind_idx:b, tekening:data })
