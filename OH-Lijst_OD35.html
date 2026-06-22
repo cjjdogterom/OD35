@@ -2304,6 +2304,18 @@
   .huis-bew-nu { background: var(--burgundy); color: var(--paper); font-size: 0.6rem; padding: 0.05rem 0.4rem; border-radius: 8px; margin-left: 0.45rem; text-transform: uppercase; letter-spacing: 0.04em; vertical-align: middle; }
   [data-theme="wk"] .huis-bew-nu { color: var(--ink); }
   .huis-edit-btn { margin-top: 0.4rem; background: var(--burgundy); color: var(--paper); border: none; padding: 0.5rem 1rem; border-radius: 2px; cursor: pointer; font-family: var(--font-body); }
+  /* Klikbare bewonernaam -> route */
+  .huis-bew-link { background:none; border:none; padding:0; margin:0; font:inherit; color:var(--burgundy); cursor:pointer; text-align:left; border-bottom:1px dotted var(--burgundy); }
+  .huis-bew-link:hover { color:var(--burgundy-deep,#7a2a20); border-bottom-style:solid; }
+  /* Route-modal */
+  .huis-route-box { max-width:760px; text-align:left; }
+  .huis-route-map { background:#fffdf7; border:1px solid var(--line); border-radius:8px; padding:0.6rem; margin:0.4rem 0 0.8rem; }
+  .huis-route-svg { width:100%; height:auto; display:block; }
+  .huis-route-lijst { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:0.3rem; }
+  .huis-route-lijst li { display:flex; align-items:center; gap:0.6rem; padding:0.35rem 0.5rem; border:1px solid var(--line); border-radius:6px; background:var(--paper); }
+  .hr-num { flex:0 0 auto; width:24px; height:24px; border-radius:50%; background:var(--burgundy); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:700; }
+  .hr-kamer { flex:1; font-weight:600; color:var(--ink); }
+  .hr-jaar { color:var(--gray); font-family:var(--font-mono); font-size:0.82rem; }
   .hk-label { display:block; font-size:0.78rem; color:var(--gray); margin-bottom:0.3rem; }
   .hk-input { width:100%; box-sizing:border-box; padding:0.5rem; border:1px solid var(--line); border-radius:2px; font-family:var(--font-body); margin-bottom:1rem; }
   .hk-sectie { margin-bottom:1rem; }
@@ -6066,6 +6078,44 @@ function huisBewonerJaar(b){
   if (b && b.periode){ const m = String(b.periode).match(/(19|20)\d\d/); if (m) return parseInt(m[0]); }
   return 0; // geen jaar ingevuld -> achteraan (handmatig met ▲▼ te ordenen)
 }
+// Volledige naam van een lid, zoals gebruikt in de keuzelijst.
+function huisVolNaam(p){
+  const vn = p['Voornaam'] || p['Roepnaam'] || p['Voorletters'] || '';
+  const tv = p['Tussenvoegsel'] ? p['Tussenvoegsel']+' ' : '';
+  return (vn+' '+tv+(p['Achternaam']||'')).trim();
+}
+// Koppel een ingevulde bewonernaam aan een lid uit de ledenlijst (zodat spelvarianten matchen).
+function huisVindLid(naam){
+  if (!naam) return null;
+  const nm = naam.trim().toLowerCase();
+  return (typeof PEOPLE!=='undefined' ? PEOPLE : []).find(p => huisVolNaam(p).toLowerCase() === nm) || null;
+}
+// Stabiele sleutel per persoon: het lid-id indien gekoppeld, anders de getypte naam.
+function huisPersoonKey(naam){
+  const p = huisVindLid(naam);
+  if (p) return 'lid:'+(p._id || huisVolNaam(p).toLowerCase());
+  return 'naam:'+(naam||'').trim().toLowerCase();
+}
+function huisPersoonNaam(naam){ const p=huisVindLid(naam); return p ? huisVolNaam(p) : (naam||''); }
+// Alle kamers waar deze persoon heeft gewoond, chronologisch (oudste ingevuld jaar eerst).
+function huisPersoonRoute(naam){
+  const key = huisPersoonKey(naam), stops = [];
+  HUIS_KAMERS.forEach(k => {
+    huisBewoners(k.id).forEach(b => {
+      if (b && b.naam && huisPersoonKey(b.naam) === key){
+        stops.push({ kamerId:k.id, kamerNaam:huisKamerNaam(k.id,k.naam), jaar:huisBewonerJaar(b), periode:(b.periode||'') });
+      }
+    });
+  });
+  stops.sort((a,b) => {
+    const ay=a.jaar||0, by=b.jaar||0;
+    if (ay===0 && by===0) return 0;
+    if (ay===0) return 1;   // geen jaar -> achteraan
+    if (by===0) return -1;
+    return ay - by;          // oplopend: oudste eerst (= stap 1)
+  });
+  return stops;
+}
 // Geordend op het ingevulde jaar (nieuwste eerst = huidige bewoner). Stabiel: zonder of met
 // hetzelfde jaar behouden bewoners de handmatige volgorde (▲▼) uit de bewerk-modal.
 function huisBewonersGevuld(id){
@@ -6176,12 +6226,65 @@ function renderHuisDetail(id){
   if (!lay){ el.innerHTML = '<p class="huis-detail-leeg">Klik op een kamer in het huis.</p>'; return; }
   const naam=huisKamerNaam(id,lay.naam), bews=huisBewonersGevuld(id);
   const lijst = bews.length
-    ? `<ol class="huis-bew-lijst huis-bew-volgorde">${bews.map((b,i)=>`<li><span class="huis-bew-naam"><span class="huis-bew-rang">${i+1}.</span>${escapeHtml(b.naam||'')}${i===0?'<span class="huis-bew-nu">nu</span>':''}</span>${b.periode?`<span class="huis-bew-periode">${escapeHtml(b.periode)}</span>`:''}</li>`).join('')}</ol>`
+    ? `<ol class="huis-bew-lijst huis-bew-volgorde">${bews.map((b,i)=>`<li><span class="huis-bew-naam"><span class="huis-bew-rang">${i+1}.</span><button type="button" class="huis-bew-link" data-action="huis-route" data-naam="${escapeHtml(b.naam||'')}" title="Bekijk de route van ${escapeHtml(b.naam||'')} door het huis">${escapeHtml(b.naam||'')}</button>${i===0?'<span class="huis-bew-nu">nu</span>':''}</span>${b.periode?`<span class="huis-bew-periode">${escapeHtml(b.periode)}</span>`:''}</li>`).join('')}</ol>`
     : `<p class="huis-detail-leeg">Nog niemand ingevuld.</p>`;
   el.innerHTML = `
     <div class="huis-detail-head"><div class="huis-detail-verdieping">${escapeHtml(lay.verdieping)}</div><h3>${escapeHtml(naam)}</h3></div>
-    <div class="huis-detail-sectie"><h4>Wie de kamer bewoond heeft</h4><p class="huis-detail-hint">Van boven (nu) naar onder (vroeger).</p>${lijst}</div>
+    <div class="huis-detail-sectie"><h4>Wie de kamer bewoond heeft</h4><p class="huis-detail-hint">Klik op een naam om iemands route door het huis te zien.</p>${lijst}</div>
     ${isAdmin()?`<button class="huis-edit-btn" data-action="huis-edit" data-kamer="${escapeHtml(id)}">✎ Kamer bewerken</button>`:''}`;
+}
+
+// Middelpunt van een kamer (voor de routepijlen).
+function huisKamerCenter(k){
+  if (k.gevel) return { x:k.cx, y:k.ny-8 };
+  return { x:k.x + k.w/2, y:k.y + k.h/2 };
+}
+// Mini-plattegrond met genummerde route-pijlen door de bezochte kamers.
+function huisRouteSVG(stops){
+  const idToK = {}; HUIS_KAMERS.forEach(k => idToK[k.id]=k);
+  let s = `<svg viewBox="0 0 1810 960" class="huis-route-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Route door het huis">`;
+  s += `<defs><marker id="hr-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9c3b2e"/></marker></defs>`;
+  const g=HUIS_DECOR.grond; s += `<rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="4" fill="#e9e1d1"/>`;
+  (HUIS_DECOR.connectors||[]).forEach(c=>{ s += `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" fill="#cdd8dc"/>`; });
+  (HUIS_DECOR.gevels||[]).forEach(gv=>{ s += `<polygon points="${gv.pts}" fill="none" stroke="#cabfa6" stroke-width="6" stroke-linejoin="round"/>`; });
+  // alle kamers licht
+  HUIS_KAMERS.forEach(k=>{
+    if (k.gevel) s += `<polygon points="${k.pts}" fill="#faf6ec" stroke="#cabfa6" stroke-width="4" stroke-linejoin="round"/>`;
+    else s += `<rect x="${k.x}" y="${k.y}" width="${k.w}" height="${k.h}" rx="3" fill="#faf6ec" stroke="#cabfa6" stroke-width="3"/>`;
+  });
+  // route-kamers gemarkeerd
+  const pts=[];
+  stops.forEach(st=>{ const k=idToK[st.kamerId]; if(!k) return; pts.push(huisKamerCenter(k));
+    if (k.gevel) s += `<polygon points="${k.pts}" fill="#f3ddbf" stroke="#9c3b2e" stroke-width="5" stroke-linejoin="round"/>`;
+    else s += `<rect x="${k.x}" y="${k.y}" width="${k.w}" height="${k.h}" rx="3" fill="#f3ddbf" stroke="#9c3b2e" stroke-width="5"/>`;
+  });
+  // pijlen tussen opeenvolgende stops
+  for (let i=0;i<pts.length-1;i++){
+    s += `<line x1="${pts[i].x}" y1="${pts[i].y}" x2="${pts[i+1].x}" y2="${pts[i+1].y}" stroke="#9c3b2e" stroke-width="6" marker-end="url(#hr-arrow)" opacity="0.9"/>`;
+  }
+  // genummerde badges
+  pts.forEach((c,i)=>{
+    s += `<circle cx="${c.x}" cy="${c.y}" r="30" fill="#9c3b2e" stroke="#fff" stroke-width="4"/>`;
+    s += `<text x="${c.x}" y="${c.y+13}" text-anchor="middle" font-size="38" font-weight="700" fill="#fff" font-family="Georgia,serif">${i+1}</text>`;
+  });
+  s += `</svg>`;
+  return s;
+}
+function openHuisRouteModal(naam){
+  const stops = huisPersoonRoute(naam);
+  const disp = huisPersoonNaam(naam) || naam;
+  const lijst = stops.length
+    ? `<ol class="huis-route-lijst">${stops.map((st,i)=>`<li><span class="hr-num">${i+1}</span><span class="hr-kamer">${escapeHtml(st.kamerNaam)}</span><span class="hr-jaar">${escapeHtml(st.periode || (st.jaar? String(st.jaar):'—'))}</span></li>`).join('')}</ol>`
+    : `<p class="huis-detail-leeg">Geen kamers gevonden voor deze persoon.</p>`;
+  const ov = document.createElement('div'); ov.className='modal-overlay'; ov.id='huis-route-modal';
+  ov.innerHTML = `<div class="modal-box huis-route-box">
+    <button class="modal-close" id="hr-close">✕</button>
+    <h3 style="margin-top:0;">Route van ${escapeHtml(disp)}</h3>
+    <p class="huis-detail-hint">${stops.length? `Van de eerste kamer (1) tot de huidige — ${stops.length} kamer${stops.length===1?'':'s'}.` : ''}</p>
+    <div class="huis-route-map">${huisRouteSVG(stops)}</div>
+    ${lijst}</div>`;
+  ov.addEventListener('click', e=>{ if(e.target===ov || e.target.id==='hr-close' || e.target.closest('#hr-close')) ov.remove(); });
+  document.body.appendChild(ov);
 }
 
 function openHuisKamerModal(id){
@@ -6255,7 +6358,10 @@ function openHuisKamerModal(id){
     wrap.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ const g=e.target.closest('.huis-kamer'); if(g){ e.preventDefault(); kies(g); } } });
   }
   const det=document.getElementById('huis-detail');
-  if (det) det.addEventListener('click', e=>{ const b=e.target.closest('[data-action="huis-edit"]'); if(b) openHuisKamerModal(b.dataset.kamer); });
+  if (det) det.addEventListener('click', e=>{
+    const r=e.target.closest('[data-action="huis-route"]'); if(r){ openHuisRouteModal(r.dataset.naam); return; }
+    const b=e.target.closest('[data-action="huis-edit"]'); if(b) openHuisKamerModal(b.dataset.kamer);
+  });
 })();
 
 // ==================== KLAVERJAS (Amsterdams, realtime) ====================
