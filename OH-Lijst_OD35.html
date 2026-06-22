@@ -2312,6 +2312,13 @@
   .hk-row { display:flex; align-items:center; gap:0.4rem; margin-bottom:0.4rem; }
   .hk-row .hk-naam { flex:2; }
   .hk-row .hk-periode { flex:1.5; }
+  .hk-naam-wrap { position:relative; flex:2; min-width:0; display:flex; }
+  .hk-naam-wrap .hk-naam { flex:1; width:100%; }
+  .hk-suggest { position:absolute; top:100%; left:0; right:0; z-index:60; background:var(--paper,#fffdf7); border:1px solid var(--line); border-top:none; border-radius:0 0 6px 6px; max-height:240px; overflow-y:auto; box-shadow:0 8px 20px rgba(0,0,0,0.18); }
+  .hk-sug-item { display:flex; justify-content:space-between; align-items:center; gap:0.5rem; width:100%; text-align:left; background:transparent; border:none; border-bottom:1px solid var(--line); padding:0.45rem 0.6rem; cursor:pointer; font-family:var(--font-body); font-size:0.9rem; color:var(--ink,#222); }
+  .hk-sug-item:last-child { border-bottom:none; }
+  .hk-sug-item:hover, .hk-sug-item:focus { background:rgba(156,59,46,0.08); }
+  .hk-sug-jaar { color:var(--gray); font-size:0.78rem; font-variant-numeric:tabular-nums; flex:0 0 auto; }
   .hk-row input { padding:0.4rem 0.5rem; border:1px solid var(--line); border-radius:2px; font-family:var(--font-body); min-width:0; }
   .hk-del { flex:0 0 auto; background:transparent; border:1px solid var(--line); color:#c0392b; border-radius:2px; cursor:pointer; width:32px; }
   .hk-move { display:flex; flex-direction:column; gap:2px; flex:0 0 auto; }
@@ -6138,21 +6145,23 @@ function openHuisKamerModal(id){
   if (!isAdmin()) return;
   const lay=huisLayoutKamer(id); if(!lay) return;
   const naam=huisKamerNaam(id,lay.naam), bews=huisBewonersGevuld(id);
-  // Bouw ledenlijst voor autocomplete (gesorteerd op aankomstjaar nieuwste eerst)
-  const ledenOpts=(PEOPLE||[])
+  // Ledenlijst voor de eigen keuzelijst — vast gesorteerd op aankomstjaar, nieuwste eerst.
+  const LEDEN=(PEOPLE||[])
     .filter(p=>p['Achternaam'])
     .sort((a,b)=>(parseInt(b['Aankomstjaar'])||0)-(parseInt(a['Aankomstjaar'])||0))
     .map(p=>{
       const vn=p['Voornaam']||p['Roepnaam']||p['Voorletters']||'';
       const tv=p['Tussenvoegsel']?p['Tussenvoegsel']+' ':'';
-      const voluit=(vn+' '+tv+p['Achternaam']).trim();
-      const jaar=p['Aankomstjaar']||'';
-      return `<option value="${escapeHtml(voluit)}">${escapeHtml(jaar?jaar:'')}</option>`;
-    }).join('');
-  const row=(b)=>`<div class="hk-row"><span class="hk-move"><button type="button" class="hk-up" title="Naar boven">▲</button><button type="button" class="hk-down" title="Naar onder">▼</button></span><input class="hk-naam" list="hk-ledenlist" placeholder="Kies of typ naam" value="${escapeHtml(b&&b.naam||'')}"><input class="hk-periode" placeholder="Periode (bijv. 2021–2023)" value="${escapeHtml(b&&b.periode||'')}"><button type="button" class="hk-del" title="Verwijderen">✕</button></div>`;
+      return { n:(vn+' '+tv+p['Achternaam']).trim(), j:String(p['Aankomstjaar']||'') };
+    });
+  function suggHTML(q){
+    const ql=(q||'').toLowerCase().trim();
+    const list=(ql ? LEDEN.filter(x=>x.n.toLowerCase().indexOf(ql)>=0) : LEDEN).slice(0,12);
+    return list.map(x=>`<button type="button" class="hk-sug-item" data-val="${escapeHtml(x.n)}">${escapeHtml(x.n)}<span class="hk-sug-jaar">${escapeHtml(x.j)}</span></button>`).join('');
+  }
+  const row=(b)=>`<div class="hk-row"><span class="hk-move"><button type="button" class="hk-up" title="Naar boven">▲</button><button type="button" class="hk-down" title="Naar onder">▼</button></span><span class="hk-naam-wrap"><input class="hk-naam" autocomplete="off" placeholder="Kies of typ naam" value="${escapeHtml(b&&b.naam||'')}"><div class="hk-suggest" hidden></div></span><input class="hk-periode" placeholder="Periode (bijv. 2021–2023)" value="${escapeHtml(b&&b.periode||'')}"><button type="button" class="hk-del" title="Verwijderen">✕</button></div>`;
   const ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='huis-kamer-modal';
   ov.innerHTML=`<div class="modal-box" style="max-width:560px; text-align:left;">
-    <datalist id="hk-ledenlist">${ledenOpts}</datalist>
     <button class="modal-close" id="hk-close">✕</button>
     <h3 style="margin-top:0;">Kamer bewerken · ${escapeHtml(lay.verdieping)}</h3>
     <label class="hk-label">Naam van de kamer</label>
@@ -6164,7 +6173,13 @@ function openHuisKamerModal(id){
     </div>
     <div class="hk-actions"><button class="hk-save" id="hk-save">Opslaan</button><button class="hk-cancel" id="hk-cancel">Annuleren</button></div>
     <div id="hk-status" class="hk-status"></div></div>`;
+  function showSug(input){ const box=input.parentNode.querySelector('.hk-suggest'); if(!box)return; const h=suggHTML(input.value); box.innerHTML=h; box.hidden=!h; }
+  ov.addEventListener('input', e=>{ if(e.target.classList.contains('hk-naam')) showSug(e.target); });
+  ov.addEventListener('focusin', e=>{ if(e.target.classList.contains('hk-naam')) showSug(e.target); });
   ov.addEventListener('click', e=>{
+    const sug=e.target.closest('.hk-sug-item');
+    if(sug){ const wrap=sug.closest('.hk-naam-wrap'); wrap.querySelector('.hk-naam').value=sug.dataset.val; wrap.querySelector('.hk-suggest').hidden=true; return; }
+    if(!e.target.closest('.hk-naam-wrap')) ov.querySelectorAll('.hk-suggest').forEach(b=>{b.hidden=true;});
     if(e.target===ov){ ov.remove(); return; }
     const r=e.target.closest('.hk-row'); if(!r) return;
     if(e.target.classList.contains('hk-del')){ r.remove(); return; }
