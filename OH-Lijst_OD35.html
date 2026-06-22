@@ -6061,8 +6061,28 @@ function huisLayoutKamer(id){
 }
 function huisKamerNaam(id, def){ const d=huisKamers[id]; return (d && d.naam) ? d.naam : def; }
 function huisBewoners(id){ const d=huisKamers[id]; return (d && Array.isArray(d.bewoners)) ? d.bewoners : []; }
-// Eén geordende lijst: index 0 = bovenaan = wie er nu woont; verder naar onder = wie er vroeger zaten.
-function huisBewonersGevuld(id){ return huisBewoners(id).filter(b => b && b.naam); }
+// Bepaal het aankomstjaar van een bewoner: eerst via de ledenlijst (op naam), anders uit de periode-tekst.
+function huisBewonerJaar(b){
+  if (b && b.naam){
+    const nm = b.naam.trim().toLowerCase();
+    const p = (typeof PEOPLE!=='undefined' ? PEOPLE : []).find(x => {
+      const vn = x['Voornaam'] || x['Roepnaam'] || x['Voorletters'] || '';
+      const tv = x['Tussenvoegsel'] ? x['Tussenvoegsel']+' ' : '';
+      return (vn+' '+tv+(x['Achternaam']||'')).trim().toLowerCase() === nm;
+    });
+    if (p && p['Aankomstjaar']) return parseInt(p['Aankomstjaar']) || 0;
+  }
+  if (b && b.periode){ const m = String(b.periode).match(/(19|20)\d\d/); if (m) return parseInt(m[0]); }
+  return 0; // onbekend jaar -> achteraan
+}
+// Geordend op aankomstjaar (nieuwste eerst = huidige bewoner). Stabiel: gelijke jaren
+// behouden de handmatige volgorde (▲▼) uit de bewerk-modal.
+function huisBewonersGevuld(id){
+  return huisBewoners(id).filter(b => b && b.naam)
+    .map((b,i) => ({ b, i, j: huisBewonerJaar(b) }))
+    .sort((x,y) => (y.j - x.j) || (x.i - y.i))
+    .map(o => o.b);
+}
 
 async function loadHuis(){
   try {
@@ -6200,7 +6220,7 @@ function openHuisKamerModal(id){
     <input id="hk-kamernaam" class="hk-input" value="${escapeHtml(naam)}" placeholder="${escapeHtml(lay.naam)}">
     <div class="hk-sectie">
       <div class="hk-sectie-head"><span>Wie de kamer bewoond heeft</span><button type="button" class="hk-add" data-target="hk-bewoners">+ persoon</button></div>
-      <p class="hk-hint">Bovenaan staat wie er nu woont. Met ▲▼ zet je iemand boven of onder een ander — dat is de volgorde van wie de kamer bewoond heeft.</p>
+      <p class="hk-hint">De volgorde wordt automatisch op aankomstjaar bepaald: de nieuwste jaargang is de huidige bewoner. Met ▲▼ kun je bewoners uit hetzelfde jaar onderling ordenen.</p>
       <div id="hk-bewoners">${(bews.length?bews:[null]).map(row).join('')}</div>
     </div>
     <div class="hk-actions"><button class="hk-save" id="hk-save">Opslaan</button><button class="hk-cancel" id="hk-cancel">Annuleren</button></div>
