@@ -9890,11 +9890,13 @@ async function migreerFotosNaarR2() {
   const orig = btn ? btn.textContent : '';
   let totaal = 0;
   try {
-    const { data: { session } } = await db.auth.getSession();
-    const tok = session?.access_token;
-    if (!tok) { alert('Log opnieuw in.'); return; }
     if (btn) btn.disabled = true;
     while (true) {
+      // Elke batch een verse token (Supabase ververst 'm automatisch) — anders
+      // verloopt de sessie na ~1 uur tijdens een lange migratie.
+      const { data: { session } } = await db.auth.getSession();
+      const tok = session?.access_token;
+      if (!tok) { alert('Sessie verlopen — log opnieuw in en klik nogmaals om verder te gaan.'); break; }
       if (btn) btn.textContent = `Bezig… ${totaal} verhuisd`;
       const r = await fetch('/api/migrate-fotos-r2', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
