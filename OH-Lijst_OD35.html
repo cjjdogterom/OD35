@@ -6855,11 +6855,13 @@ function openHuisKamerModal(id){
       posHTML+='<div class="'+cls+'"><div class="kj-pname">'+esc(s.naam||s.email)+'</div>'+
         '<div class="kj-pmeta">'+teamWZ(seat%2)+' · '+(G.handCounts[seat]||0)+'</div></div>';
     }
-    // gespeelde kaarten in de huidige slag, op positie van de speler
-    var trickHTML='';
+    // gespeelde kaarten in de huidige slag, op de kant van de speler die 'm speelde.
+    // offset 0=onder, 1=rechts, 2=boven, 3=links; de s-klassen zijn s0=onder, s1=links,
+    // s2=boven, s3=rechts -> dus offset->s-klasse via [0,3,2,1].
+    var trickHTML='', OFF2S=[0,3,2,1];
     G.trick.forEach(function(t){ var off=(t.seat-base+4)%4;
       var isLast=G.lastPlayed&&t.seat===G.lastPlayed.seat&&t.card===G.lastPlayed.card;
-      trickHTML+='<div class="kj-tc s'+off+(isLast?' played':'')+'">'+cardHTML(t.card)+'</div>'; });
+      trickHTML+='<div class="kj-tc s'+OFF2S[off]+(isLast?' played':'')+'">'+cardHTML(t.card)+'</div>'; });
     var scoreOv=renderScoreOverlay(me);
 
     // onderaan op het laken: troefkeuze (als jij maakt) + jouw kaarten, of toeschouwer-melding
