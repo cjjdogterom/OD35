@@ -3907,6 +3907,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
 <div class="tab-panel" id="panel-fotos">
   <div class="fotos-header">
     <div id="fotos-breadcrumb"></div>
+    <button class="fotos-add-btn hoofdadmin-only" id="fotos-migrate-btn" style="display:none" title="Verhuis bestaande foto's van Supabase naar R2">↪ Foto's naar R2</button>
     <button class="fotos-add-btn" id="fotos-album-btn" style="display:none">+ Nieuw album</button>
   </div>
   <div id="fotos-content"></div>
@@ -9881,10 +9882,46 @@ function bindAlbumActions() {
   });
 }
 
+// Verhuis bestaande foto's van Supabase naar R2 (alleen hoofdadmin). Batchgewijs.
+async function migreerFotosNaarR2() {
+  if (!isHoofdadmin()) return;
+  if (!confirm("Bestaande foto's van Supabase naar R2 verhuizen?\n\nDit gebeurt in batches en kan even duren — laat deze pagina open. Je kunt het later opnieuw starten om verder te gaan.")) return;
+  const btn = document.getElementById('fotos-migrate-btn');
+  const orig = btn ? btn.textContent : '';
+  let totaal = 0;
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    const tok = session?.access_token;
+    if (!tok) { alert('Log opnieuw in.'); return; }
+    if (btn) btn.disabled = true;
+    while (true) {
+      if (btn) btn.textContent = `Bezig… ${totaal} verhuisd`;
+      const r = await fetch('/api/migrate-fotos-r2', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+        body: JSON.stringify({ batch: 8 }),
+      });
+      const out = await r.json().catch(() => ({}));
+      if (!r.ok) { alert('Migratie mislukt: ' + (out.error || ('HTTP ' + r.status))); break; }
+      totaal += (out.processed || 0);
+      if (btn) btn.textContent = `Bezig… ${totaal} verhuisd (${out.remaining} te gaan)`;
+      if (out.fouten && out.fouten.length) console.warn('Migratie-fouten:', out.fouten);
+      if ((out.remaining || 0) === 0) { alert(`Klaar! ${totaal} foto's verhuisd naar R2.`); break; }
+      if ((out.processed || 0) === 0) { alert(`Gestopt — geen voortgang meer.\n${totaal} verhuisd, ${out.remaining} over.\nFouten: ${(out.fouten || []).slice(0, 3).join(' | ') || '—'}`); break; }
+      await new Promise(res => setTimeout(res, 250));
+    }
+  } catch (e) { alert('Migratie-fout: ' + (e.message || e)); }
+  finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig || "↪ Foto's naar R2"; }
+    try { await loadAlbums(); renderAlbumGrid(); } catch (_) {}
+  }
+}
+
 function renderAlbumGrid() {
   const btn = document.getElementById('fotos-album-btn');
   if (btn) btn.style.display = canUploadFotos() ? '' : 'none';
   if (btn) btn.onclick = showAlbumForm;
+  const mbtn = document.getElementById('fotos-migrate-btn');
+  if (mbtn) { mbtn.style.display = isHoofdadmin() ? '' : 'none'; mbtn.onclick = migreerFotosNaarR2; }
 
   const bc = document.getElementById('fotos-breadcrumb');
   if (bc) bc.innerHTML = '<h2 style="font-family:var(--font-display);font-size:1.8rem;font-weight:600;margin:0;color:var(--ink);">Foto\'s</h2>';
@@ -10006,6 +10043,8 @@ function renderAlbumFotos(albumId) {
 
   const btn = document.getElementById('fotos-album-btn');
   if (btn) btn.style.display = 'none';
+  const mbtn = document.getElementById('fotos-migrate-btn');
+  if (mbtn) mbtn.style.display = 'none';
 
   const bc = document.getElementById('fotos-breadcrumb');
   if (bc) bc.innerHTML = `

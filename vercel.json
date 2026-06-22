@@ -3,7 +3,8 @@
     { "source": "/", "destination": "/OH-Lijst_OD35.html" }
   ],
   "functions": {
-    "api/heic-to-jpeg.js": { "maxDuration": 60 }
+    "api/heic-to-jpeg.js": { "maxDuration": 60 },
+    "api/migrate-fotos-r2.js": { "maxDuration": 60 }
   },
   "headers": [
     {
