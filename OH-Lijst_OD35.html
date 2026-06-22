@@ -3503,6 +3503,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
       <button class="tab-btn" data-tab="contacten">Contacten</button>
       <button class="tab-btn" data-tab="wandelgangen">Wandelgangen</button>
       <button class="tab-btn" data-tab="klaverjas">Klaverjas</button>
+      <button class="tab-btn" data-tab="zomerplanning" style="display:none">Zomerplanning</button>
       <button class="tab-btn" data-tab="huisplattegrond">Huisplattegrond</button>
       <button class="tab-btn" data-tab="geschiedenis">Geschiedenis</button>
       <button class="tab-btn admin-only" data-tab="wijzigingen" style="display:none">Verzoeken <span id="wijzigingen-badge" class="tab-badge"></span></button>
@@ -3902,6 +3903,54 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   </div>
   <div id="kj-app"><p class="kj-loading">Laden…</p></div>
 </div><!-- /panel-klaverjas -->
+
+<style id="zomer-style">
+  .zomer-sub { color:var(--gray,#7a6f63); max-width:48rem; }
+  .zomer-loading { color:var(--gray,#7a6f63); }
+  .zomer-jaar { font-size:.9rem; color:var(--ink); margin:.2rem 0 .6rem; }
+  .zomer-selhint { font-size:.85rem; color:var(--burgundy,#9c3b2e); margin:.2rem 0 .6rem; }
+  .zomer-wrap { overflow:auto; border:1px solid var(--line,#e3dccd); border-radius:10px; max-height:70vh; background:var(--paper,#fffdf7); }
+  .zomer-grid { --cw:46px; --nw:150px; width:max-content; min-width:100%; font-size:.8rem; }
+  .zomer-row { display:flex; align-items:stretch; }
+  .zomer-name { flex:0 0 var(--nw); width:var(--nw); position:sticky; left:0; z-index:2; background:var(--paper,#fffdf7);
+    border-right:2px solid var(--line,#cbb89a); border-bottom:1px solid var(--line,#eee5d4); padding:.35rem .5rem; display:flex; align-items:center; gap:.3rem; box-sizing:border-box; }
+  .zomer-name small { color:var(--gray,#9b8f80); font-variant-numeric:tabular-nums; }
+  .zomer-jij { margin-left:auto; background:var(--burgundy,#9c3b2e); color:#fff; font-size:.6rem; padding:.05rem .35rem; border-radius:6px; text-transform:uppercase; }
+  .zomer-row.eigen .zomer-name { background:#fbf1e8; }
+  .zomer-cells { position:relative; display:flex; }
+  .zomer-colh, .zomer-cell { flex:0 0 var(--cw); width:var(--cw); height:42px; box-sizing:border-box; border-right:1px solid var(--line,#eee5d4); border-bottom:1px solid var(--line,#eee5d4); }
+  .zomer-colh.wkstart, .zomer-cell.wkstart { border-left:2px solid var(--line,#d8c8aa); }
+  .zomer-headrow .zomer-name, .zomer-colh { background:var(--paper,#fffdf7); position:sticky; top:0; z-index:1; }
+  .zomer-headrow { position:sticky; top:0; z-index:3; }
+  .zomer-colh { display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; text-align:center; }
+  .zomer-colh .zomer-wk { font-weight:700; color:var(--burgundy,#9c3b2e); font-size:.62rem; }
+  .zomer-colh .zomer-cd { color:var(--gray,#7a6f63); font-size:.6rem; }
+  .zomer-row.eigen .zomer-cell[data-own] { cursor:pointer; }
+  .zomer-row.eigen .zomer-cell[data-own]:hover { background:#fdf3e9; }
+  .zomer-cell.sel { background:rgba(156,59,46,.25); box-shadow:inset 0 0 0 2px var(--burgundy,#9c3b2e); }
+  .zomer-entry { position:absolute; top:1px; height:40px; pointer-events:none; }
+  .zomer-entry img { width:100%; height:100%; object-fit:fill; display:block; }
+  .zomer-entry.eigen { pointer-events:auto; cursor:pointer; }
+  .zomer-del { position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%; border:none; background:#c0392b; color:#fff; font-size:.7rem; line-height:1; cursor:pointer; display:none; padding:0; }
+  .zomer-entry.eigen:hover .zomer-del { display:block; }
+  .zomer-btn { background:var(--burgundy,#9c3b2e); color:#fff; border:none; border-radius:8px; padding:.5rem 1rem; font-size:.9rem; font-weight:600; cursor:pointer; }
+  .zomer-btn.ghost { background:transparent; color:var(--gray,#5b5247); border:1px solid var(--line,#e3dccd); }
+  .zomer-status { font-size:.85rem; color:var(--gray); margin-left:.5rem; }
+  .zomer-tekenbox { max-width:720px; text-align:left; }
+  .zomer-canvaswrap { border:1px dashed var(--line,#cbb89a); border-radius:8px; background:#fff; margin:.4rem 0; }
+  .zomer-tekenbox canvas { width:100%; height:auto; display:block; touch-action:none; cursor:crosshair; border-radius:8px; }
+  .zomer-tools { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; font-size:.85rem; color:var(--gray,#5b5247); margin:.3rem 0 .2rem; }
+  .zomer-tools input[type=color] { vertical-align:middle; }
+</style>
+
+<!-- ==================== TAB: ZOMERPLANNING (jaargang 2021–2026) ==================== -->
+<div class="tab-panel" id="panel-zomerplanning">
+  <div class="zomer-head">
+    <h2>Zomerplanning</h2>
+    <p class="zomer-sub">Waar is iedereen deze zomer? Klik in <b>jouw rij</b> op een begin- en een eind-vak (halve weken van 1 juli t/m 1 september) en teken waar je bent. Je bewerkt alleen je eigen rij.</p>
+  </div>
+  <div id="zomer-app"><p class="zomer-loading">Laden…</p></div>
+</div><!-- /panel-zomerplanning -->
 
 <!-- ==================== TAB: FOTO'S ==================== -->
 <div class="tab-panel" id="panel-fotos">
@@ -5715,6 +5764,7 @@ document.getElementById('tab-nav').addEventListener('click', e => {
   if (tab === 'wandelgangen') loadWandelgangen();
   if (tab === 'huisplattegrond') loadHuis();
   if (tab === 'klaverjas') { if (typeof kjInit === 'function') kjInit(); } else { if (typeof kjOnLeaveTab === 'function') kjOnLeaveTab(); }
+  if (tab === 'zomerplanning') { if (typeof zomerInit === 'function') zomerInit(); }
   if (tab === 'geschiedenis') renderHistory();
   if (tab === 'fotos') { loadAlbums().then(renderFotosTab); }
   if (tab === 'wijzigingen') { loadWijzigingen(); }
@@ -5819,6 +5869,7 @@ const TAB_ROL_DEFS = [
   { id:'contacten',      label:'Contacten' },
   { id:'wandelgangen',   label:'Wandelgangen' },
   { id:'klaverjas',      label:'Klaverjas' },
+  { id:'zomerplanning',  label:'Zomerplanning' },
   { id:'geschiedenis',   label:'Geschiedenis' },
   { id:'huisplattegrond',label:'Huisplattegrond' },
   { id:'wijzigingen',    label:'Verzoeken' },
@@ -5830,6 +5881,8 @@ const TAB_ROL_DEFS = [
 // Nestor is alleen beschikbaar voor huidige bewoners (aankomstjaar 2017–2026),
 // ongeacht rol of config. Dit is een harde extra voorwaarde.
 const NESTOR_MIN_JAAR = 2017, NESTOR_MAX_JAAR = 2026;
+// Zomerplanning: alleen voor jaargang 2021–2026.
+const ZOMER_MIN_JAAR = 2021, ZOMER_MAX_JAAR = 2026;
 const TAB_ROLLEN_KOLOMMEN = [ { key:'lid', label:'Niet-admin' }, { key:'admin', label:'Admin' }, { key:'hoofdadmin', label:'Superadmin' } ];
 // Welke tabs zijn van nature alleen voor (hoofd)admins — bepaalt de standaard-vinkjes.
 const TAB_ADMIN_ONLY = ['wijzigingen','verjaardagen'];
@@ -5873,6 +5926,7 @@ function applyTabZichtbaarheid() {
     }
     // Nestor: harde eis aankomstjaar 2017–2026, ongeacht rol of config.
     if (t.id === 'nestor' && !(jaar !== null && jaar >= NESTOR_MIN_JAAR && jaar <= NESTOR_MAX_JAAR)) zicht = false;
+    if (t.id === 'zomerplanning' && !(jaar !== null && jaar >= ZOMER_MIN_JAAR && jaar <= ZOMER_MAX_JAAR)) zicht = false;
     // Veiligheid: de superadmin houdt altijd toegang tot het tabbladen-beheer.
     if (t.id === 'tabbeheer' && isHoofdadmin()) zicht = true;
     btn.style.display = zicht ? '' : 'none';
@@ -7027,6 +7081,162 @@ function openHuisKamerModal(id){
     if(!kj.ch) loadLeaderboard(); // ranglijst op de homepagina
   };
   window.kjOnLeaveTab=function(){ /* verbinding blijft staan zodat je beurt doorloopt */ };
+})();
+
+// ==================== ZOMERPLANNING (jaargang 2021–2026) ====================
+// Rijen = leden 2021–2026, kolommen = halve weken 1 juli t/m 1 sept. Je tekent in je
+// eigen rij een doodle over een geselecteerde periode (begin-cel + eind-cel klikken).
+(function(){
+  var Z = { entries: [], jaar: null, sel: null, cols: [], drawing: null };
+  var MND = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+  function myEmail(){ return (currentUserEmail||'').toLowerCase(); }
+  function esc(s){ return (typeof escapeHtml==='function')?escapeHtml(s):String(s); }
+  function volNaam(p){ var vn=p['Voornaam']||p['Roepnaam']||p['Voorletters']||''; var tv=p['Tussenvoegsel']?p['Tussenvoegsel']+' ':''; return (vn+' '+tv+(p['Achternaam']||'')).trim(); }
+
+  // Kolommen: per week twee helften, van 1 juli t/m 1 september.
+  function maakKolommen(jaar){
+    var cols=[], d=new Date(jaar,6,1), eind=new Date(jaar,8,1), idx=0, wk=1;
+    while(d<=eind){
+      var h2=new Date(d); h2.setDate(h2.getDate()+3);
+      var wEnd=new Date(d); wEnd.setDate(wEnd.getDate()+6);
+      var h1tot=new Date(h2); h1tot.setDate(h1tot.getDate()-1);
+      cols.push({idx:idx++, wk:wk, helft:1, van:new Date(d), tot:h1tot});
+      cols.push({idx:idx++, wk:wk, helft:2, van:new Date(h2), tot:wEnd});
+      d=new Date(d); d.setDate(d.getDate()+7); wk++;
+    }
+    return cols;
+  }
+  function dlabel(dt){ return dt.getDate()+' '+MND[dt.getMonth()]; }
+
+  // Rijen: personen 2021–2026, gesorteerd op jaar (nieuwste eerst) dan naam.
+  function rijen(){
+    return (PEOPLE||[]).filter(function(p){ var j=parseInt(p['Aankomstjaar']); return j>=ZOMER_MIN_JAAR && j<=ZOMER_MAX_JAAR; })
+      .map(function(p){
+        var emails=[p['E-mail 1'],p['E-mail 2'],p['E-mail 3']].filter(Boolean).map(function(e){return String(e).trim().toLowerCase();});
+        return { naam:volNaam(p)||(p['Achternaam']||'?'), jaar:parseInt(p['Aankomstjaar'])||0, emails:emails, rk:(emails[0]||('p'+(p._id||Math.random()))) , own: emails.indexOf(myEmail())>=0 };
+      })
+      .sort(function(a,b){ return (b.jaar-a.jaar) || a.naam.localeCompare(b.naam); });
+  }
+  function entriesVoor(r){ return Z.entries.filter(function(e){ return r.emails.indexOf((e.email||'').toLowerCase())>=0; }); }
+
+  function load(){
+    Z.jaar = new Date().getFullYear();
+    Z.sel = null;
+    db.from('zomerplanning').select('*').eq('jaar', Z.jaar).then(function(res){
+      if(res.error){ Z.error = /relation|does not exist|schema cache/i.test(res.error.message||'')
+          ? 'De zomerplanning is nog niet ingericht — draai de SQL uit ZOMERPLANNING-SETUP.md.'
+          : ('Laden mislukt: '+res.error.message); Z.entries=[]; }
+      else { Z.entries = res.data||[]; Z.error=null; }
+      render();
+    });
+  }
+
+  function render(){
+    var app=document.getElementById('zomer-app'); if(!app) return;
+    if(Z.error){ app.innerHTML='<p class="zomer-loading">'+esc(Z.error)+'</p>'; return; }
+    Z.cols = maakKolommen(Z.jaar);
+    var rs = rijen();
+    var heeftEigen = rs.some(function(r){return r.own;});
+    var h='';
+    h+='<p class="zomer-jaar">Zomer '+Z.jaar+' · '+(heeftEigen?'klik in <b>jouw rij</b> op een begin- en een eind-vak om te tekenen.':'<i>Je naam (2021–2026) staat niet in de lijst, dus je kunt niet bewerken — wel meekijken.</i>')+'</p>';
+    if(Z.sel){ h+='<p class="zomer-selhint">Beginvak gekozen ('+dlabel(Z.cols[Z.sel.start].van)+'). Klik nu het eindvak in je rij. <button class="zomer-btn ghost" id="zomer-annuleer">annuleren</button></p>'; }
+    // header
+    h+='<div class="zomer-wrap"><div class="zomer-grid">';
+    h+='<div class="zomer-row zomer-headrow"><div class="zomer-name zomer-corner">Naam</div><div class="zomer-cells">';
+    Z.cols.forEach(function(c){ h+='<div class="zomer-colh'+(c.helft===1?' wkstart':'')+'"><span class="zomer-wk">'+(c.helft===1?('wk '+c.wk):'')+'</span><span class="zomer-cd">'+dlabel(c.van)+'</span></div>'; });
+    h+='</div></div>';
+    // rijen
+    rs.forEach(function(r){
+      h+='<div class="zomer-row'+(r.own?' eigen':'')+'"><div class="zomer-name">'+esc(r.naam)+' <small>\''+String(r.jaar).slice(-2)+'</small>'+(r.own?'<span class="zomer-jij">jij</span>':'')+'</div>';
+      h+='<div class="zomer-cells" data-rk="'+esc(r.rk)+'">';
+      Z.cols.forEach(function(c){
+        var selCls = (Z.sel && Z.sel.rk===r.rk && Z.sel.start===c.idx)?' sel':'';
+        h+='<div class="zomer-cell'+(c.helft===1?' wkstart':'')+selCls+'" data-rk="'+esc(r.rk)+'" data-idx="'+c.idx+'" '+(r.own?'data-own="1"':'')+' title="'+dlabel(c.van)+' – '+dlabel(c.tot)+'"></div>';
+      });
+      // entries als doodle-overlays
+      entriesVoor(r).forEach(function(e){
+        var s=Math.max(0,e.start_idx), t=Math.min(Z.cols.length-1,e.eind_idx);
+        var left=s, span=(t-s+1);
+        h+='<div class="zomer-entry'+(r.own?' eigen':'')+'" style="left:calc(var(--cw)*'+left+');width:calc(var(--cw)*'+span+')" data-id="'+esc(e.id)+'" data-own="'+(r.own?'1':'0')+'" title="'+dlabel(Z.cols[s].van)+' – '+dlabel(Z.cols[t].tot)+'">'+
+          '<img src="'+esc(e.tekening||'')+'" alt="">'+(r.own?'<button class="zomer-del" data-id="'+esc(e.id)+'" title="Verwijderen">✕</button>':'')+'</div>';
+      });
+      h+='</div></div>';
+    });
+    h+='</div></div>';
+    app.innerHTML=h;
+  }
+
+  // ---- Interactie ----
+  function onClick(e){
+    if(e.target.id==='zomer-annuleer'){ Z.sel=null; render(); return; }
+    var del=e.target.closest('.zomer-del');
+    if(del){ verwijder(del.dataset.id); return; }
+    var entry=e.target.closest('.zomer-entry');
+    if(entry && entry.dataset.own==='1'){ if(confirm('Deze tekening verwijderen?')) verwijder(entry.dataset.id); return; }
+    var cell=e.target.closest('.zomer-cell');
+    if(!cell || cell.dataset.own!=='1') return; // alleen eigen rij
+    var rk=cell.dataset.rk, idx=parseInt(cell.dataset.idx);
+    if(!Z.sel || Z.sel.rk!==rk){ Z.sel={rk:rk, start:idx}; render(); return; }
+    // tweede klik -> periode
+    var a=Math.min(Z.sel.start,idx), b=Math.max(Z.sel.start,idx);
+    Z.sel=null;
+    openTeken(rk, a, b);
+  }
+
+  // ---- Tekenmodal ----
+  function openTeken(rk, a, b){
+    var van=dlabel(Z.cols[a].van), tot=dlabel(Z.cols[b].tot);
+    var ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='zomer-modal';
+    ov.innerHTML='<div class="modal-box zomer-tekenbox"><button class="modal-close" id="zt-close">✕</button>'+
+      '<h3 style="margin-top:0">Teken waar je bent</h3>'+
+      '<p class="zomer-selhint">Periode: <b>'+van+' – '+tot+'</b></p>'+
+      '<div class="zomer-canvaswrap"><canvas id="zt-canvas" width="640" height="180"></canvas></div>'+
+      '<div class="zomer-tools"><label>Kleur <input type="color" id="zt-kleur" value="#9c3b2e"></label>'+
+      '<label>Dikte <input type="range" id="zt-dikte" min="1" max="14" value="4"></label>'+
+      '<button class="zomer-btn ghost" id="zt-wis">Wissen</button></div>'+
+      '<div class="hk-actions"><button class="zomer-btn" id="zt-opslaan">Opslaan</button><button class="zomer-btn ghost" id="zt-annuleer">Annuleren</button><span id="zt-status" class="zomer-status"></span></div></div>';
+    document.body.appendChild(ov);
+    var canvas=ov.querySelector('#zt-canvas'), ctx=canvas.getContext('2d');
+    ctx.lineCap='round'; ctx.lineJoin='round';
+    var teken=false, lastX=0, lastY=0;
+    function pos(ev){ var r=canvas.getBoundingClientRect(), t=(ev.touches&&ev.touches[0])||ev; return {x:(t.clientX-r.left)*(canvas.width/r.width), y:(t.clientY-r.top)*(canvas.height/r.height)}; }
+    function start(ev){ ev.preventDefault(); teken=true; var p=pos(ev); lastX=p.x; lastY=p.y; }
+    function move(ev){ if(!teken)return; ev.preventDefault(); var p=pos(ev);
+      ctx.strokeStyle=ov.querySelector('#zt-kleur').value; ctx.lineWidth=parseInt(ov.querySelector('#zt-dikte').value)||4;
+      ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(p.x,p.y); ctx.stroke(); lastX=p.x; lastY=p.y; }
+    function stop(){ teken=false; }
+    canvas.addEventListener('mousedown',start); canvas.addEventListener('mousemove',move); window.addEventListener('mouseup',stop);
+    canvas.addEventListener('touchstart',start,{passive:false}); canvas.addEventListener('touchmove',move,{passive:false}); canvas.addEventListener('touchend',stop);
+    var close=function(){ window.removeEventListener('mouseup',stop); ov.remove(); };
+    ov.querySelector('#zt-close').onclick=close; ov.querySelector('#zt-annuleer').onclick=close;
+    ov.addEventListener('click',function(ev){ if(ev.target===ov) close(); });
+    ov.querySelector('#zt-wis').onclick=function(){ ctx.clearRect(0,0,canvas.width,canvas.height); };
+    ov.querySelector('#zt-opslaan').onclick=function(){ bewaar(rk,a,b,canvas,ov,close); };
+  }
+
+  function bewaar(rk,a,b,canvas,ov,close){
+    var st=ov.querySelector('#zt-status'); if(st){st.style.color='var(--gray)'; st.textContent='Opslaan…';}
+    var data=canvas.toDataURL('image/png');
+    var info=(typeof displayNaam==='function')?displayNaam(myEmail()):null;
+    var naam=(info&&info.naam&&info.naam!==myEmail())?info.naam:myEmail();
+    db.from('zomerplanning').insert({ jaar:Z.jaar, email:myEmail(), naam:naam, start_idx:a, eind_idx:b, tekening:data })
+      .then(function(res){
+        if(res.error){ if(st){st.style.color='#c0392b'; st.textContent='Mislukt: '+res.error.message;} return; }
+        close(); load();
+      });
+  }
+  function verwijder(id){
+    db.from('zomerplanning').delete().eq('id', id).then(function(res){
+      if(res.error){ alert('Verwijderen mislukt: '+res.error.message); return; }
+      load();
+    });
+  }
+
+  window.zomerInit=function(){
+    var app=document.getElementById('zomer-app'); if(!app) return;
+    if(!app._wired){ app.addEventListener('click', onClick); app._wired=true; }
+    load();
+  };
 })();
 
 // ==================== WANDELGANGEN (forum) ====================
