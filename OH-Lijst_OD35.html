@@ -6847,7 +6847,7 @@ function openHuisKamerModal(id){
   // Alles op het laken: tegenstanders rond de rand, jouw kaarten onderaan op het groen.
   function renderBoard(){
     var me=seatOfEmail(myEmail()); var base=me<0?0:me;
-    var pos=['bottom','right','top','left']; // offset 0,1,2,3 t.o.v. base
+    var pos=['bottom','left','top','right']; // offset 0,1,2,3 t.o.v. base (volgende speler links = met de klok mee)
     var G=kj.G;
     var paused=(G.turn===-1 && (typeof G.trickWinner==='number'));
     // tegenstanders (jij = offset 0 = onderaan, krijgt geen apart label; je kaarten staan er al)
@@ -6861,7 +6861,7 @@ function openHuisKamerModal(id){
     // gespeelde kaarten in de huidige slag, op de kant van de speler die 'm speelde.
     // offset 0=onder, 1=rechts, 2=boven, 3=links; de s-klassen zijn s0=onder, s1=links,
     // s2=boven, s3=rechts -> dus offset->s-klasse via [0,3,2,1].
-    var trickHTML='', OFF2S=[0,3,2,1];
+    var trickHTML='', OFF2S=[0,1,2,3];
     G.trick.forEach(function(t){ var off=(t.seat-base+4)%4;
       var isLast=G.lastPlayed&&t.seat===G.lastPlayed.seat&&t.card===G.lastPlayed.card;
       trickHTML+='<div class="kj-tc s'+OFF2S[off]+(isLast?' played':'')+'">'+cardHTML(t.card)+'</div>'; });
@@ -6886,7 +6886,7 @@ function openHuisKamerModal(id){
     var turnCls=(me>=0&&G.phase==='play'&&G.turn===me)?' jouwbeurt':'';
     // bij een gewonnen slag: laat de kaarten naar de winnaar toe schuiven (richting = positie van winnaar)
     var winFly='';
-    if(paused){ var wo=(G.trickWinner-base+4)%4; winFly=' flying fly-'+(['b','r','t','l'][wo]); }
+    if(paused){ var wo=(G.trickWinner-base+4)%4; winFly=' flying fly-'+(['b','l','t','r'][wo]); }
     var roemPop=(paused&&G.trickRoem>0)?'<div class="kj-roem-pop">Roem! +'+G.trickRoem+'<span class="kj-roem-team">voor '+teamWZ(G.trickWinner%2)+'</span></div>':'';
     var felt='<div class="kj-felt'+(paused?' paused':'')+turnCls+'">'+scoreOv+posHTML+
       '<div class="kj-trickzone'+winFly+'">'+trickHTML+'</div>'+roemPop+handArea+overlay+'</div>';
