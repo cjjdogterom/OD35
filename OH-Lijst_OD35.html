@@ -5849,35 +5849,19 @@ function updateNestorTabVisibility() {
 // ==================== TABBLADEN PER JAARGANG (hoofdadmin) ====================
 // Per tab een lijst jaargangen waarvoor de tab VERBORGEN is. Leeg = voor iedereen zichtbaar.
 let TAB_CONFIG = {};
-const TAB_BEHEER_DEFS = [
-  { id:'personen',     label:'Personen' },
-  { id:'nestor',       label:'Nestor' },
-  { id:'fotos',        label:"Foto's" },
-  { id:'agenda',       label:'Agenda' },
-  { id:'contacten',    label:'Contacten' },
-  { id:'wandelgangen', label:'Wandelgangen' },
-  { id:'klaverjas',    label:'Klaverjas' },
-  { id:'huisplattegrond', label:'Huisplattegrond' },
-  { id:'geschiedenis', label:'Geschiedenis' },
-];
-// Alle configureerbare tabbladen voor de rol-matrix (zichtbaarheid per rol).
-const TAB_ROL_DEFS = [
-  { id:'personen',       label:'Personen' },
-  { id:'nestor',         label:'Nestor' },
-  { id:'fotos',          label:"Foto's" },
-  { id:'agenda',         label:'Agenda' },
-  { id:'contacten',      label:'Contacten' },
-  { id:'wandelgangen',   label:'Wandelgangen' },
-  { id:'klaverjas',      label:'Klaverjas' },
-  { id:'zomerplanning',  label:'Zomerplanning' },
-  { id:'geschiedenis',   label:'Geschiedenis' },
-  { id:'huisplattegrond',label:'Huisplattegrond' },
-  { id:'wijzigingen',    label:'Verzoeken' },
-  { id:'verjaardagen',   label:'Verjaardagen' },
-  { id:'adminbeheer',    label:'Admin-beheer' },
-  { id:'bezoekers',      label:'Bezoekers' },
-  { id:'tabbeheer',      label:'Tabbladen' },
-];
+// De configureerbare tabbladen worden automatisch uit de tabknoppen afgeleid,
+// zodat een nieuw tabblad vanzelf in dit beheer verschijnt (geen handmatige lijst).
+function tabDefsAlle(){
+  return [...document.querySelectorAll('#tab-nav .tab-btn[data-tab]')].map(btn => {
+    const c = btn.cloneNode(true);
+    c.querySelectorAll('.tab-badge').forEach(b => b.remove());
+    const label = (c.textContent || '').replace(/\s+/g, ' ').trim() || btn.dataset.tab;
+    return { id: btn.dataset.tab, label };
+  });
+}
+// Rol-matrix: alle tabs. Jaargang-matrix: alleen de tabs die niet sowieso (hoofd)admin-only zijn.
+function tabDefsRol(){ return tabDefsAlle(); }
+function tabDefsJaargang(){ return tabDefsAlle().filter(t => TAB_ADMIN_ONLY.indexOf(t.id) < 0 && TAB_HOOFD_ONLY.indexOf(t.id) < 0); }
 // Nestor is alleen beschikbaar voor huidige bewoners (aankomstjaar 2017–2026),
 // ongeacht rol of config. Dit is een harde extra voorwaarde.
 const NESTOR_MIN_JAAR = 2017, NESTOR_MAX_JAAR = 2026;
@@ -5915,7 +5899,7 @@ async function loadTabConfig() {
 function applyTabZichtbaarheid() {
   const rol = huidigeRol();
   const jaar = eigenAankomstjaar();
-  TAB_ROL_DEFS.forEach(t => {
+  tabDefsRol().forEach(t => {
     const btn = document.querySelector('.tab-btn[data-tab="' + t.id + '"]');
     if (!btn) return;
     let zicht = tabRolZichtbaar(t.id, rol);
@@ -5946,7 +5930,7 @@ function renderTabbeheer() {
   h += '<div class="tabbeheer-tablewrap"><table class="tabbeheer-tbl"><thead><tr><th>Tabblad</th>';
   TAB_ROLLEN_KOLOMMEN.forEach(k => { h += '<th data-rolcol="' + k.key + '" title="Klik om deze kolom aan/uit te zetten">' + escapeHtml(k.label) + '<span class="tabbeheer-col-toggle">alles aan/uit</span></th>'; });
   h += '</tr></thead><tbody>';
-  TAB_ROL_DEFS.forEach(t => {
+  tabDefsRol().forEach(t => {
     h += '<tr><td class="tb-jaar">' + escapeHtml(t.label) + '</td>';
     TAB_ROLLEN_KOLOMMEN.forEach(k => {
       const zicht = tabRolZichtbaar(t.id, k.key);
@@ -5962,11 +5946,11 @@ function renderTabbeheer() {
   h += '<p class="tabbeheer-hint">Per jaargang welke tabbladen leden zien. <b>Aangevinkt = zichtbaar.</b> Geldt bovenop de rol-matrix; admins en de superadmin zien altijd alles wat hun rol toestaat.</p>';
   if (!jaren.length) { h += '<p class="tabbeheer-hint">Nog geen jaargangen bekend.</p>'; el.innerHTML = h; el.querySelector('#tabbeheer-opslaan').onclick = saveTabConfig; bindTabbeheerKoppen(el); return; }
   h += '<div class="tabbeheer-tablewrap"><table class="tabbeheer-tbl"><thead><tr><th>Jaargang</th>';
-  TAB_BEHEER_DEFS.forEach(t => { h += '<th data-col="' + t.id + '" title="Klik om hele kolom aan/uit te zetten">' + escapeHtml(t.label) + '<span class="tabbeheer-col-toggle">alles aan/uit</span></th>'; });
+  tabDefsJaargang().forEach(t => { h += '<th data-col="' + t.id + '" title="Klik om hele kolom aan/uit te zetten">' + escapeHtml(t.label) + '<span class="tabbeheer-col-toggle">alles aan/uit</span></th>'; });
   h += '</tr></thead><tbody>';
   jaren.forEach(j => {
     h += '<tr><td class="tb-jaar">' + j + '</td>';
-    TAB_BEHEER_DEFS.forEach(t => {
+    tabDefsJaargang().forEach(t => {
       const verborgen = (TAB_CONFIG[t.id] || []).map(Number).includes(j);
       h += '<td><input type="checkbox" class="tb-cell" data-tab="' + t.id + '" data-jaar="' + j + '"' + (verborgen ? '' : ' checked') + '></td>';
     });
