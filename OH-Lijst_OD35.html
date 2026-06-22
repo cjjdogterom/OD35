@@ -6143,7 +6143,7 @@ function openHuisKamerModal(id){
     .filter(p=>p['Achternaam'])
     .sort((a,b)=>(parseInt(b['Aankomstjaar'])||0)-(parseInt(a['Aankomstjaar'])||0))
     .map(p=>{
-      const vn=p['Roepnaam']||p['Voornaam']||p['Voorletters']||'';
+      const vn=p['Voornaam']||p['Roepnaam']||p['Voorletters']||'';
       const tv=p['Tussenvoegsel']?p['Tussenvoegsel']+' ':'';
       const voluit=(vn+' '+tv+p['Achternaam']).trim();
       const jaar=p['Aankomstjaar']||'';
