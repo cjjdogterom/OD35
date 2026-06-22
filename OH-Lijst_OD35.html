@@ -6677,9 +6677,13 @@ function openHuisKamerModal(id){
       '<span class="kj-soc tB'+(mij===1?' mijn':'')+(lead===1?' leidt':'')+'">'+teamWZ(1,true)+' '+G.scores[1]+'</span>'+
       '</div>';
   }
+  function kaartLabel(c){ return cR(c)+SUIT_SYM[cS(c)]; } // bv. "B♣"
   function turnMsgText(me){
     var G=kj.G;
-    if(G.turn===-1 && typeof G.trickWinner==='number'){ var ww=G.seats[G.trickWinner]; return esc((ww&&ww.naam)||'')+' wint'; }
+    if(G.turn===-1 && typeof G.trickWinner==='number'){ var ww=G.seats[G.trickWinner];
+      var wc=null; (G.trick||[]).forEach(function(t){ if(t.seat===G.trickWinner) wc=t.card; });
+      var reden=''; if(wc){ reden=' met '+kaartLabel(wc)+(cS(wc)===G.troef?' (troef)':''); }
+      return esc((ww&&ww.naam)||'')+' wint'+reden; }
     if(G.phase==='choose'){ var who=G.seats[G.turn]; return G.turn===me?'Jij maakt de troef':esc((who&&who.naam)||'…')+' maakt'; }
     if(G.phase==='play'){ var w=G.seats[G.turn]; return G.turn===me?'Jouw beurt':'Beurt: '+esc((w&&w.naam)||'…'); }
     if(G.phase==='roundend'){ return 'Ronde afgerond'; }
