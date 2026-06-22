@@ -63,7 +63,7 @@ module.exports = async function handler(req, res) {
     // 3. JPEG terugzetten en de HEIC opruimen
     const jpegPath = path.replace(/\.(heic|heif)$/i, '.jpg');
     const { error: upErr } = await admin.storage.from('fotos').upload(jpegPath, jpegBuffer, {
-      contentType: 'image/jpeg', cacheControl: '3600', upsert: true,
+      contentType: 'image/jpeg', cacheControl: '31536000', upsert: true,
     });
     if (upErr) return res.status(500).json({ error: 'Opslaan JPEG mislukt: ' + upErr.message });
 

@@ -10224,7 +10224,7 @@ async function uploadFotos(files, albumId) {
           // HEIC: origineel uploaden; de server zet het om naar JPEG (geen bevriezing op de telefoon)
           const heicPath = `${albumId}/${uid}.heic`;
           const { error: upErr } = await db.storage.from('fotos').upload(heicPath, file, {
-            cacheControl: '3600', upsert: true, contentType: 'application/octet-stream',
+            cacheControl: '31536000', upsert: true, contentType: 'application/octet-stream',
           });
           if (upErr) throw upErr;
           const { data: { session } } = await db.auth.getSession();
@@ -10242,7 +10242,7 @@ async function uploadFotos(files, albumId) {
           const ext = pdf ? 'pdf' : (file.name.split('.').pop().replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg');
           const path = `${albumId}/${uid}.${ext}`;
           const { error: upErr } = await db.storage.from('fotos').upload(path, file, {
-            cacheControl: '3600', upsert: true, contentType: file.type || (pdf ? 'application/pdf' : undefined),
+            cacheControl: '31536000', upsert: true, contentType: file.type || (pdf ? 'application/pdf' : undefined),
           });
           if (upErr) throw upErr;
           const { data: urlData } = db.storage.from('fotos').getPublicUrl(path);
