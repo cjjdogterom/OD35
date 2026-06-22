@@ -3804,6 +3804,16 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   @keyframes kj-fly-r { 0%,38%{ transform:translate(-50%,-50%) scale(1) rotate(0); opacity:1; } 100%{ transform:translate(250%,-50%) scale(.45) rotate(8deg); opacity:0; } }
   .kj-hand .kj-card.playable { animation:kj-ready .9s ease-out; }
   @keyframes kj-ready { from{ box-shadow:0 0 0 0 rgba(156,59,46,.5); } to{ box-shadow:0 1px 3px rgba(0,0,0,.25); } }
+  /* Roem-melding die opploft en omhoog zweeft */
+  .kj-roem-pop { position:absolute; top:26%; left:50%; transform:translateX(-50%); z-index:6; text-align:center;
+    background:linear-gradient(180deg,#ffe14d,#f5b301); color:#5a3b00; font-weight:800; letter-spacing:.02em;
+    padding:.3rem .9rem; border-radius:999px; box-shadow:0 6px 18px rgba(0,0,0,.35); white-space:nowrap;
+    font-size:1.15rem; pointer-events:none; animation:kj-roem 1.5s ease-out forwards; }
+  .kj-roem-pop .kj-roem-team { display:block; font-size:.66rem; font-weight:700; opacity:.85; letter-spacing:.04em; text-transform:uppercase; }
+  @keyframes kj-roem { 0%{ transform:translateX(-50%) translateY(10px) scale(.4); opacity:0; }
+    18%{ transform:translateX(-50%) translateY(0) scale(1.15); opacity:1; }
+    32%{ transform:translateX(-50%) scale(1); }
+    75%{ opacity:1; } 100%{ transform:translateX(-50%) translateY(-40px) scale(1); opacity:0; } }
   .kj-pop { animation:kj-popbox .35s cubic-bezier(.2,.9,.3,1.3); }
   @keyframes kj-popbox { from{ transform:scale(.85); opacity:0; } to{ transform:scale(1); opacity:1; } }
 
@@ -6021,13 +6031,14 @@ const HUIS_KAMERS = [
   // — beganegrond: Nestor kamer | Nestor —
   {id:'nestorkamer', naam:'Nestor kamer', verdieping:'Hoofdhuis', x:980,  y:700, w:360, h:195},
   {id:'nestor',      naam:'Nestor',       verdieping:'Hoofdhuis', x:1410, y:700, w:360, h:195},
+  // — dakkamers (klikbaar als driehoek) —
+  {id:'chalet', naam:'Chalet', verdieping:'Chalet',    gevel:true, pts:'450,505 625,360 800,505',    cx:625,  ny:470},
+  {id:'k09',    naam:'09',     verdieping:'Hoofdhuis',  gevel:true, pts:'980,150 1160,20 1340,150',   cx:1160, ny:118},
+  {id:'k05',    naam:'05',     verdieping:'Hoofdhuis',  gevel:true, pts:'1410,150 1590,20 1770,150',  cx:1590, ny:118},
 ];
 const HUIS_DECOR = {
   gevels:[
-    {pts:'60,300 220,150 380,300'},                                  // achterhuis (geen label)
-    {pts:'450,505 625,360 800,505', label:'Chalet', lx:625, ly:475}, // chalet
-    {pts:'980,150 1160,20 1340,150', label:'09', lx:1160, ly:120},   // hoofdhuis links
-    {pts:'1410,150 1590,20 1770,150', label:'05', lx:1590, ly:120},  // hoofdhuis rechts
+    {pts:'60,300 220,150 380,300'},                                  // achterhuis (geen label, alleen decoratie)
   ],
   // blauwe verbindingsstukken onderaan tussen de huizen
   connectors:[
@@ -6102,6 +6113,19 @@ function renderHuis(){
     const fill = bews.length ? '#f0e1c5' : '#f7f0e2';
     const cx=k.x+k.w/2, strk=`style="stroke:${sel?'var(--burgundy,#9c3b2e)':'#0f3046'}" stroke-width="${sel?5:4}"`;
     s += `<g class="huis-kamer${sel?' sel':''}" data-kamer="${esc(k.id)}" tabindex="0" role="button" aria-label="${esc(naam)}">`;
+    if (k.gevel){
+      // dakkamer als klikbare driehoek (09, 05, Chalet)
+      s += `<polygon points="${k.pts}" fill="${fill}" style="stroke:${sel?'var(--burgundy,#9c3b2e)':'#0f3046'}" stroke-width="${sel?7:6}" stroke-linejoin="round"/>`;
+      s += `<text x="${k.cx}" y="${k.ny}" text-anchor="middle" class="huis-kamer-naam" style="font-size:34px">${esc(naam)}</text>`;
+      if (bews.length){
+        const disp=(bews[0].naam||'')+(bews.length>1?` +${bews.length-1}`:'');
+        s += `<circle cx="${k.cx-Math.min(60,disp.length*5)}" cy="${k.ny+26}" r="4.5" style="fill:var(--burgundy-deep,#9c3b2e)"/>`;
+        s += `<text x="${k.cx}" y="${k.ny+30}" text-anchor="middle" class="huis-kamer-bew">${esc(disp)}</text>`;
+      } else {
+        s += `<text x="${k.cx}" y="${k.ny+28}" text-anchor="middle" class="huis-kamer-leeg">leeg</text>`;
+      }
+      s += `</g>`; return;
+    }
     s += `<rect x="${k.x}" y="${k.y}" width="${k.w}" height="${k.h}" rx="3" fill="${fill}" ${strk}/>`;
     const heeftBew = bews.length>0;
     if (k.vertical){
@@ -6318,6 +6342,12 @@ function openHuisKamerModal(id){
   function myEmail(){return (currentUserEmail||'').toLowerCase();}
   function myName(){var i=(typeof displayNaam==='function')?displayNaam(myEmail()):null;return (i&&i.naam&&i.naam!==myEmail())?i.naam:(myEmail()||'Speler');}
   function teamLabel(seat){return seat%2===0?'Team A':'Team B';}
+  function myTeamIdx(){ var s=seatOfEmail(myEmail()); return s<0?-1:s%2; }
+  // Teamnaam vanuit de speler bekeken: jouw team = "Wij", de tegenstander = "Zij".
+  // Toeschouwers (geen plek) zien gewoon Team A/B.
+  function teamWZ(team,short){ var mt=myTeamIdx();
+    if(mt<0) return short?(team===0?'A':'B'):(team===0?'Team A':'Team B');
+    return team===mt?'Wij':'Zij'; }
   function newCode(){var s='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',o='';for(var i=0;i<4;i++)o+=s[Math.floor(Math.random()*s.length)];return o;}
   function send(type,extra){ if(!kj.ch)return; var p=Object.assign({t:type,from:myEmail()},extra||{}); kj.ch.send({type:'broadcast',event:'m',payload:p}); }
 
@@ -6406,6 +6436,7 @@ function openHuisKamerModal(id){
     // 4e kaart: slag even laten staan zodat iedereen 'm ziet, dan opruimen
     var w=trickWinner(kj.G.trick,kj.G.troef);
     kj.G.turn=-1; kj.G.trickWinner=w;     // -1 = niemand aan zet tijdens de pauze
+    kj.G.trickRoem=roemOf(kj.G.trick,kj.G.troef); // roem in deze slag (voor de animatie)
     broadcast();
     if(kj.trickTimer)clearTimeout(kj.trickTimer);
     kj.trickTimer=setTimeout(function(){ if(kj.isHost&&kj.G) resolveTrick(w); }, 1500);
@@ -6413,7 +6444,7 @@ function openHuisKamerModal(id){
   function resolveTrick(w){
     kj.G.lastTrick={cards:kj.G.trick.slice(),winner:w};
     kj.G.tricks.push(kj.G.trick.slice());
-    kj.G.trick=[]; kj.G.trickWinner=null; kj.G.turn=w;
+    kj.G.trick=[]; kj.G.trickWinner=null; kj.G.trickRoem=0; kj.G.turn=w;
     if(kj.HANDS[0].length===0){ // ronde klaar (8 slagen)
       var sc=scoreRound(kj.G.tricks,kj.G.troef,kj.G.maker);
       kj.G.scores[0]+=sc.team[0]; kj.G.scores[1]+=sc.team[1];
@@ -6541,10 +6572,10 @@ function openHuisKamerModal(id){
     for(var i=0;i<4;i++){
       var s=kj.G.seats[i], team=i%2===0?'tA':'tB';
       var av,naam,meta,act='';
-      if(s){ av=s.bot?'B':(s.naam||'?').charAt(0).toUpperCase(); naam=esc(s.naam||s.email); meta=teamLabel(i)+(s.bot?' · computer':'');
+      if(s){ av=s.bot?'B':(s.naam||'?').charAt(0).toUpperCase(); naam=esc(s.naam||s.email); meta=teamWZ(i%2)+(s.bot?' · computer':'');
         if(host&&s.bot) act='<button class="kj-btn ghost kj-mini" data-kick="'+i+'">verwijder</button>';
         else if(!s.bot&&s.email===myEmail()) act='<button class="kj-btn ghost kj-mini" data-stand="1">sta op</button>';
-      } else { av='+'; naam='<span class="kj-snaam">Lege plek</span>'; meta=teamLabel(i);
+      } else { av='+'; naam='<span class="kj-snaam">Lege plek</span>'; meta=teamWZ(i%2);
         act='<button class="kj-btn sec kj-mini" data-sit="'+i+'">'+(seated<0?'neem plaats':'verplaats')+'</button>';
         if(host) act+='<button class="kj-btn ghost kj-mini" data-bot="'+i+'">+ bot</button>';
       }
@@ -6578,7 +6609,7 @@ function openHuisKamerModal(id){
       var seat=(base+off)%4, s=G.seats[seat]; if(!s)continue;
       var cls='kj-pos '+pos[off]+(G.turn===seat&&(G.phase==='play'||G.phase==='choose')?' turn':'')+(G.dealer===seat?' dealer':'')+(paused&&G.trickWinner===seat?' win':'');
       posHTML+='<div class="'+cls+'"><div class="kj-pname">'+esc(s.naam||s.email)+'</div>'+
-        '<div class="kj-pmeta">'+teamLabel(seat)+' · '+(G.handCounts[seat]||0)+'</div></div>';
+        '<div class="kj-pmeta">'+teamWZ(seat%2)+' · '+(G.handCounts[seat]||0)+'</div></div>';
     }
     // gespeelde kaarten in de huidige slag, op positie van de speler
     var trickHTML='';
@@ -6607,8 +6638,9 @@ function openHuisKamerModal(id){
     // bij een gewonnen slag: laat de kaarten naar de winnaar toe schuiven (richting = positie van winnaar)
     var winFly='';
     if(paused){ var wo=(G.trickWinner-base+4)%4; winFly=' flying fly-'+(['b','r','t','l'][wo]); }
+    var roemPop=(paused&&G.trickRoem>0)?'<div class="kj-roem-pop">Roem! +'+G.trickRoem+'<span class="kj-roem-team">voor '+teamWZ(G.trickWinner%2)+'</span></div>':'';
     var felt='<div class="kj-felt'+(paused?' paused':'')+turnCls+'">'+scoreOv+posHTML+
-      '<div class="kj-trickzone'+winFly+'">'+trickHTML+'</div>'+handArea+overlay+'</div>';
+      '<div class="kj-trickzone'+winFly+'">'+trickHTML+'</div>'+roemPop+handArea+overlay+'</div>';
 
     // compacte knoppenbalk eronder + inklapbaar rondeverloop + bij game-over de ranglijst
     var lastBtn = G.lastTrick ? '<button class="kj-btn ghost kj-mini" id="kj-lasttrick">'+(kj.showLast?'Verberg vorige slag':'Vorige slag')+'</button>' : '';
@@ -6640,9 +6672,9 @@ function openHuisKamerModal(id){
     var lead = G.scores[0]===G.scores[1] ? -1 : (G.scores[0]>G.scores[1]?0:1);
     var troef = G.troef ? ' <span class="kj-soc-troef'+(RED[G.troef]?' red':'')+'">'+SUIT_SYM[G.troef]+'</span>' : '';
     return '<div class="kj-scoreov">'+
-      '<span class="kj-soc tA'+(mij===0?' mijn':'')+(lead===0?' leidt':'')+'">A '+G.scores[0]+'</span>'+
+      '<span class="kj-soc tA'+(mij===0?' mijn':'')+(lead===0?' leidt':'')+'">'+teamWZ(0,true)+' '+G.scores[0]+'</span>'+
       '<span class="kj-soc-mid">R'+G.round+'/16'+troef+'<br><span class="kj-soc-turn">'+turnMsgText(me)+'</span></span>'+
-      '<span class="kj-soc tB'+(mij===1?' mijn':'')+(lead===1?' leidt':'')+'">B '+G.scores[1]+'</span>'+
+      '<span class="kj-soc tB'+(mij===1?' mijn':'')+(lead===1?' leidt':'')+'">'+teamWZ(1,true)+' '+G.scores[1]+'</span>'+
       '</div>';
   }
   function turnMsgText(me){
@@ -6674,28 +6706,27 @@ function openHuisKamerModal(id){
       return '<tr><td>'+h.r+'</td><td>'+SUIT_SYM[h.troef]+'</td><td>'+h.a+'</td><td>'+h.b+'</td><td>'+tag+'</td></tr>';
     }).join('');
     return '<details class="kj-verloop"><summary>Rondeverloop &amp; tussenstand ('+G.history.length+'/16)</summary>'+
-      '<table><thead><tr><th>#</th><th>troef</th><th>A</th><th>B</th><th></th></tr></thead><tbody>'+items+'</tbody></table></details>';
+      '<table><thead><tr><th>#</th><th>troef</th><th>'+teamWZ(0,true)+'</th><th>'+teamWZ(1,true)+'</th><th></th></tr></thead><tbody>'+items+'</tbody></table></details>';
   }
   function renderRoundEnd(){
     var sc=kj.G.roundInfo; if(!sc)return '';
-    var maker=teamLabel(sc.makerTeam===0?0:1).replace('Team ','Team ');
-    var rows='<tr><td>Kaartpunten Team A</td><td>'+sc.pts[0]+'</td></tr>'+
-             '<tr><td>Kaartpunten Team B</td><td>'+sc.pts[1]+'</td></tr>'+
-             '<tr><td>Roem A / B</td><td>'+sc.roem[0]+' / '+sc.roem[1]+'</td></tr>'+
-             '<tr><td><b>Rondewinst Team A</b></td><td><b>'+sc.team[0]+'</b></td></tr>'+
-             '<tr><td><b>Rondewinst Team B</b></td><td><b>'+sc.team[1]+'</b></td></tr>';
+    var rows='<tr><td>Kaartpunten '+teamWZ(0)+'</td><td>'+sc.pts[0]+'</td></tr>'+
+             '<tr><td>Kaartpunten '+teamWZ(1)+'</td><td>'+sc.pts[1]+'</td></tr>'+
+             '<tr><td>Roem '+teamWZ(0)+' / '+teamWZ(1)+'</td><td>'+sc.roem[0]+' / '+sc.roem[1]+'</td></tr>'+
+             '<tr><td><b>Rondewinst '+teamWZ(0)+'</b></td><td><b>'+sc.team[0]+'</b></td></tr>'+
+             '<tr><td><b>Rondewinst '+teamWZ(1)+'</b></td><td><b>'+sc.team[1]+'</b></td></tr>';
     var note='';
-    if(sc.nat) note='<p class="kj-nat">Nat! De makende ploeg ('+(sc.makerTeam===0?'A':'B')+') haalde het niet — alle punten naar de tegenpartij.</p>';
+    if(sc.nat) note='<p class="kj-nat">Nat! De makende ploeg ('+teamWZ(sc.makerTeam)+') haalde het niet — alle punten naar de tegenpartij.</p>';
     if(sc.pit) note+='<p class="kj-pit">Pit! Eén ploeg won alle slagen (+100).</p>';
     return '<div class="kj-roundbox"><h3>Ronde '+kj.G.round+' afgerond</h3>'+note+'<table>'+rows+'</table>'+
       '<p class="kj-note">'+(kj.isHost?'Volgende ronde start zo automatisch…':'Wachten op de host voor de volgende ronde…')+'</p></div>';
   }
   function renderGameOver(){
-    var s=kj.G.scores, winA=s[0]>s[1], gelijk=s[0]===s[1];
-    var w=gelijk?'Gelijkspel!':('Team '+(winA?'A':'B')+' wint!');
+    var s=kj.G.scores, gelijk=s[0]===s[1], winT=gelijk?-1:(s[0]>s[1]?0:1), mt=myTeamIdx();
+    var w=gelijk?'Gelijkspel!':(mt<0?('Team '+(winT===0?'A':'B')+' wint!'):(winT===mt?'Wij winnen!':'Zij winnen!'));
     return '<div class="kj-roundbox kj-pop"><h3>'+w+'</h3>'+
-      '<table><tr><td>Team A ('+esc(teamNames(0).join(' & '))+')</td><td><b>'+s[0]+'</b></td></tr>'+
-      '<tr><td>Team B ('+esc(teamNames(1).join(' & '))+')</td><td><b>'+s[1]+'</b></td></tr></table>'+
+      '<table><tr><td>'+teamWZ(0)+' ('+esc(teamNames(0).join(' & '))+')</td><td><b>'+s[0]+'</b></td></tr>'+
+      '<tr><td>'+teamWZ(1)+' ('+esc(teamNames(1).join(' & '))+')</td><td><b>'+s[1]+'</b></td></tr></table>'+
       (kj.isHost?'<div class="kj-row"><button class="kj-btn" id="kj-again">Nieuw potje (zelfde tafel)</button></div>':'')+
       '</div>';
   }
