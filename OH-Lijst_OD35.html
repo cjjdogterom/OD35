@@ -3503,7 +3503,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
       <button class="tab-btn" data-tab="contacten">Contacten</button>
       <button class="tab-btn" data-tab="wandelgangen">Wandelgangen</button>
       <button class="tab-btn" data-tab="klaverjas">Klaverjas</button>
-      <button class="tab-btn admin-only" data-tab="huisplattegrond" style="display:none">Huisplattegrond</button>
+      <button class="tab-btn" data-tab="huisplattegrond">Huisplattegrond</button>
       <button class="tab-btn" data-tab="geschiedenis">Geschiedenis</button>
       <button class="tab-btn admin-only" data-tab="wijzigingen" style="display:none">Verzoeken <span id="wijzigingen-badge" class="tab-badge"></span></button>
       <button class="tab-btn admin-only" data-tab="verjaardagen" style="display:none">Verjaardagen</button>
@@ -5710,7 +5710,7 @@ document.getElementById('tab-nav').addEventListener('click', e => {
   if (tab === 'agenda') renderEvents();
   if (tab === 'contacten') renderContacts();
   if (tab === 'wandelgangen') loadWandelgangen();
-  if (tab === 'huisplattegrond' && isAdmin()) loadHuis();
+  if (tab === 'huisplattegrond') loadHuis();
   if (tab === 'klaverjas') { if (typeof kjInit === 'function') kjInit(); } else { if (typeof kjOnLeaveTab === 'function') kjOnLeaveTab(); }
   if (tab === 'geschiedenis') renderHistory();
   if (tab === 'fotos') { loadAlbums().then(renderFotosTab); }
@@ -5804,6 +5804,7 @@ const TAB_BEHEER_DEFS = [
   { id:'contacten',    label:'Contacten' },
   { id:'wandelgangen', label:'Wandelgangen' },
   { id:'klaverjas',    label:'Klaverjas' },
+  { id:'huisplattegrond', label:'Huisplattegrond' },
   { id:'geschiedenis', label:'Geschiedenis' },
 ];
 // Alle configureerbare tabbladen voor de rol-matrix (zichtbaarheid per rol).
@@ -5828,7 +5829,7 @@ const TAB_ROL_DEFS = [
 const NESTOR_MIN_JAAR = 2017, NESTOR_MAX_JAAR = 2026;
 const TAB_ROLLEN_KOLOMMEN = [ { key:'lid', label:'Niet-admin' }, { key:'admin', label:'Admin' }, { key:'hoofdadmin', label:'Superadmin' } ];
 // Welke tabs zijn van nature alleen voor (hoofd)admins — bepaalt de standaard-vinkjes.
-const TAB_ADMIN_ONLY = ['huisplattegrond','wijzigingen','verjaardagen'];
+const TAB_ADMIN_ONLY = ['wijzigingen','verjaardagen'];
 const TAB_HOOFD_ONLY = ['adminbeheer','bezoekers','tabbeheer'];
 function huidigeRol(){ return isHoofdadmin() ? 'hoofdadmin' : (isAdmin() ? 'admin' : 'lid'); }
 // Standaard-zichtbaarheid (zonder expliciete config) op basis van de natuurlijke rol-gating.
@@ -6319,7 +6320,7 @@ function renderHuisDetail(id){
   el.innerHTML = `
     <div class="huis-detail-head"><div class="huis-detail-verdieping">${escapeHtml(lay.verdieping)}</div><h3>${escapeHtml(naam)}</h3></div>
     <div class="huis-detail-sectie"><h4>Wie de kamer bewoond heeft</h4><p class="huis-detail-hint">Klik op een naam om iemands route door het huis te zien.</p>${lijst}</div>
-    ${isAdmin()?`<button class="huis-edit-btn" data-action="huis-edit" data-kamer="${escapeHtml(id)}">✎ Kamer bewerken</button>`:''}`;
+    <button class="huis-edit-btn" data-action="huis-edit" data-kamer="${escapeHtml(id)}">✎ Kamer bewerken</button>`;
 }
 
 // Middelpunt van een kamer (voor de routepijlen).
@@ -6361,7 +6362,7 @@ function huisRouteSVG(stops){
 function openHuisRouteModal(naam){
   const stops = huisPersoonRoute(naam);          // mutabel: ▲▼ herordent binnen hetzelfde jaar
   const disp = huisPersoonNaam(naam) || naam;
-  const canEdit = isAdmin();
+  const canEdit = !!currentUserEmail;   // iedere ingelogde gebruiker mag bewerken
   const ov = document.createElement('div'); ov.className='modal-overlay'; ov.id='huis-route-modal';
   const box = document.createElement('div'); box.className='modal-box huis-route-box'; ov.appendChild(box);
   function paint(){
@@ -6393,7 +6394,7 @@ function openHuisRouteModal(naam){
 }
 // Sla de handmatige routevolgorde op: ken 'volgorde' (= positie) toe aan elke kamerbewoner en bewaar de kamers.
 async function huisRouteSave(stops, box){
-  if(!isAdmin()) return;
+  if(!currentUserEmail) return;
   const st = box.querySelector('#hr-status'); if(st){ st.style.color='var(--gray)'; st.textContent='Opslaan…'; }
   stops.forEach((s,i)=>{ const d=huisKamers[s.kamerId]; if(d && Array.isArray(d.bewoners) && d.bewoners[s.bidx]) d.bewoners[s.bidx].volgorde=i; });
   const rooms=[]; stops.forEach(s=>{ if(rooms.indexOf(s.kamerId)<0) rooms.push(s.kamerId); });
@@ -6408,7 +6409,7 @@ async function huisRouteSave(stops, box){
 }
 
 function openHuisKamerModal(id){
-  if (!isAdmin()) return;
+  if (!currentUserEmail) return;   // iedere ingelogde gebruiker mag bewerken
   const lay=huisLayoutKamer(id); if(!lay) return;
   const naam=huisKamerNaam(id,lay.naam), bews=huisBewonersGevuld(id);
   // Ledenlijst voor de eigen keuzelijst — vast gesorteerd op aankomstjaar, nieuwste eerst.
