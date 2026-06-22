@@ -6061,22 +6061,13 @@ function huisLayoutKamer(id){
 }
 function huisKamerNaam(id, def){ const d=huisKamers[id]; return (d && d.naam) ? d.naam : def; }
 function huisBewoners(id){ const d=huisKamers[id]; return (d && Array.isArray(d.bewoners)) ? d.bewoners : []; }
-// Bepaal het aankomstjaar van een bewoner: eerst via de ledenlijst (op naam), anders uit de periode-tekst.
+// Het jaar dat de admin zelf invult naast de naam (het jaar-/periodeveld) bepaalt de volgorde.
 function huisBewonerJaar(b){
-  if (b && b.naam){
-    const nm = b.naam.trim().toLowerCase();
-    const p = (typeof PEOPLE!=='undefined' ? PEOPLE : []).find(x => {
-      const vn = x['Voornaam'] || x['Roepnaam'] || x['Voorletters'] || '';
-      const tv = x['Tussenvoegsel'] ? x['Tussenvoegsel']+' ' : '';
-      return (vn+' '+tv+(x['Achternaam']||'')).trim().toLowerCase() === nm;
-    });
-    if (p && p['Aankomstjaar']) return parseInt(p['Aankomstjaar']) || 0;
-  }
   if (b && b.periode){ const m = String(b.periode).match(/(19|20)\d\d/); if (m) return parseInt(m[0]); }
-  return 0; // onbekend jaar -> achteraan
+  return 0; // geen jaar ingevuld -> achteraan (handmatig met ▲▼ te ordenen)
 }
-// Geordend op aankomstjaar (nieuwste eerst = huidige bewoner). Stabiel: gelijke jaren
-// behouden de handmatige volgorde (▲▼) uit de bewerk-modal.
+// Geordend op het ingevulde jaar (nieuwste eerst = huidige bewoner). Stabiel: zonder of met
+// hetzelfde jaar behouden bewoners de handmatige volgorde (▲▼) uit de bewerk-modal.
 function huisBewonersGevuld(id){
   return huisBewoners(id).filter(b => b && b.naam)
     .map((b,i) => ({ b, i, j: huisBewonerJaar(b) }))
@@ -6211,7 +6202,7 @@ function openHuisKamerModal(id){
     const list=(ql ? LEDEN.filter(x=>x.n.toLowerCase().indexOf(ql)>=0) : LEDEN).slice(0,12);
     return list.map(x=>`<button type="button" class="hk-sug-item" data-val="${escapeHtml(x.n)}">${escapeHtml(x.n)}<span class="hk-sug-jaar">${escapeHtml(x.j)}</span></button>`).join('');
   }
-  const row=(b)=>`<div class="hk-row"><span class="hk-move"><button type="button" class="hk-up" title="Naar boven">▲</button><button type="button" class="hk-down" title="Naar onder">▼</button></span><span class="hk-naam-wrap"><input class="hk-naam" autocomplete="off" placeholder="Kies of typ naam" value="${escapeHtml(b&&b.naam||'')}"><div class="hk-suggest" hidden></div></span><input class="hk-periode" placeholder="Periode (bijv. 2021–2023)" value="${escapeHtml(b&&b.periode||'')}"><button type="button" class="hk-del" title="Verwijderen">✕</button></div>`;
+  const row=(b)=>`<div class="hk-row"><span class="hk-move"><button type="button" class="hk-up" title="Naar boven">▲</button><button type="button" class="hk-down" title="Naar onder">▼</button></span><span class="hk-naam-wrap"><input class="hk-naam" autocomplete="off" placeholder="Kies of typ naam" value="${escapeHtml(b&&b.naam||'')}"><div class="hk-suggest" hidden></div></span><input class="hk-periode" placeholder="Jaar (bijv. 2026)" value="${escapeHtml(b&&b.periode||'')}"><button type="button" class="hk-del" title="Verwijderen">✕</button></div>`;
   const ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='huis-kamer-modal';
   ov.innerHTML=`<div class="modal-box" style="max-width:560px; text-align:left;">
     <button class="modal-close" id="hk-close">✕</button>
@@ -6220,7 +6211,7 @@ function openHuisKamerModal(id){
     <input id="hk-kamernaam" class="hk-input" value="${escapeHtml(naam)}" placeholder="${escapeHtml(lay.naam)}">
     <div class="hk-sectie">
       <div class="hk-sectie-head"><span>Wie de kamer bewoond heeft</span><button type="button" class="hk-add" data-target="hk-bewoners">+ persoon</button></div>
-      <p class="hk-hint">De volgorde wordt automatisch op aankomstjaar bepaald: de nieuwste jaargang is de huidige bewoner. Met ▲▼ kun je bewoners uit hetzelfde jaar onderling ordenen.</p>
+      <p class="hk-hint">Vul naast elke naam het jaar in (bijv. 2026). Het hoogste jaar staat bovenaan als huidige bewoner. Bij hetzelfde of geen jaar bepaal je de volgorde met ▲▼.</p>
       <div id="hk-bewoners">${(bews.length?bews:[null]).map(row).join('')}</div>
     </div>
     <div class="hk-actions"><button class="hk-save" id="hk-save">Opslaan</button><button class="hk-cancel" id="hk-cancel">Annuleren</button></div>
