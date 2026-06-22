@@ -3792,8 +3792,16 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   .kj-pos.win { animation:kj-win-glow .9s ease-in-out infinite; }
   .kj-pos.win .kj-pname { color:#ffe14d; }
   @keyframes kj-win-glow { 0%,100%{ transform:var(--kt,translate(0)) scale(1); } 50%{ filter:drop-shadow(0 0 8px rgba(255,225,77,.95)); } }
-  .kj-felt.paused .kj-trickzone { animation:kj-trick-flash .9s ease-in-out; }
-  @keyframes kj-trick-flash { 0%{ transform:translate(-50%,-50%) scale(1); } 40%{ transform:translate(-50%,-50%) scale(1.08); } 100%{ transform:translate(-50%,-50%) scale(1); } }
+  /* Na een slag: de hele stapel schuift naar de winnaar toe en vervaagt — zo zie je wie 'm pakt */
+  .kj-trickzone.flying { z-index:3; }
+  .kj-trickzone.flying.fly-b { animation:kj-fly-b 1.25s ease-in forwards; }
+  .kj-trickzone.flying.fly-t { animation:kj-fly-t 1.25s ease-in forwards; }
+  .kj-trickzone.flying.fly-l { animation:kj-fly-l 1.25s ease-in forwards; }
+  .kj-trickzone.flying.fly-r { animation:kj-fly-r 1.25s ease-in forwards; }
+  @keyframes kj-fly-b { 0%,38%{ transform:translate(-50%,-50%) scale(1) rotate(0); opacity:1; } 100%{ transform:translate(-50%,310%) scale(.45) rotate(8deg); opacity:0; } }
+  @keyframes kj-fly-t { 0%,38%{ transform:translate(-50%,-50%) scale(1) rotate(0); opacity:1; } 100%{ transform:translate(-50%,-360%) scale(.45) rotate(-8deg); opacity:0; } }
+  @keyframes kj-fly-l { 0%,38%{ transform:translate(-50%,-50%) scale(1) rotate(0); opacity:1; } 100%{ transform:translate(-330%,-50%) scale(.45) rotate(-8deg); opacity:0; } }
+  @keyframes kj-fly-r { 0%,38%{ transform:translate(-50%,-50%) scale(1) rotate(0); opacity:1; } 100%{ transform:translate(250%,-50%) scale(.45) rotate(8deg); opacity:0; } }
   .kj-hand .kj-card.playable { animation:kj-ready .9s ease-out; }
   @keyframes kj-ready { from{ box-shadow:0 0 0 0 rgba(156,59,46,.5); } to{ box-shadow:0 1px 3px rgba(0,0,0,.25); } }
   .kj-pop { animation:kj-popbox .35s cubic-bezier(.2,.9,.3,1.3); }
@@ -6400,7 +6408,7 @@ function openHuisKamerModal(id){
     kj.G.turn=-1; kj.G.trickWinner=w;     // -1 = niemand aan zet tijdens de pauze
     broadcast();
     if(kj.trickTimer)clearTimeout(kj.trickTimer);
-    kj.trickTimer=setTimeout(function(){ if(kj.isHost&&kj.G) resolveTrick(w); }, 1300);
+    kj.trickTimer=setTimeout(function(){ if(kj.isHost&&kj.G) resolveTrick(w); }, 1500);
   }
   function resolveTrick(w){
     kj.G.lastTrick={cards:kj.G.trick.slice(),winner:w};
@@ -6596,8 +6604,11 @@ function openHuisKamerModal(id){
     else if(G.phase==='gameover') overlay='<div class="kj-felt-overlay">'+renderGameOver()+'</div>';
 
     var turnCls=(me>=0&&G.phase==='play'&&G.turn===me)?' jouwbeurt':'';
+    // bij een gewonnen slag: laat de kaarten naar de winnaar toe schuiven (richting = positie van winnaar)
+    var winFly='';
+    if(paused){ var wo=(G.trickWinner-base+4)%4; winFly=' flying fly-'+(['b','r','t','l'][wo]); }
     var felt='<div class="kj-felt'+(paused?' paused':'')+turnCls+'">'+scoreOv+posHTML+
-      '<div class="kj-trickzone">'+trickHTML+'</div>'+handArea+overlay+'</div>';
+      '<div class="kj-trickzone'+winFly+'">'+trickHTML+'</div>'+handArea+overlay+'</div>';
 
     // compacte knoppenbalk eronder + inklapbaar rondeverloop + bij game-over de ranglijst
     var lastBtn = G.lastTrick ? '<button class="kj-btn ghost kj-mini" id="kj-lasttrick">'+(kj.showLast?'Verberg vorige slag':'Vorige slag')+'</button>' : '';
