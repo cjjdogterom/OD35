@@ -4069,8 +4069,8 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   .tabbeheer-col-toggle { font-size:.64rem; color:var(--gray,#9b8f80); display:block; font-weight:400; }
 </style>
 <div class="tab-panel" id="panel-tabbeheer">
-  <h2>Tabbladen per jaargang</h2>
-  <p class="tabbeheer-hint">Bepaal per jaargang welke tabbladen leden te zien krijgen. <b>Aangevinkt = zichtbaar.</b> Admins (en jij als hoofdadmin) zien altijd alles. Klik op een kolomkop om die tab voor iedereen aan/uit te zetten. Wijzigingen gelden voor leden zodra ze de pagina opnieuw laden.</p>
+  <h2>Tabbladen</h2>
+  <p class="tabbeheer-hint">Bepaal welke tabbladen zichtbaar zijn — eerst per rol (niet-admin / admin / superadmin), en daaronder eventueel extra verbergen per jaargang voor niet-admins. Klik op een kolomkop om die hele kolom aan/uit te zetten. Wijzigingen gelden zodra iemand de pagina opnieuw laadt.</p>
   <div id="tabbeheer-content"></div>
 </div><!-- /panel-tabbeheer -->
 
@@ -4272,6 +4272,8 @@ function updateAdminUI() {
   if (adminUser && typeof loadWijzigingen === 'function') {
     loadWijzigingen();
   }
+  // Rol-/jaargang-zichtbaarheid van tabbladen opnieuw toepassen (overschrijft klasse-gating).
+  if (typeof applyTabZichtbaarheid === 'function') applyTabZichtbaarheid();
 }
 
 // ── Admin: persoon modal ──────────────────────────────────────────────────────
@@ -5802,6 +5804,39 @@ const TAB_BEHEER_DEFS = [
   { id:'klaverjas',    label:'Klaverjas' },
   { id:'geschiedenis', label:'Geschiedenis' },
 ];
+// Alle configureerbare tabbladen voor de rol-matrix (zichtbaarheid per rol).
+const TAB_ROL_DEFS = [
+  { id:'personen',       label:'Personen' },
+  { id:'fotos',          label:"Foto's" },
+  { id:'agenda',         label:'Agenda' },
+  { id:'contacten',      label:'Contacten' },
+  { id:'wandelgangen',   label:'Wandelgangen' },
+  { id:'klaverjas',      label:'Klaverjas' },
+  { id:'geschiedenis',   label:'Geschiedenis' },
+  { id:'huisplattegrond',label:'Huisplattegrond' },
+  { id:'wijzigingen',    label:'Verzoeken' },
+  { id:'verjaardagen',   label:'Verjaardagen' },
+  { id:'adminbeheer',    label:'Admin-beheer' },
+  { id:'bezoekers',      label:'Bezoekers' },
+  { id:'tabbeheer',      label:'Tabbladen' },
+];
+const TAB_ROLLEN_KOLOMMEN = [ { key:'lid', label:'Niet-admin' }, { key:'admin', label:'Admin' }, { key:'hoofdadmin', label:'Superadmin' } ];
+// Welke tabs zijn van nature alleen voor (hoofd)admins — bepaalt de standaard-vinkjes.
+const TAB_ADMIN_ONLY = ['huisplattegrond','wijzigingen','verjaardagen'];
+const TAB_HOOFD_ONLY = ['adminbeheer','bezoekers','tabbeheer'];
+function huidigeRol(){ return isHoofdadmin() ? 'hoofdadmin' : (isAdmin() ? 'admin' : 'lid'); }
+// Standaard-zichtbaarheid (zonder expliciete config) op basis van de natuurlijke rol-gating.
+function tabNatuurlijkZichtbaar(tabId, rol){
+  if (rol==='hoofdadmin') return true;
+  if (rol==='admin') return TAB_HOOFD_ONLY.indexOf(tabId) < 0;
+  return TAB_ADMIN_ONLY.indexOf(tabId) < 0 && TAB_HOOFD_ONLY.indexOf(tabId) < 0; // lid
+}
+// Effectieve zichtbaarheid voor een rol: expliciete config wint, anders de standaard.
+function tabRolZichtbaar(tabId, rol){
+  const r = (TAB_CONFIG && TAB_CONFIG.__rollen) ? TAB_CONFIG.__rollen[tabId] : null;
+  if (r && typeof r[rol] === 'boolean') return r[rol];
+  return tabNatuurlijkZichtbaar(tabId, rol);
+}
 async function loadTabConfig() {
   try {
     const { data, error } = await db.from('tab_zichtbaarheid').select('config').eq('id', 1).maybeSingle();
@@ -5815,23 +5850,22 @@ async function loadTabConfig() {
 // Verberg tabbladen voor de ingelogde gebruiker op basis van zijn jaargang.
 // Admins en de hoofdadmin zien altijd alles, zodat beheer mogelijk blijft.
 function applyTabZichtbaarheid() {
+  const rol = huidigeRol();
   const jaar = eigenAankomstjaar();
-  const baas = isAdmin();
-  TAB_BEHEER_DEFS.forEach(t => {
+  TAB_ROL_DEFS.forEach(t => {
     const btn = document.querySelector('.tab-btn[data-tab="' + t.id + '"]');
     if (!btn) return;
-    let verborgen = false;
-    if (!baas && jaar !== null) {
+    let zicht = tabRolZichtbaar(t.id, rol);
+    // Per-jaargang verbergen geldt alleen voor niet-admins.
+    if (zicht && rol === 'lid' && jaar !== null) {
       const lijst = (TAB_CONFIG[t.id] || []).map(Number);
-      if (lijst.includes(Number(jaar))) verborgen = true;
+      if (lijst.includes(Number(jaar))) zicht = false;
     }
-    if (verborgen) {
-      btn.style.display = 'none';
-      if (btn.classList.contains('active')) {
-        document.querySelector('.tab-btn[data-tab="personen"]')?.click();
-      }
-    } else if (btn.style.display === 'none') {
-      btn.style.display = '';
+    // Veiligheid: de superadmin houdt altijd toegang tot het tabbladen-beheer.
+    if (t.id === 'tabbeheer' && isHoofdadmin()) zicht = true;
+    btn.style.display = zicht ? '' : 'none';
+    if (!zicht && btn.classList.contains('active')) {
+      document.querySelector('.tab-btn[data-tab="personen"]')?.click();
     }
   });
 }
@@ -5839,9 +5873,28 @@ function renderTabbeheer() {
   const el = document.getElementById('tabbeheer-content');
   if (!el) return;
   if (!isHoofdadmin()) { el.innerHTML = '<p class="tabbeheer-hint">Alleen de hoofdadmin kan dit beheren.</p>'; return; }
-  const jaren = [...new Set((PEOPLE || []).map(p => p['Aankomstjaar']).filter(Boolean).map(Number))].sort((a, b) => b - a);
-  if (!jaren.length) { el.innerHTML = '<p class="tabbeheer-hint">Nog geen jaargangen bekend.</p>'; return; }
   let h = '<div class="tabbeheer-actions"><button class="btn-primary" id="tabbeheer-opslaan">Opslaan</button><span id="tabbeheer-status" class="tabbeheer-status"></span></div>';
+  // ---- Rol-matrix: per tab zichtbaar voor niet-admin / admin / superadmin ----
+  h += '<h3 style="margin:.4rem 0 .3rem;">Zichtbaarheid per rol</h3>';
+  h += '<p class="tabbeheer-hint">Aangevinkt = de rol ziet dit tabblad. Superadmin ziet altijd dit beheerscherm.</p>';
+  h += '<div class="tabbeheer-tablewrap"><table class="tabbeheer-tbl"><thead><tr><th>Tabblad</th>';
+  TAB_ROLLEN_KOLOMMEN.forEach(k => { h += '<th data-rolcol="' + k.key + '" title="Klik om deze kolom aan/uit te zetten">' + escapeHtml(k.label) + '<span class="tabbeheer-col-toggle">alles aan/uit</span></th>'; });
+  h += '</tr></thead><tbody>';
+  TAB_ROL_DEFS.forEach(t => {
+    h += '<tr><td class="tb-jaar">' + escapeHtml(t.label) + '</td>';
+    TAB_ROLLEN_KOLOMMEN.forEach(k => {
+      const zicht = tabRolZichtbaar(t.id, k.key);
+      const vast = (t.id === 'tabbeheer' && k.key === 'hoofdadmin'); // superadmin houdt altijd dit scherm
+      h += '<td><input type="checkbox" class="tr-cell" data-tab="' + t.id + '" data-rol="' + k.key + '"' + (zicht ? ' checked' : '') + (vast ? ' disabled title="Vast: superadmin houdt toegang"' : '') + '></td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody></table></div>';
+  // ---- Jaargang-matrix (alleen voor niet-admins) ----
+  const jaren = [...new Set((PEOPLE || []).map(p => p['Aankomstjaar']).filter(Boolean).map(Number))].sort((a, b) => b - a);
+  h += '<h3 style="margin:1.2rem 0 .3rem;">Verbergen per jaargang (niet-admins)</h3>';
+  h += '<p class="tabbeheer-hint">Per jaargang welke tabbladen leden zien. <b>Aangevinkt = zichtbaar.</b> Geldt bovenop de rol-matrix; admins en de superadmin zien altijd alles wat hun rol toestaat.</p>';
+  if (!jaren.length) { h += '<p class="tabbeheer-hint">Nog geen jaargangen bekend.</p>'; el.innerHTML = h; el.querySelector('#tabbeheer-opslaan').onclick = saveTabConfig; bindTabbeheerKoppen(el); return; }
   h += '<div class="tabbeheer-tablewrap"><table class="tabbeheer-tbl"><thead><tr><th>Jaargang</th>';
   TAB_BEHEER_DEFS.forEach(t => { h += '<th data-col="' + t.id + '" title="Klik om hele kolom aan/uit te zetten">' + escapeHtml(t.label) + '<span class="tabbeheer-col-toggle">alles aan/uit</span></th>'; });
   h += '</tr></thead><tbody>';
@@ -5856,10 +5909,20 @@ function renderTabbeheer() {
   h += '</tbody></table></div>';
   el.innerHTML = h;
   el.querySelector('#tabbeheer-opslaan').onclick = saveTabConfig;
-  // kolomkop: hele tab voor alle jaargangen aan/uit
+  bindTabbeheerKoppen(el);
+}
+// Kolomkoppen: klik = hele kolom (rol of jaargang) aan/uit.
+function bindTabbeheerKoppen(el){
   el.querySelectorAll('thead th[data-col]').forEach(th => {
     th.onclick = () => {
       const cells = [...el.querySelectorAll('.tb-cell[data-tab="' + th.dataset.col + '"]')];
+      const alleAan = cells.every(c => c.checked);
+      cells.forEach(c => { c.checked = !alleAan; });
+    };
+  });
+  el.querySelectorAll('thead th[data-rolcol]').forEach(th => {
+    th.onclick = () => {
+      const cells = [...el.querySelectorAll('.tr-cell[data-rol="' + th.dataset.rolcol + '"]:not([disabled])')];
       const alleAan = cells.every(c => c.checked);
       cells.forEach(c => { c.checked = !alleAan; });
     };
@@ -5871,6 +5934,15 @@ async function saveTabConfig() {
   document.querySelectorAll('#tabbeheer-content .tb-cell').forEach(cb => {
     if (!cb.checked) { const t = cb.dataset.tab, j = Number(cb.dataset.jaar); (cfg[t] = cfg[t] || []).push(j); }
   });
+  // Rol-matrix opslaan onder de gereserveerde sleutel __rollen.
+  const rollen = {};
+  document.querySelectorAll('#tabbeheer-content .tr-cell').forEach(cb => {
+    const t = cb.dataset.tab, r = cb.dataset.rol;
+    (rollen[t] = rollen[t] || {})[r] = cb.checked;
+  });
+  // Veiligheid: superadmin houdt altijd dit beheerscherm.
+  if (rollen['tabbeheer']) rollen['tabbeheer'].hoofdadmin = true;
+  cfg.__rollen = rollen;
   const status = document.getElementById('tabbeheer-status');
   if (status) { status.style.color = 'var(--gray,#7a6f63)'; status.textContent = 'Opslaan…'; }
   try {
