@@ -3694,25 +3694,49 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   .kj-teamline { font-size:.8rem; color:var(--gray,#7a6f63); margin:.2rem 0 .8rem; }
 
   /* Speeltafel */
-  .kj-board { margin-top:1rem; }
-  .kj-felt { position:relative; background:radial-gradient(ellipse at center,#2f7d52,#1f5d3b); border-radius:18px; padding:1rem; aspect-ratio:16/10; max-width:760px; margin:0 auto; box-shadow:inset 0 0 60px rgba(0,0,0,.35); }
-  .kj-pos { position:absolute; color:#eafff0; text-align:center; }
-  .kj-pos .kj-pname { font-size:.82rem; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,.4); }
-  .kj-pos .kj-pmeta { font-size:.68rem; opacity:.85; }
+  .kj-board { margin-top:.6rem; }
+  .kj-felt { position:relative; width:100%; max-width:760px; height:clamp(380px,72vh,600px); margin:0 auto; background:radial-gradient(ellipse at center,#2f7d52,#1f5d3b); border-radius:18px; box-shadow:inset 0 0 60px rgba(0,0,0,.4); overflow:hidden; }
+  .kj-felt.jouwbeurt { box-shadow:inset 0 0 0 3px rgba(255,225,77,.5), inset 0 0 60px rgba(0,0,0,.4); }
+  .kj-pos { position:absolute; color:#eafff0; text-align:center; max-width:42%; z-index:2; }
+  .kj-pos .kj-pname { font-size:.82rem; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,.5); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .kj-pos .kj-pmeta { font-size:.66rem; opacity:.85; }
   .kj-pos.turn .kj-pname::after { content:" ●"; color:#ffe14d; }
-  .kj-pos.top { top:.6rem; left:50%; transform:translateX(-50%); }
-  .kj-pos.bottom { bottom:.5rem; left:50%; transform:translateX(-50%); }
-  .kj-pos.left { left:.7rem; top:50%; transform:translateY(-50%); }
-  .kj-pos.right { right:.7rem; top:50%; transform:translateY(-50%); }
-  .kj-pos.dealer .kj-pname::before { content:"🂠 "; }
-  .kj-trickzone { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:160px; height:140px; }
+  .kj-pos.dealer .kj-pmeta::after { content:" · deler"; }
+  .kj-pos.top { top:58px; left:50%; transform:translateX(-50%); }
+  .kj-pos.left { left:8px; top:44%; transform:translateY(-50%); max-width:30%; }
+  .kj-pos.right { right:8px; top:44%; transform:translateY(-50%); max-width:30%; }
+  .kj-trickzone { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:150px; height:130px; z-index:1; }
   .kj-tc { position:absolute; width:46px; }
   .kj-tc.s0 { bottom:0; left:50%; transform:translateX(-50%); }
   .kj-tc.s1 { left:0; top:50%; transform:translateY(-50%); }
   .kj-tc.s2 { top:0; left:50%; transform:translateX(-50%); }
   .kj-tc.s3 { right:0; top:50%; transform:translateY(-50%); }
-  .kj-troefbadge { position:absolute; top:.6rem; left:.7rem; background:rgba(0,0,0,.4); color:#fff; border-radius:8px; padding:.25rem .55rem; font-size:.78rem; }
-  .kj-troefbadge.red { color:#ff8a7a; }
+  /* compacte stand/troef/beurt bovenin het laken */
+  .kj-scoreov { position:absolute; top:8px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:.5rem; background:rgba(0,0,0,.34); border-radius:10px; padding:.25rem .55rem; color:#fff; z-index:4; max-width:94%; }
+  .kj-soc { font-weight:700; font-size:.86rem; padding:.05rem .35rem; border-radius:6px; white-space:nowrap; }
+  .kj-soc.tA { color:#9ecbff; } .kj-soc.tB { color:#ff9e90; }
+  .kj-soc.leidt { background:rgba(255,205,80,.28); }
+  .kj-soc.mijn { box-shadow:inset 0 -2px 0 currentColor; }
+  .kj-soc-mid { text-align:center; font-size:.66rem; line-height:1.15; opacity:.95; min-width:84px; }
+  .kj-soc-troef { font-size:.95rem; } .kj-soc-troef.red { color:#ff8a7a; }
+  .kj-soc-turn { font-weight:600; font-size:.7rem; }
+  /* jouw kaarten als waaier onderaan op het groen */
+  .kj-felt-hand { position:absolute; left:0; right:0; bottom:8px; display:flex; justify-content:center; align-items:flex-end; padding:0 6px; z-index:3; }
+  .kj-felt-hand .kj-card { width:52px; height:76px; margin-left:-13px; box-shadow:0 2px 6px rgba(0,0,0,.45); transition:transform .12s; }
+  .kj-felt-hand .kj-card:first-child { margin-left:0; }
+  .kj-felt-hand .kj-card.playable { cursor:pointer; }
+  .kj-felt-hand .kj-card.playable:hover, .kj-felt-hand .kj-card.playable:active { transform:translateY(-14px); }
+  .kj-felt-hand .kj-card.illegal { opacity:.42; }
+  /* troefkeuze op het laken */
+  .kj-choosebar { position:absolute; left:0; right:0; bottom:98px; display:flex; justify-content:center; align-items:center; gap:.4rem; flex-wrap:wrap; z-index:4; }
+  .kj-choose-lbl { color:#eafff0; font-size:.85rem; text-shadow:0 1px 2px rgba(0,0,0,.5); }
+  .kj-troefbtn { width:46px; height:46px; border-radius:9px; border:none; background:#fff; color:#222; font-size:1.5rem; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,.35); line-height:1; }
+  .kj-troefbtn.red { color:#c0392b; }
+  .kj-troefbtn:hover { transform:translateY(-2px); }
+  .kj-felt-msg { position:absolute; left:0; right:0; bottom:20px; text-align:center; color:#eafff0; font-size:.85rem; }
+  /* uitslag-overlay midden op het laken */
+  .kj-felt-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.5); z-index:6; padding:12px; }
+  .kj-felt-overlay .kj-roundbox { margin:0; width:100%; max-width:420px; max-height:90%; overflow:auto; }
 
   /* Kaarten */
   .kj-card { display:inline-flex; flex-direction:column; align-items:center; justify-content:space-between; width:46px; height:64px; background:#fff; border:1px solid #d8cfb8; border-radius:6px; padding:3px 0; font-weight:700; color:#222; box-shadow:0 1px 3px rgba(0,0,0,.25); cursor:default; line-height:1; }
@@ -3810,19 +3834,16 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
     .kj-card-box { flex-basis:100%; padding:1rem; }
     .kj-codebig { font-size:1.4rem; letter-spacing:.16em; }
     .kj-codebar { padding:.6rem .7rem; gap:.4rem .6rem; }
-    .kj-felt { padding:.5rem; aspect-ratio:1/1; max-width:100%; }
+    .kj-felt { height:clamp(360px,74vh,560px); max-width:100%; }
     .kj-pos .kj-pname { font-size:.72rem; } .kj-pos .kj-pmeta { font-size:.6rem; }
-    .kj-pos.left, .kj-pos.right { max-width:74px; }
-    .kj-troefbadge { font-size:.68rem; padding:.2rem .45rem; top:.4rem; left:.4rem; }
-    .kj-trickzone { width:128px; height:120px; }
+    .kj-pos.left, .kj-pos.right { max-width:26%; }
+    .kj-trickzone { width:124px; height:116px; }
     .kj-tc { width:38px; } .kj-tc .kj-card { width:38px; height:54px; }
     .kj-card .kj-rank { font-size:.82rem; } .kj-card .kj-suit { font-size:1rem; }
-    .kj-hand { gap:.3rem; } .kj-hand .kj-card { width:42px; height:60px; }
-    /* scorebord: ronde/beurt bovenaan, teams eronder naast elkaar */
-    .kj-sb-teams { flex-wrap:wrap; }
-    .kj-sb-mid { flex:0 0 100%; order:-1; flex-direction:row; gap:.6rem; margin-bottom:.2rem; }
-    .kj-sb-team { flex:1 1 44%; padding:.45rem .4rem; }
-    .kj-sb-pts { font-size:1.5rem; } .kj-sb-namen { font-size:.66rem; }
+    .kj-felt-hand .kj-card { width:44px; height:62px; margin-left:-15px; }
+    .kj-felt-hand .kj-card .kj-rank { font-size:.78rem; } .kj-felt-hand .kj-card .kj-suit { font-size:.95rem; }
+    .kj-choosebar { bottom:80px; } .kj-troefbtn { width:42px; height:42px; font-size:1.3rem; }
+    .kj-scoreov { gap:.3rem; padding:.2rem .4rem; } .kj-soc { font-size:.78rem; } .kj-soc-mid { min-width:72px; }
     .kj-btn { padding:.55rem .8rem; font-size:.88rem; }
     .kj-row { flex-wrap:wrap; }
     .kj-roundbox { padding:.9rem 1rem; }
@@ -6396,49 +6417,56 @@ function openHuisKamerModal(id){
       '</div>';
   }
 
-  // posities relatief t.o.v. de speler onderaan (jij). spectator: seat0 onderaan.
+  // Alles op het laken: tegenstanders rond de rand, jouw kaarten onderaan op het groen.
   function renderBoard(){
     var me=seatOfEmail(myEmail()); var base=me<0?0:me;
     var pos=['bottom','right','top','left']; // offset 0,1,2,3 t.o.v. base
     var G=kj.G;
     var paused=(G.turn===-1 && (typeof G.trickWinner==='number'));
+    // tegenstanders (jij = offset 0 = onderaan, krijgt geen apart label; je kaarten staan er al)
     var posHTML='';
-    for(var off=0;off<4;off++){
+    for(var off=1;off<4;off++){
       var seat=(base+off)%4, s=G.seats[seat]; if(!s)continue;
       var cls='kj-pos '+pos[off]+(G.turn===seat&&(G.phase==='play'||G.phase==='choose')?' turn':'')+(G.dealer===seat?' dealer':'')+(paused&&G.trickWinner===seat?' win':'');
       posHTML+='<div class="'+cls+'"><div class="kj-pname">'+esc(s.naam||s.email)+'</div>'+
-        '<div class="kj-pmeta">'+teamLabel(seat)+' · '+(G.handCounts[seat]||0)+' kaart'+((G.handCounts[seat]||0)===1?'':'en')+'</div></div>';
+        '<div class="kj-pmeta">'+teamLabel(seat)+' · '+(G.handCounts[seat]||0)+'</div></div>';
     }
     // gespeelde kaarten in de huidige slag, op positie van de speler
     var trickHTML='';
     G.trick.forEach(function(t){ var off=(t.seat-base+4)%4;
       var isLast=G.lastPlayed&&t.seat===G.lastPlayed.seat&&t.card===G.lastPlayed.card;
       trickHTML+='<div class="kj-tc s'+off+(isLast?' played':'')+'">'+cardHTML(t.card)+'</div>'; });
-    var troef=G.troef?'<div class="kj-troefbadge'+(RED[G.troef]?' red':'')+'">Troef '+SUIT_SYM[G.troef]+'</div>':'';
-    var felt='<div class="kj-felt'+(paused?' paused':'')+'">'+troef+posHTML+'<div class="kj-trickzone">'+trickHTML+'</div></div>';
+    var scoreOv=renderScoreOverlay(me);
 
-    var status=renderScorebord(me);
-
-    var bottom='';
-    if(G.phase==='choose'){
-      if(me>=0&&G.turn===me){
-        bottom='<div class="kj-handlbl">Jij maakt — kies de troefkleur:</div><div class="kj-hand">'+
-          SUITS.map(function(s){return '<button class="kj-btn '+(RED[s]?'':'sec')+'" data-troef="'+s+'" style="font-size:1.3rem'+(RED[s]?';color:#c0392b':'')+'">'+SUIT_SYM[s]+' '+SUIT_NAAM[s]+'</button>';}).join(' ')+'</div>';
+    // onderaan op het laken: troefkeuze (als jij maakt) + jouw kaarten, of toeschouwer-melding
+    var handArea='';
+    if(me<0){
+      handArea='<div class="kj-felt-msg">Je kijkt mee als toeschouwer</div>';
+    } else {
+      if(G.phase==='choose' && G.turn===me){
+        handArea+='<div class="kj-choosebar"><span class="kj-choose-lbl">Kies troef:</span>'+
+          SUITS.map(function(s){return '<button class="kj-troefbtn'+(RED[s]?' red':'')+'" data-troef="'+s+'" title="'+SUIT_NAAM[s]+'">'+SUIT_SYM[s]+'</button>';}).join('')+'</div>';
       }
-      bottom+=renderHand(me,false);
-    } else if(G.phase==='play'){
-      bottom=renderHand(me,true);
-    } else if(G.phase==='roundend'){
-      bottom=renderRoundEnd();
-    } else if(G.phase==='gameover'){
-      bottom=renderGameOver();
+      handArea+=renderHandCards(me);
     }
-    var lastBtn = G.lastTrick ? '<button class="kj-btn ghost" id="kj-lasttrick">'+(kj.showLast?'Verberg vorige slag':'Vorige slag')+'</button>' : '';
-    var bar='<div class="kj-row" style="justify-content:center;flex-wrap:wrap;margin-top:1rem">'+lastBtn+
-      '<button class="kj-btn ghost" id="kj-leave">Verlaat tafel</button>'+
-      (kj.isHost&&G.phase==='roundend'?' <button class="kj-btn" id="kj-next">Volgende ronde</button>':'')+'</div>';
+    // uitslag-overlay (ronde-einde / einde potje) midden op het laken
+    var overlay='';
+    if(G.phase==='roundend') overlay='<div class="kj-felt-overlay">'+renderRoundEnd()+'</div>';
+    else if(G.phase==='gameover') overlay='<div class="kj-felt-overlay">'+renderGameOver()+'</div>';
+
+    var turnCls=(me>=0&&G.phase==='play'&&G.turn===me)?' jouwbeurt':'';
+    var felt='<div class="kj-felt'+(paused?' paused':'')+turnCls+'">'+scoreOv+posHTML+
+      '<div class="kj-trickzone">'+trickHTML+'</div>'+handArea+overlay+'</div>';
+
+    // compacte knoppenbalk eronder + inklapbaar rondeverloop + bij game-over de ranglijst
+    var lastBtn = G.lastTrick ? '<button class="kj-btn ghost kj-mini" id="kj-lasttrick">'+(kj.showLast?'Verberg vorige slag':'Vorige slag')+'</button>' : '';
+    var nextBtn = (kj.isHost&&G.phase==='roundend')?'<button class="kj-btn kj-mini" id="kj-next">Volgende ronde</button>':'';
+    var bar='<div class="kj-row" style="justify-content:center;flex-wrap:wrap;gap:.4rem;margin-top:.6rem">'+nextBtn+lastBtn+
+      '<button class="kj-btn ghost kj-mini" id="kj-leave">Verlaat tafel</button></div>';
     var lastPanel = (kj.showLast && G.lastTrick) ? renderLastTrick() : '';
-    return '<div class="kj-board">'+felt+lastPanel+status+bottom+bar+'</div>';
+    var verloop = renderVerloop();
+    var lb = (G.phase==='gameover') ? '<div id="kj-board-lb">'+renderLeaderboard()+'</div>' : '';
+    return '<div class="kj-board">'+felt+bar+lastPanel+verloop+lb+'</div>';
   }
   function renderLastTrick(){
     var lt=kj.G.lastTrick; if(!lt)return '';
@@ -6454,50 +6482,47 @@ function openHuisKamerModal(id){
     var a=team===0?0:1, b=team===0?2:3, na=kj.G.seats[a], nb=kj.G.seats[b];
     return [na?(na.naam||na.email):'—', nb?(nb.naam||nb.email):'—'];
   }
-  function renderScorebord(me){
-    var G=kj.G, lead = G.scores[0]===G.scores[1] ? '' : (G.scores[0]>G.scores[1]?'tA':'tB');
-    var mij = me<0?-1:me%2; // jouw team
-    function teamCard(team){
-      var nm=teamNames(team), cls=team===0?'tA':'tB';
-      return '<div class="kj-sb-team '+cls+(lead===cls?' leidt':'')+(mij===team?' mijn':'')+'">'+
-        '<div class="kj-sb-lbl">Team '+(team===0?'A':'B')+(mij===team?' · jij':'')+'</div>'+
-        '<div class="kj-sb-pts">'+G.scores[team]+'</div>'+
-        '<div class="kj-sb-namen">'+esc(nm[0])+' &amp; '+esc(nm[1])+'</div></div>';
-    }
-    var verloop='';
-    if(G.history&&G.history.length){
-      var items=G.history.slice(-6).map(function(h){
-        var tag=h.nat?'<span class="kj-nat">nat</span>':(h.pit?'<span class="kj-pit">pit</span>':'');
-        return '<tr><td>'+h.r+'</td><td>'+SUIT_SYM[h.troef]+'</td><td>'+h.a+'</td><td>'+h.b+'</td><td>'+tag+'</td></tr>';
-      }).join('');
-      verloop='<details class="kj-verloop"><summary>Rondeverloop ('+G.history.length+'/16)</summary>'+
-        '<table><thead><tr><th>#</th><th>♣</th><th>A</th><th>B</th><th></th></tr></thead><tbody>'+items+'</tbody></table></details>';
-    }
-    return '<div class="kj-scorebord">'+
-      '<div class="kj-sb-teams">'+teamCard(0)+'<div class="kj-sb-mid"><div class="kj-sb-ronde">Ronde '+G.round+'/16</div>'+turnMsg(me)+'</div>'+teamCard(1)+'</div>'+
-      verloop+'</div>';
+  // Compacte balk bovenin het laken: stand A–B, ronde, troef en wie aan zet is.
+  function renderScoreOverlay(me){
+    var G=kj.G, mij=me<0?-1:me%2;
+    var lead = G.scores[0]===G.scores[1] ? -1 : (G.scores[0]>G.scores[1]?0:1);
+    var troef = G.troef ? ' <span class="kj-soc-troef'+(RED[G.troef]?' red':'')+'">'+SUIT_SYM[G.troef]+'</span>' : '';
+    return '<div class="kj-scoreov">'+
+      '<span class="kj-soc tA'+(mij===0?' mijn':'')+(lead===0?' leidt':'')+'">A '+G.scores[0]+'</span>'+
+      '<span class="kj-soc-mid">R'+G.round+'/16'+troef+'<br><span class="kj-soc-turn">'+turnMsgText(me)+'</span></span>'+
+      '<span class="kj-soc tB'+(mij===1?' mijn':'')+(lead===1?' leidt':'')+'">B '+G.scores[1]+'</span>'+
+      '</div>';
   }
-  function turnMsg(me){
+  function turnMsgText(me){
     var G=kj.G;
-    if(G.turn===-1 && typeof G.trickWinner==='number'){ var ww=G.seats[G.trickWinner]; return '<span class="kj-turnmsg">'+esc((ww&&ww.naam)||'')+' wint de slag</span>'; }
-    if(G.phase==='choose'){ var who=G.seats[G.turn]; return '<span class="kj-turnmsg">'+(G.turn===me?'Jij maakt de troef':esc((who&&who.naam)||'…')+' maakt de troef')+'</span>'; }
-    if(G.phase==='play'){ var w=G.seats[G.turn]; return '<span class="kj-turnmsg">'+(G.turn===me?'Jouw beurt':'Beurt: '+esc((w&&w.naam)||'…'))+'</span>'; }
-    if(G.phase==='roundend'){ return '<span class="kj-turnmsg">Ronde afgerond</span>'; }
-    if(G.phase==='gameover'){ return '<span class="kj-turnmsg">Klaar</span>'; }
+    if(G.turn===-1 && typeof G.trickWinner==='number'){ var ww=G.seats[G.trickWinner]; return esc((ww&&ww.naam)||'')+' wint'; }
+    if(G.phase==='choose'){ var who=G.seats[G.turn]; return G.turn===me?'Jij maakt de troef':esc((who&&who.naam)||'…')+' maakt'; }
+    if(G.phase==='play'){ var w=G.seats[G.turn]; return G.turn===me?'Jouw beurt':'Beurt: '+esc((w&&w.naam)||'…'); }
+    if(G.phase==='roundend'){ return 'Ronde afgerond'; }
+    if(G.phase==='gameover'){ return 'Klaar'; }
     return '';
   }
-  function renderHand(me,playable){
-    if(me<0){ return '<p class="kj-handlbl">Je kijkt mee als toeschouwer.</p>'; }
+  // Jouw kaarten als waaier onderaan op het groen.
+  function renderHandCards(me){
     var hand=(kj.HANDS&&kj.HANDS[me])?kj.HANDS[me].slice():[];
-    // sorteer op kleur + waarde voor overzicht
+    if(!hand.length) return '';
     hand.sort(function(a,b){ if(cS(a)!==cS(b))return SUITS.indexOf(cS(a))-SUITS.indexOf(cS(b)); return plainIdx(cR(b))-plainIdx(cR(a)); });
-    var legal = (playable&&kj.G.turn===me)?legalMoves(hand,kj.G.trick,kj.G.troef):[];
+    var playable=(kj.G.phase==='play'&&kj.G.turn===me);
+    var legal = playable?legalMoves(hand,kj.G.trick,kj.G.troef):[];
     var cards=hand.map(function(c){
-      var ok=legal.indexOf(c)>=0;
-      var cls = playable?(kj.G.turn===me?(ok?'playable':'illegal'):''):''; return cardHTML(c,cls);
+      var cls = playable?(legal.indexOf(c)>=0?'playable':'illegal'):''; return cardHTML(c,cls);
     }).join('');
-    var lbl = playable?(kj.G.turn===me?'Jouw kaarten — klik om te spelen':'Jouw kaarten'):'Jouw kaarten';
-    return '<div class="kj-handlbl">'+lbl+'</div><div class="kj-hand">'+cards+'</div>';
+    return '<div class="kj-felt-hand">'+cards+'</div>';
+  }
+  // Inklapbaar rondeverloop (tussenstand per ronde) onder het laken.
+  function renderVerloop(){
+    var G=kj.G; if(!(G.history&&G.history.length)) return '';
+    var items=G.history.slice(-10).map(function(h){
+      var tag=h.nat?'<span class="kj-nat">nat</span>':(h.pit?'<span class="kj-pit">pit</span>':'');
+      return '<tr><td>'+h.r+'</td><td>'+SUIT_SYM[h.troef]+'</td><td>'+h.a+'</td><td>'+h.b+'</td><td>'+tag+'</td></tr>';
+    }).join('');
+    return '<details class="kj-verloop"><summary>Rondeverloop &amp; tussenstand ('+G.history.length+'/16)</summary>'+
+      '<table><thead><tr><th>#</th><th>troef</th><th>A</th><th>B</th><th></th></tr></thead><tbody>'+items+'</tbody></table></details>';
   }
   function renderRoundEnd(){
     var sc=kj.G.roundInfo; if(!sc)return '';
@@ -6520,7 +6545,7 @@ function openHuisKamerModal(id){
       '<table><tr><td>Team A ('+esc(teamNames(0).join(' & '))+')</td><td><b>'+s[0]+'</b></td></tr>'+
       '<tr><td>Team B ('+esc(teamNames(1).join(' & '))+')</td><td><b>'+s[1]+'</b></td></tr></table>'+
       (kj.isHost?'<div class="kj-row"><button class="kj-btn" id="kj-again">Nieuw potje (zelfde tafel)</button></div>':'')+
-      '</div><div id="kj-board-lb">'+renderLeaderboard()+'</div>';
+      '</div>';
   }
 
   // ---- Event-delegatie ----
