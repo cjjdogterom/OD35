@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://mxbtmbcgycjqapjzulrp.supabase.co blob:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://mxbtmbcgycjqapjzulrp.supabase.co wss://mxbtmbcgycjqapjzulrp.supabase.co https://api.resend.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://mxbtmbcgycjqapjzulrp.supabase.co https://*.r2.dev https://*.r2.cloudflarestorage.com blob:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://mxbtmbcgycjqapjzulrp.supabase.co wss://mxbtmbcgycjqapjzulrp.supabase.co https://api.resend.com https://*.r2.cloudflarestorage.com https://*.r2.dev; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
 <title>Oude Delft 35 — Oud-Huisgenoten</title>
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
@@ -10183,6 +10183,36 @@ function closeLightbox() {
   if (_lightboxKeyHandler) { document.removeEventListener('keydown', _lightboxKeyHandler); _lightboxKeyHandler = null; }
 }
 
+// Verklein + comprimeer een afbeelding naar JPEG (max 2000px, kwaliteit 0,82).
+// Geeft {blob, ext, contentType} of null als de browser het bestand niet kan decoderen.
+async function fotoCompress(file) {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const maxDim = 2000;
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+    const w = Math.max(1, Math.round(bitmap.width * scale));
+    const h = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+    if (bitmap.close) bitmap.close();
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.82));
+    return blob ? { blob, ext: 'jpg', contentType: 'image/jpeg' } : null;
+  } catch (_) { return null; }
+}
+// Vraag een presigned R2-upload-URL aan. Geeft {uploadUrl, publicUrl} of {notConfigured:true}.
+async function r2PresignedUrl(albumId, ext, contentType) {
+  const { data: { session } } = await db.auth.getSession();
+  const tok = session?.access_token; if (!tok) return null;
+  const r = await fetch('/api/r2-upload-url', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+    body: JSON.stringify({ albumId, ext, contentType }),
+  });
+  if (r.status === 503) return { notConfigured: true };
+  if (!r.ok) throw new Error('R2-url mislukt (' + r.status + ')');
+  return await r.json();
+}
+const R2_CACHE = 'public, max-age=31536000, immutable';
+
 // Upload
 async function uploadFotos(files, albumId) {
   if (!files || files.length === 0) return;
@@ -10220,34 +10250,64 @@ async function uploadFotos(files, albumId) {
       try {
         const uid = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '_' + Math.random().toString(36).slice(2));
         let url;
-        if (heic) {
-          // HEIC: origineel uploaden; de server zet het om naar JPEG (geen bevriezing op de telefoon)
-          const heicPath = `${albumId}/${uid}.heic`;
-          const { error: upErr } = await db.storage.from('fotos').upload(heicPath, file, {
-            cacheControl: '31536000', upsert: true, contentType: 'application/octet-stream',
-          });
-          if (upErr) throw upErr;
-          const { data: { session } } = await db.auth.getSession();
-          const tok = session?.access_token;
-          if (!tok) throw new Error('geen actieve sessie');
-          const r = await fetch('/api/heic-to-jpeg', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tok}` },
-            body: JSON.stringify({ path: heicPath }),
-          });
-          const out = await r.json().catch(() => ({}));
-          if (!r.ok || !out.url) throw new Error(out.error || 'HEIC-conversie mislukt');
-          url = out.url;
+        // Bepaal wat we uploaden: afbeeldingen (incl. HEIC op iOS) comprimeren we naar JPEG;
+        // PDF's gaan ongewijzigd mee. Lukt HEIC-decoderen niet (bijv. desktop Chrome), dan
+        // valt 'heicNodig' op true en gebruiken we de Supabase-serverconversie.
+        let blob = file, ext, contentType, heicNodig = false;
+        if (pdf) {
+          ext = 'pdf'; contentType = 'application/pdf';
         } else {
-          const ext = pdf ? 'pdf' : (file.name.split('.').pop().replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg');
-          const path = `${albumId}/${uid}.${ext}`;
-          const { error: upErr } = await db.storage.from('fotos').upload(path, file, {
-            cacheControl: '31536000', upsert: true, contentType: file.type || (pdf ? 'application/pdf' : undefined),
-          });
-          if (upErr) throw upErr;
-          const { data: urlData } = db.storage.from('fotos').getPublicUrl(path);
-          if (!urlData?.publicUrl) throw new Error('geen publieke URL ontvangen');
-          url = urlData.publicUrl;
+          const c = await fotoCompress(file);
+          if (c) { blob = c.blob; ext = c.ext; contentType = c.contentType; }
+          else if (heic) { heicNodig = true; }
+          else { ext = (file.name.split('.').pop().replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg'); contentType = file.type || undefined; }
+        }
+
+        let usedR2 = false;
+        if (!heicNodig) {
+          // Probeer R2 (gratis egress); valt terug op Supabase als R2 nog niet is ingesteld.
+          const pre = await r2PresignedUrl(albumId, ext, contentType || 'application/octet-stream');
+          if (pre && !pre.notConfigured && pre.uploadUrl) {
+            const put = await fetch(pre.uploadUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': contentType || 'application/octet-stream', 'Cache-Control': R2_CACHE },
+              body: blob,
+            });
+            if (!put.ok) throw new Error('R2-upload mislukt (' + put.status + ')');
+            url = pre.publicUrl; usedR2 = true;
+          }
+        }
+
+        if (!usedR2) {
+          if (heicNodig) {
+            // HEIC niet client-side te decoderen -> origineel naar Supabase, server zet om naar JPEG
+            const heicPath = `${albumId}/${uid}.heic`;
+            const { error: upErr } = await db.storage.from('fotos').upload(heicPath, file, {
+              cacheControl: '31536000', upsert: true, contentType: 'application/octet-stream',
+            });
+            if (upErr) throw upErr;
+            const { data: { session } } = await db.auth.getSession();
+            const tok = session?.access_token;
+            if (!tok) throw new Error('geen actieve sessie');
+            const r = await fetch('/api/heic-to-jpeg', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tok}` },
+              body: JSON.stringify({ path: heicPath }),
+            });
+            const out = await r.json().catch(() => ({}));
+            if (!r.ok || !out.url) throw new Error(out.error || 'HEIC-conversie mislukt');
+            url = out.url;
+          } else {
+            // Supabase-fallback voor gewone afbeeldingen/PDF
+            const path = `${albumId}/${uid}.${ext}`;
+            const { error: upErr } = await db.storage.from('fotos').upload(path, blob, {
+              cacheControl: '31536000', upsert: true, contentType: contentType || undefined,
+            });
+            if (upErr) throw upErr;
+            const { data: urlData } = db.storage.from('fotos').getPublicUrl(path);
+            if (!urlData?.publicUrl) throw new Error('geen publieke URL ontvangen');
+            url = urlData.publicUrl;
+          }
         }
         const { error: insErr } = await db.from('fotos').insert({
           album_id: albumId, url, volgorde: done,
