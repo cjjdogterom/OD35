@@ -3908,6 +3908,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   <div class="fotos-header">
     <div id="fotos-breadcrumb"></div>
     <button class="fotos-add-btn hoofdadmin-only" id="fotos-migrate-btn" style="display:none" title="Verhuis bestaande foto's van Supabase naar R2">↪ Foto's naar R2</button>
+    <button class="fotos-add-btn" id="fotos-download-btn" style="display:none" title="Download alle albums met foto's als ZIP-bestanden">⬇ Download alles</button>
     <button class="fotos-add-btn" id="fotos-album-btn" style="display:none">+ Nieuw album</button>
   </div>
   <div id="fotos-content"></div>
@@ -9918,12 +9919,76 @@ async function migreerFotosNaarR2() {
   }
 }
 
+// JSZip eenmalig laden (alleen wanneer nodig).
+function ensureJSZip() {
+  if (window.JSZip) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    s.onload = () => resolve(); s.onerror = () => reject(new Error('JSZip laden mislukt'));
+    document.head.appendChild(s);
+  });
+}
+function _veiligeNaam(s) { return (s || 'album').replace(/[^\w\- ]+/g, '').trim().slice(0, 60) || 'album'; }
+function _downloadBlob(blob, naam) {
+  const u = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = u; a.download = naam;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 30000);
+}
+// Download alle albums als losse ZIP-bestanden (één per album; veilig voor het geheugen).
+async function downloadAlleAlbums() {
+  if (!isAdmin()) return;
+  const btn = document.getElementById('fotos-download-btn');
+  const orig = btn ? btn.textContent : '';
+  try {
+    if (btn) { btn.disabled = true; btn.textContent = 'Voorbereiden…'; }
+    await ensureJSZip();
+    await loadAlbums();
+    const albums = (albumsList || []).slice();
+    if (!albums.length) { alert('Geen albums gevonden.'); return; }
+    if (!confirm(`Alle ${albums.length} albums downloaden als ZIP-bestanden?\n\nJe browser vraagt mogelijk toestemming om meerdere bestanden te downloaden — sta dat toe.`)) return;
+    let albumNr = 0, totaalFotos = 0, mislukt = 0;
+    for (const album of albums) {
+      albumNr++;
+      const { data: fotos, error } = await db.from('fotos')
+        .select('url,bijschrift,volgorde').eq('album_id', album.id).order('volgorde', { ascending: true });
+      if (error) { console.warn('Album laden mislukt:', album.naam, error); continue; }
+      if (!fotos || !fotos.length) continue;
+      const zip = new window.JSZip();
+      let i = 0;
+      for (const f of fotos) {
+        i++;
+        if (btn) btn.textContent = `Album ${albumNr}/${albums.length} · foto ${i}/${fotos.length}…`;
+        try {
+          const resp = await fetch(f.url, { cache: 'force-cache' });
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          const blob = await resp.blob();
+          let ext = (f.url.split('?')[0].split('.').pop() || 'jpg').toLowerCase();
+          if (ext.length > 5) ext = 'jpg';
+          const bij = f.bijschrift ? '_' + _veiligeNaam(f.bijschrift) : '';
+          zip.file(String(i).padStart(3, '0') + bij + '.' + ext, blob);
+          totaalFotos++;
+        } catch (e) { mislukt++; console.warn('Foto overslaan:', f.url, e); }
+      }
+      if (btn) btn.textContent = `Album ${albumNr}/${albums.length} · ZIP maken…`;
+      const content = await zip.generateAsync({ type: 'blob' });
+      _downloadBlob(content, _veiligeNaam(album.naam) + '.zip');
+      await new Promise(r => setTimeout(r, 800)); // adempauze tegen download-blokkering
+    }
+    alert(`Klaar! ${totaalFotos} foto's in ${albumNr} albums gedownload${mislukt ? ` (${mislukt} overgeslagen)` : ''}.`);
+  } catch (e) { alert('Download mislukt: ' + (e.message || e)); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = orig || '⬇ Download alles'; } }
+}
+
 function renderAlbumGrid() {
   const btn = document.getElementById('fotos-album-btn');
   if (btn) btn.style.display = canUploadFotos() ? '' : 'none';
   if (btn) btn.onclick = showAlbumForm;
   const mbtn = document.getElementById('fotos-migrate-btn');
   if (mbtn) { mbtn.style.display = isHoofdadmin() ? '' : 'none'; mbtn.onclick = migreerFotosNaarR2; }
+  const dbtn = document.getElementById('fotos-download-btn');
+  if (dbtn) { dbtn.style.display = isAdmin() ? '' : 'none'; dbtn.onclick = downloadAlleAlbums; }
 
   const bc = document.getElementById('fotos-breadcrumb');
   if (bc) bc.innerHTML = '<h2 style="font-family:var(--font-display);font-size:1.8rem;font-weight:600;margin:0;color:var(--ink);">Foto\'s</h2>';
@@ -10047,6 +10112,8 @@ function renderAlbumFotos(albumId) {
   if (btn) btn.style.display = 'none';
   const mbtn = document.getElementById('fotos-migrate-btn');
   if (mbtn) mbtn.style.display = 'none';
+  const dbtn = document.getElementById('fotos-download-btn');
+  if (dbtn) dbtn.style.display = 'none';
 
   const bc = document.getElementById('fotos-breadcrumb');
   if (bc) bc.innerHTML = `
