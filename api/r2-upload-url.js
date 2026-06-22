@@ -28,10 +28,12 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Account-ID is niet geheim; de keys/bucket/public-URL komen uit Vercel env-vars.
+  // Account-ID en publieke URL zijn niet geheim (in de code); alleen de keys + bucketnaam
+  // komen uit Vercel env-vars.
   const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || 'a812c3bc95a103b7d66ac7fc4d62cd07';
-  const { R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_PUBLIC_BASE } = process.env;
-  if (!R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET || !R2_PUBLIC_BASE) {
+  const R2_PUBLIC_BASE = process.env.R2_PUBLIC_BASE || 'https://pub-24a34539f8c14c81b0ca344ad888d9e2.r2.dev';
+  const { R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET } = process.env;
+  if (!R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET) {
     return res.status(503).json({ error: 'R2 niet geconfigureerd', notConfigured: true });
   }
 
