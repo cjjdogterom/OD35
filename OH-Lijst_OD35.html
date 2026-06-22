@@ -3486,6 +3486,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
       <button class="tab-btn admin-only" data-tab="verjaardagen" style="display:none">Verjaardagen</button>
       <button class="tab-btn hoofdadmin-only" data-tab="adminbeheer" style="display:none">Admin-beheer</button>
       <button class="tab-btn hoofdadmin-only" data-tab="bezoekers" style="display:none">Bezoekers</button>
+      <button class="tab-btn hoofdadmin-only" data-tab="tabbeheer" style="display:none">Tabbladen</button>
     </nav>
   </div>
 </div>
@@ -4010,6 +4011,27 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   </div>
   <div id="wijz-list" class="wijz-list"></div>
 </div><!-- /panel-wijzigingen -->
+
+<!-- ==================== TAB: TABBLADEN PER JAARGANG (hoofdadmin only) ==================== -->
+<style>
+  .tabbeheer-hint { color:var(--gray,#7a6f63); font-size:.9rem; max-width:50rem; margin:.2rem 0 1rem; }
+  .tabbeheer-actions { display:flex; align-items:center; gap:.8rem; margin-bottom:1rem; }
+  .tabbeheer-status { font-size:.88rem; color:var(--gray,#7a6f63); }
+  .tabbeheer-tablewrap { overflow:auto; border:1px solid var(--line,#e3dccd); border-radius:10px; max-height:62vh; }
+  .tabbeheer-tbl { border-collapse:collapse; width:100%; font-size:.9rem; }
+  .tabbeheer-tbl th, .tabbeheer-tbl td { padding:.5rem .7rem; border-bottom:1px solid var(--line,#eee5d4); text-align:center; white-space:nowrap; }
+  .tabbeheer-tbl thead th { position:sticky; top:0; background:var(--paper,#fffdf7); border-bottom:2px solid var(--line,#e3dccd); cursor:pointer; user-select:none; }
+  .tabbeheer-tbl thead th:first-child, .tabbeheer-tbl .tb-jaar { text-align:left; }
+  .tabbeheer-tbl .tb-jaar { font-weight:700; font-variant-numeric:tabular-nums; background:var(--paper,#fffdf7); position:sticky; left:0; }
+  .tabbeheer-tbl tbody tr:hover td { background:rgba(0,0,0,.025); }
+  .tabbeheer-tbl input[type=checkbox] { width:18px; height:18px; cursor:pointer; accent-color:var(--burgundy,#9c3b2e); }
+  .tabbeheer-col-toggle { font-size:.64rem; color:var(--gray,#9b8f80); display:block; font-weight:400; }
+</style>
+<div class="tab-panel" id="panel-tabbeheer">
+  <h2>Tabbladen per jaargang</h2>
+  <p class="tabbeheer-hint">Bepaal per jaargang welke tabbladen leden te zien krijgen. <b>Aangevinkt = zichtbaar.</b> Admins (en jij als hoofdadmin) zien altijd alles. Klik op een kolomkop om die tab voor iedereen aan/uit te zetten. Wijzigingen gelden voor leden zodra ze de pagina opnieuw laden.</p>
+  <div id="tabbeheer-content"></div>
+</div><!-- /panel-tabbeheer -->
 
 <footer>
   Oude Delft 35 · oud-huisgenoten register · 401 personen · 1896–2024
@@ -5652,6 +5674,7 @@ document.getElementById('tab-nav').addEventListener('click', e => {
   if (tab === 'wijzigingen') { loadWijzigingen(); }
   if (tab === 'verjaardagen') { renderVerjaardagen(); }
   if (tab === 'adminbeheer') { loadAdmins(); }
+  if (tab === 'tabbeheer') { renderTabbeheer(); }
   if (tab === 'bezoekers') { loadBezoekers(); startBezoekersAutoRefresh(); } else { stopBezoekersAutoRefresh(); }
   if (tab === 'nestor') { loadNestor(); startNestorAutoRefresh(); } else { stopNestorAutoRefresh(); }
   // Zachte reveal van de panel-blokken bij het wisselen van tab
@@ -5724,6 +5747,100 @@ function isNestorResident() {
 function updateNestorTabVisibility() {
   const show = isNestorResident();
   document.querySelectorAll('.nestor-only').forEach(el => { el.style.display = show ? '' : 'none'; });
+}
+
+// ==================== TABBLADEN PER JAARGANG (hoofdadmin) ====================
+// Per tab een lijst jaargangen waarvoor de tab VERBORGEN is. Leeg = voor iedereen zichtbaar.
+let TAB_CONFIG = {};
+const TAB_BEHEER_DEFS = [
+  { id:'personen',     label:'Personen' },
+  { id:'fotos',        label:"Foto's" },
+  { id:'agenda',       label:'Agenda' },
+  { id:'contacten',    label:'Contacten' },
+  { id:'wandelgangen', label:'Wandelgangen' },
+  { id:'klaverjas',    label:'Klaverjas' },
+  { id:'geschiedenis', label:'Geschiedenis' },
+];
+async function loadTabConfig() {
+  try {
+    const { data, error } = await db.from('tab_zichtbaarheid').select('config').eq('id', 1).maybeSingle();
+    if (error) throw error;
+    TAB_CONFIG = (data && data.config && typeof data.config === 'object') ? data.config : {};
+  } catch (e) {
+    TAB_CONFIG = {};
+    console.warn('tab-zichtbaarheid laden mislukt (tabel al aangemaakt?):', e.message || e);
+  }
+}
+// Verberg tabbladen voor de ingelogde gebruiker op basis van zijn jaargang.
+// Admins en de hoofdadmin zien altijd alles, zodat beheer mogelijk blijft.
+function applyTabZichtbaarheid() {
+  const jaar = eigenAankomstjaar();
+  const baas = isAdmin();
+  TAB_BEHEER_DEFS.forEach(t => {
+    const btn = document.querySelector('.tab-btn[data-tab="' + t.id + '"]');
+    if (!btn) return;
+    let verborgen = false;
+    if (!baas && jaar !== null) {
+      const lijst = (TAB_CONFIG[t.id] || []).map(Number);
+      if (lijst.includes(Number(jaar))) verborgen = true;
+    }
+    if (verborgen) {
+      btn.style.display = 'none';
+      if (btn.classList.contains('active')) {
+        document.querySelector('.tab-btn[data-tab="personen"]')?.click();
+      }
+    } else if (btn.style.display === 'none') {
+      btn.style.display = '';
+    }
+  });
+}
+function renderTabbeheer() {
+  const el = document.getElementById('tabbeheer-content');
+  if (!el) return;
+  if (!isHoofdadmin()) { el.innerHTML = '<p class="tabbeheer-hint">Alleen de hoofdadmin kan dit beheren.</p>'; return; }
+  const jaren = [...new Set((PEOPLE || []).map(p => p['Aankomstjaar']).filter(Boolean).map(Number))].sort((a, b) => b - a);
+  if (!jaren.length) { el.innerHTML = '<p class="tabbeheer-hint">Nog geen jaargangen bekend.</p>'; return; }
+  let h = '<div class="tabbeheer-actions"><button class="btn-primary" id="tabbeheer-opslaan">Opslaan</button><span id="tabbeheer-status" class="tabbeheer-status"></span></div>';
+  h += '<div class="tabbeheer-tablewrap"><table class="tabbeheer-tbl"><thead><tr><th>Jaargang</th>';
+  TAB_BEHEER_DEFS.forEach(t => { h += '<th data-col="' + t.id + '" title="Klik om hele kolom aan/uit te zetten">' + escapeHtml(t.label) + '<span class="tabbeheer-col-toggle">alles aan/uit</span></th>'; });
+  h += '</tr></thead><tbody>';
+  jaren.forEach(j => {
+    h += '<tr><td class="tb-jaar">' + j + '</td>';
+    TAB_BEHEER_DEFS.forEach(t => {
+      const verborgen = (TAB_CONFIG[t.id] || []).map(Number).includes(j);
+      h += '<td><input type="checkbox" class="tb-cell" data-tab="' + t.id + '" data-jaar="' + j + '"' + (verborgen ? '' : ' checked') + '></td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody></table></div>';
+  el.innerHTML = h;
+  el.querySelector('#tabbeheer-opslaan').onclick = saveTabConfig;
+  // kolomkop: hele tab voor alle jaargangen aan/uit
+  el.querySelectorAll('thead th[data-col]').forEach(th => {
+    th.onclick = () => {
+      const cells = [...el.querySelectorAll('.tb-cell[data-tab="' + th.dataset.col + '"]')];
+      const alleAan = cells.every(c => c.checked);
+      cells.forEach(c => { c.checked = !alleAan; });
+    };
+  });
+}
+async function saveTabConfig() {
+  if (!isHoofdadmin()) return;
+  const cfg = {};
+  document.querySelectorAll('#tabbeheer-content .tb-cell').forEach(cb => {
+    if (!cb.checked) { const t = cb.dataset.tab, j = Number(cb.dataset.jaar); (cfg[t] = cfg[t] || []).push(j); }
+  });
+  const status = document.getElementById('tabbeheer-status');
+  if (status) { status.style.color = 'var(--gray,#7a6f63)'; status.textContent = 'Opslaan…'; }
+  try {
+    const { error } = await db.from('tab_zichtbaarheid').upsert({ id: 1, config: cfg, bijgewerkt: new Date().toISOString() }, { onConflict: 'id' });
+    if (error) throw error;
+    TAB_CONFIG = cfg;
+    applyTabZichtbaarheid();
+    if (status) { status.style.color = '#1d7a3b'; status.textContent = 'Opgeslagen ✓'; setTimeout(() => { if (status) status.textContent = ''; }, 2500); }
+  } catch (e) {
+    if (status) { status.style.color = '#c0392b'; status.textContent = 'Mislukt: ' + (e.message || e) + ' (is de SQL gedraaid?)'; }
+  }
 }
 
 async function loadNestor() {
@@ -9216,6 +9333,8 @@ async function init() {
   render();
   // Toon de Nestor-tab alleen voor huidige bewoners (jaar 2017–2026)
   if (typeof updateNestorTabVisibility === 'function') updateNestorTabVisibility();
+  // Tabbladen per jaargang aan/uit (door de hoofdadmin ingesteld)
+  if (typeof loadTabConfig === 'function') { await loadTabConfig(); applyTabZichtbaarheid(); }
   // Nu de gebruiker bekend is: thema herberekenen (WK alleen voor bewoners 2011–2026)
   if (typeof window.refreshTheme === 'function') window.refreshTheme();
   // Onthul de eerste (Personen) panel-blokken zacht
