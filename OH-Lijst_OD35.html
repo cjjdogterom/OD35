@@ -2281,14 +2281,14 @@
   .huis-layout { display: flex; gap: 1.5rem; align-items: flex-start; }
   .huis-svg-wrap { flex: 1 1 58%; min-width: 0; }
   .huis-svg { width: 100%; height: auto; display: block; }
-  .huis-floor-label { font-family: var(--font-mono); font-size: 11px; fill: var(--gray); letter-spacing: 0.04em; }
+  .huis-floor-label { font-family: var(--font-mono); font-size: 24px; fill: var(--gray); letter-spacing: 0.04em; }
   .huis-kamer { cursor: pointer; }
   .huis-kamer rect { transition: filter 0.12s; }
   .huis-kamer:hover rect { filter: brightness(1.05); }
   .huis-kamer:focus-visible rect { stroke: var(--burgundy, #9c3b2e); stroke-width: 3; }
-  .huis-kamer-naam { font-family: var(--font-body); font-size: 12.5px; font-weight: 600; fill: #3a2e22; }
-  .huis-kamer-bew { font-family: var(--font-body); font-size: 10.5px; fill: var(--burgundy, #9c3b2e); }
-  .huis-kamer-leeg { font-family: var(--font-body); font-size: 10px; fill: #b3a892; font-style: italic; }
+  .huis-kamer-naam { font-family: var(--font-body); font-size: 29px; font-weight: 600; fill: #16384e; }
+  .huis-kamer-bew { font-family: var(--font-body); font-size: 20px; fill: var(--burgundy, #9c3b2e); }
+  .huis-kamer-leeg { font-family: var(--font-body); font-size: 18px; fill: #b3a892; font-style: italic; }
   .huis-detail { flex: 1 1 40%; min-width: 240px; background: var(--paper-warm); border: 1px solid var(--line); border-radius: 8px; padding: 1.1rem 1.2rem; position: sticky; top: 90px; }
   .huis-detail-verdieping { font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--gray); }
   .huis-detail-head h3 { margin: 0.2rem 0 1rem; font-family: var(--font-display); color: var(--ink); }
@@ -5863,41 +5863,50 @@ function stopNestorAutoRefresh() {
 // Elk vakje met een id is een kamer; admin kan naam + bewoners beheren.
 // Coördinaten in een viewBox van 1400×760 (x→rechts = gracht, y→onder = lager).
 const HUIS_KAMERS = [
-  // — Achterhuis · links (2×2 grid) — 000 en 006 naast elkaar; 004 en 007 naast elkaar —
-  {id:'k000', naam:'000', verdieping:'Achterhuis', x:46,  y:250, w:114, h:80, dak:'stip', kelder:true},
-  {id:'k006', naam:'006', verdieping:'Achterhuis', x:160, y:250, w:114, h:80,              kelder:true},
-  {id:'k004', naam:'004', verdieping:'Achterhuis', x:46,  y:330, w:114, h:80,              kelder:true},
-  {id:'k007', naam:'007', verdieping:'Achterhuis', x:160, y:330, w:114, h:80,              kelder:true},
-  {id:'tvkamer', naam:'TV-kamer 01', verdieping:'Achterhuis', x:46, y:410, w:228, h:70,   kelder:true},
-  // — Achterhuis · rechts (was Tussenhuis) — 003 in kap; 002 + slaapgang; keuken —
-  {id:'k003',    naam:'003',      verdieping:'Achterhuis', x:314, y:280, w:240, h:70, dak:'punt'},
-  {id:'k002',    naam:'002',      verdieping:'Achterhuis', x:314, y:350, w:162, h:80},
-  {id:'slaapgang',naam:'Slaapgang',verdieping:'Achterhuis', x:476, y:350, w:78,  h:80},
-  {id:'keuken',  naam:'Keuken 1', verdieping:'Achterhuis', x:314, y:430, w:240, h:120, kelder:true},
-  // — Hoofdhuis · zolder — 07 en 04 in de kap; 09 en 05 eronder; 06 = trap ertussen (decor) —
-  {id:'k07', naam:'07', verdieping:'Hoofdhuis · zolder', x:772, y:118, w:254, h:58, dak:'punt'},
-  {id:'k04', naam:'04', verdieping:'Hoofdhuis · zolder', x:1082,y:118, w:258, h:58, dak:'punt'},
-  {id:'k09', naam:'09', verdieping:'Hoofdhuis · zolder', x:772, y:176, w:254, h:54},
-  {id:'k05', naam:'05', verdieping:'Hoofdhuis · zolder', x:1082,y:176, w:258, h:54},
-  // — Hoofdhuis · verdiepingen — elk paar naast elkaar —
-  {id:'k7',  naam:'7',  verdieping:'Hoofdhuis', x:772, y:230, w:254, h:80},
-  {id:'k8',  naam:'8',  verdieping:'Hoofdhuis', x:1082,y:230, w:258, h:80},
-  {id:'k3',  naam:'3',  verdieping:'Hoofdhuis', x:772, y:310, w:254, h:80},
-  {id:'k4',  naam:'4',  verdieping:'Hoofdhuis', x:1082,y:310, w:258, h:80},
-  {id:'k02', naam:'02', verdieping:'Hoofdhuis', x:772, y:390, w:254, h:80},
-  {id:'k03', naam:'03', verdieping:'Hoofdhuis', x:1082,y:390, w:258, h:80},
-  {id:'voorkamer', naam:'Voorkamer', verdieping:'Hoofdhuis', x:772, y:470, w:568, h:80},
+  // — Achterhuis (links) — twee zolderkamers, daaronder HO-Kamer, Achterhuisportier, Bar —
+  {id:'duivenchill',     naam:'Duivenchill',          verdieping:'Achterhuis', x:60,  y:300, w:160, h:168},
+  {id:'duivennietzo',    naam:'Duiven niet zo chill', verdieping:'Achterhuis', x:220, y:300, w:160, h:168},
+  {id:'hokamer',         naam:'HO-Kamer',             verdieping:'Achterhuis', x:60,  y:468, w:320, h:150},
+  {id:'achterhuisportier',naam:'Achterhuisportier',   verdieping:'Achterhuis', x:60,  y:618, w:320, h:145},
+  {id:'bar',             naam:'Bar',                  verdieping:'Achterhuis', x:60,  y:763, w:320, h:132},
+  // — Chalet (midden) — Aquarium + Slaapgang, daaronder Keuken —
+  {id:'aquarium',  naam:'Aquarium',  verdieping:'Chalet', x:450, y:505, w:258, h:190},
+  {id:'slaapgang', naam:'Slaapgang', verdieping:'Chalet', x:710, y:505, w:90,  h:190, vertical:true},
+  {id:'keuken',    naam:'Keuken',    verdieping:'Chalet', x:450, y:695, w:350, h:200},
+  // — Hoofdhuis (rechts) — zolder: 07 · Atelier · 04 —
+  {id:'k07',     naam:'07',      verdieping:'Hoofdhuis', x:980,  y:150, w:270, h:180},
+  {id:'atelier', naam:'Atelier', verdieping:'Hoofdhuis', x:1250, y:150, w:250, h:180},
+  {id:'k04',     naam:'04',      verdieping:'Hoofdhuis', x:1500, y:150, w:270, h:180},
+  // — verdieping: Kwast · Oeteldonk | Kinder · Ridder —
+  {id:'kwast',     naam:'Kwast',     verdieping:'Hoofdhuis', x:980,  y:330, w:180, h:190},
+  {id:'oeteldonk', naam:'Oeteldonk', verdieping:'Hoofdhuis', x:1160, y:330, w:180, h:190},
+  {id:'kinder',    naam:'Kinder',    verdieping:'Hoofdhuis', x:1410, y:330, w:180, h:190},
+  {id:'ridder',    naam:'Ridder',    verdieping:'Hoofdhuis', x:1590, y:330, w:180, h:190},
+  // — verdieping: Porno · Voorhuischportier | Voorkamer —
+  {id:'porno',            naam:'Porno',            verdieping:'Hoofdhuis', x:980,  y:520, w:180, h:180},
+  {id:'voorhuischportier',naam:'Voorhuischportier',verdieping:'Hoofdhuis', x:1160, y:520, w:180, h:180},
+  {id:'voorkamer',        naam:'Voorkamer',        verdieping:'Hoofdhuis', x:1410, y:520, w:360, h:180},
+  // — beganegrond: Nestor kamer | Nestor —
+  {id:'nestorkamer', naam:'Nestor kamer', verdieping:'Hoofdhuis', x:980,  y:700, w:360, h:195},
+  {id:'nestor',      naam:'Nestor',       verdieping:'Hoofdhuis', x:1410, y:700, w:360, h:195},
 ];
 const HUIS_DECOR = {
-  trappen:[
-    {x:1026, y:118, w:52, h:352, label:true},   // hoofdtrap (zolder t/m verdiepingen)
+  gevels:[
+    {pts:'60,300 220,150 380,300'},                                  // achterhuis (geen label)
+    {pts:'450,505 625,360 800,505', label:'Chalet', lx:625, ly:475}, // chalet
+    {pts:'980,150 1160,20 1340,150', label:'09', lx:1160, ly:120},   // hoofdhuis links
+    {pts:'1410,150 1590,20 1770,150', label:'05', lx:1590, ly:120},  // hoofdhuis rechts
   ],
-  gang:{x:274, y:430, w:40, h:70},              // gang tussen achterhuis en keuken
-  verbindingen:[ '554,480 772,480' ],           // achterhuis rechts ↔ hoofdhuis
-  grond:{x:46, y:558, w:1294, h:20},
+  // blauwe verbindingsstukken onderaan tussen de huizen
+  connectors:[
+    {x:380, y:835, w:70,  h:60},
+    {x:800, y:800, w:180, h:95},
+  ],
+  grond:{x:40, y:895, w:1740, h:22},
   labels:[
-    {x:310, y:592, t:'Achterhuis'},
-    {x:1056,y:592, t:'Hoofdhuis'},
+    {x:220,  y:940, t:'Achterhuis'},
+    {x:625,  y:940, t:'Chalet'},
+    {x:1375, y:940, t:'Hoofdhuis'},
   ],
 };
 let huisKamers = {};
@@ -5924,68 +5933,68 @@ async function loadHuis(){
   renderHuisDetail(huisGeselecteerd);
 }
 
+// Breek een naam over meerdere regels zodat hij in de breedte past.
+function huisWrap(naam, w, fontPx){
+  const maxChars = Math.max(4, Math.floor((w-12) / (fontPx*0.56)));
+  if (naam.length <= maxChars) return [naam];
+  const woorden = naam.split(' '); const regels=[]; let r='';
+  woorden.forEach(wo=>{
+    if (!r) r=wo;
+    else if ((r+' '+wo).length<=maxChars) r+=' '+wo;
+    else { regels.push(r); r=wo; }
+  });
+  if (r) regels.push(r);
+  return regels.slice(0,3);
+}
 function renderHuis(){
   const wrap = document.getElementById('huis-svg-wrap');
   if (!wrap) return;
-  const VB_W=1380, VB_H=620, esc=escapeHtml;
-  let s = `<svg viewBox="0 0 ${VB_W} ${VB_H}" class="huis-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Doorsnede van Oude Delft 35 met alle kamers">`;
-  s += `<defs><pattern id="traphatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#a08a6a" stroke-width="2"/></pattern><pattern id="stipdak" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="2.5" cy="2.5" r="1.2" fill="#9c8463"/></pattern></defs>`;
-  s += `<ellipse cx="690" cy="574" rx="650" ry="12" fill="rgba(0,0,0,0.10)"/>`;
+  const VB_W=1810, VB_H=960, esc=escapeHtml;
+  let s = `<svg viewBox="0 0 ${VB_W} ${VB_H}" class="huis-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Plattegrond van Oude Delft 35 met alle kamers">`;
+  s += `<ellipse cx="905" cy="908" rx="870" ry="14" fill="rgba(0,0,0,0.10)"/>`;
   // grond / straatlijn
   const g=HUIS_DECOR.grond;
-  s += `<rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" fill="#b7a98f"/>`;
-  // verbindingsmuren tussen de volumes
-  HUIS_DECOR.verbindingen.forEach(p=>{ s += `<polyline points="${p}" fill="none" stroke="#9b8a72" stroke-width="2"/>`; });
-  // gang tussen het achterhuis (007) en de keuken
-  const ga=HUIS_DECOR.gang;
-  s += `<rect x="${ga.x}" y="${ga.y}" width="${ga.w}" height="${ga.h}" rx="3" fill="#efe7d6" stroke="#bca382" stroke-width="1.2"/><text x="${ga.x+ga.w/2}" y="${ga.y+ga.h/2+4}" text-anchor="middle" class="huis-kamer-leeg">gang</text>`;
-  // trappen
-  HUIS_DECOR.trappen.forEach(t=>{
-    s += `<rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" fill="url(#traphatch)" stroke="#a08a6a" stroke-width="1"/>`;
-    const tcx=t.x+t.w/2, tcy=t.y+t.h/2;
-    s += `<text x="${tcx}" y="${tcy}" text-anchor="middle" class="huis-kamer-leeg"${t.label?` transform="rotate(90 ${tcx} ${tcy})"`:''}>trap</text>`;
+  s += `<rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="4" fill="#b7a98f"/>`;
+  // blauwe verbindingsstukken tussen de huizen
+  (HUIS_DECOR.connectors||[]).forEach(c=>{ s += `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" fill="#1f5f7a"/>`; });
+  // gevels (daken) met optioneel een label (09, 05, Chalet)
+  (HUIS_DECOR.gevels||[]).forEach(gv=>{
+    s += `<polygon points="${gv.pts}" fill="none" stroke="#0f3046" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/>`;
+    if (gv.label) s += `<text x="${gv.lx}" y="${gv.ly}" text-anchor="middle" class="huis-kamer-naam" style="font-size:34px">${esc(gv.label)}</text>`;
   });
-  // blok-namen
+  // blok-namen onder de grond
   HUIS_DECOR.labels.forEach(l=>{ s += `<text x="${l.x}" y="${l.y}" text-anchor="middle" class="huis-floor-label">${esc(l.t)}</text>`; });
   // kamers
   HUIS_KAMERS.forEach(k=>{
     const sel=(huisGeselecteerd===k.id), bews=huisBewonersGevuld(k.id), naam=huisKamerNaam(k.id,k.naam);
-    const fill = k.kelder ? (bews.length?'#e7d2a8':'#dccdb0') : (bews.length ? '#f0e1c5' : '#f7f0e2');
-    const cx=k.x+k.w/2, strk=`style="stroke:${sel?'var(--burgundy,#9c3b2e)':'#bca382'}" stroke-width="${sel?3:1.3}"`;
-    const nameTL = (naam.length*7.5 > k.w-8) ? ` textLength="${(k.w-8).toFixed(0)}" lengthAdjust="spacingAndGlyphs"` : '';
+    const fill = bews.length ? '#f0e1c5' : '#f7f0e2';
+    const cx=k.x+k.w/2, strk=`style="stroke:${sel?'var(--burgundy,#9c3b2e)':'#0f3046'}" stroke-width="${sel?5:4}"`;
     s += `<g class="huis-kamer${sel?' sel':''}" data-kamer="${esc(k.id)}" tabindex="0" role="button" aria-label="${esc(naam)}">`;
-    if (k.dak){
-      // kamer mét kap: huisvorm (vijfhoek) + dak op de punt, kamer zit in het dak
-      const shY=k.y+8, peakY=k.y-44, botY=k.y+k.h;
-      const roofFill = k.dak==='stip' ? 'url(#stipdak)' : '#bb7c50';
-      s += `<polygon points="${k.x},${botY} ${k.x},${shY} ${cx},${peakY} ${k.x+k.w},${shY} ${k.x+k.w},${botY}" fill="${fill}" ${strk} stroke-linejoin="round"/>`;
-      s += `<polygon points="${k.x-5},${shY+3} ${cx},${peakY-5} ${k.x+k.w+5},${shY+3}" fill="${roofFill}" stroke="#7a4a2c" stroke-width="2" stroke-linejoin="round"/>`;
-      s += `<text x="${cx}" y="${(shY+botY)/2+2}" text-anchor="middle" class="huis-kamer-naam"${nameTL}>${esc(naam)}</text>`;
-      if (bews.length){
-        const disp=(bews[0].naam||'')+(bews.length>1?` +${bews.length-1}`:'');
-        s += `<circle cx="${k.x+12}" cy="${botY-12}" r="3.4" style="fill:var(--burgundy-deep,#9c3b2e)"/>`;
-        s += `<text x="${cx}" y="${botY-8}" text-anchor="middle" class="huis-kamer-bew">${esc(disp)}</text>`;
-      } else {
-        s += `<text x="${cx}" y="${botY-8}" text-anchor="middle" class="huis-kamer-leeg">leeg</text>`;
-      }
+    s += `<rect x="${k.x}" y="${k.y}" width="${k.w}" height="${k.h}" rx="3" fill="${fill}" ${strk}/>`;
+    const heeftBew = bews.length>0;
+    if (k.vertical){
+      // verticale tekst (Slaapgang)
+      s += `<text x="${cx}" y="${k.y+k.h/2}" text-anchor="middle" class="huis-kamer-naam" style="font-size:26px" transform="rotate(-90 ${cx} ${k.y+k.h/2})">${esc(naam)}</text>`;
+      if (heeftBew){ const disp=(bews[0].naam||'')+(bews.length>1?` +${bews.length-1}`:''); s += `<text x="${k.x+k.w-10}" y="${k.y+k.h-10}" text-anchor="middle" class="huis-kamer-bew" transform="rotate(-90 ${k.x+k.w-10} ${k.y+k.h-10})">${esc(disp)}</text>`; }
       s += `</g>`; return;
     }
-    const small = k.h < 56;
-    const nameY = small ? k.y+k.h/2+4 : (k.h>120 ? k.y+30 : k.y+24);
-    s += `<rect x="${k.x}" y="${k.y}" width="${k.w}" height="${k.h}" rx="4" fill="${fill}" ${strk}/>`;
-    s += `<text x="${cx}" y="${nameY}" text-anchor="middle" class="huis-kamer-naam"${nameTL}>${esc(naam)}</text>`;
-    if (!small){
-      if (bews.length){
-        const extra=bews.length>1?` +${bews.length-1}`:'';
-        const disp=(bews[0].naam||'')+extra;
-        const bewTL=(disp.length*5.6 > k.w-14)?` textLength="${(k.w-14).toFixed(0)}" lengthAdjust="spacingAndGlyphs"`:'';
-        s += `<circle cx="${k.x+12}" cy="${k.y+k.h-13}" r="3.6" style="fill:var(--burgundy-deep,#9c3b2e)"/>`;
-        s += `<text x="${cx}" y="${k.y+k.h-9}" text-anchor="middle" class="huis-kamer-bew"${bewTL}>${esc(disp)}</text>`;
-      } else {
-        s += `<text x="${cx}" y="${k.y+k.h-9}" text-anchor="middle" class="huis-kamer-leeg">leeg</text>`;
-      }
-    } else if (bews.length){
-      s += `<circle cx="${k.x+k.w-9}" cy="${k.y+9}" r="3" style="fill:var(--burgundy-deep,#9c3b2e)"/>`;
+    // naam (eventueel over meerdere regels)
+    const fontPx = 30;
+    const regels = huisWrap(naam, k.w, fontPx);
+    const blokH = regels.length*30;
+    const startY = k.y + k.h/2 - blokH/2 + 24 - (heeftBew?9:0);
+    regels.forEach((r,i)=>{
+      const tl = (r.length*fontPx*0.56 > k.w-14) ? ` textLength="${(k.w-16).toFixed(0)}" lengthAdjust="spacingAndGlyphs"` : '';
+      s += `<text x="${cx}" y="${(startY+i*30).toFixed(0)}" text-anchor="middle" class="huis-kamer-naam"${tl}>${esc(r)}</text>`;
+    });
+    // bewoner of "leeg"
+    if (heeftBew){
+      const disp=(bews[0].naam||'')+(bews.length>1?` +${bews.length-1}`:'');
+      const bewTL=(disp.length*8 > k.w-16)?` textLength="${(k.w-16).toFixed(0)}" lengthAdjust="spacingAndGlyphs"`:'';
+      s += `<circle cx="${k.x+16}" cy="${k.y+k.h-15}" r="4.5" style="fill:var(--burgundy-deep,#9c3b2e)"/>`;
+      s += `<text x="${cx}" y="${k.y+k.h-11}" text-anchor="middle" class="huis-kamer-bew"${bewTL}>${esc(disp)}</text>`;
+    } else {
+      s += `<text x="${cx}" y="${k.y+k.h-12}" text-anchor="middle" class="huis-kamer-leeg">leeg</text>`;
     }
     s += `</g>`;
   });
