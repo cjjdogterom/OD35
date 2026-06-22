@@ -3910,7 +3910,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   .zomer-jaar { font-size:.9rem; color:var(--ink); margin:.2rem 0 .6rem; }
   .zomer-selhint { font-size:.85rem; color:var(--burgundy,#9c3b2e); margin:.2rem 0 .6rem; }
   .zomer-wrap { overflow:auto; border:1px solid var(--line,#e3dccd); border-radius:10px; max-height:70vh; background:var(--paper,#fffdf7); }
-  .zomer-grid { --cw:46px; --nw:160px; --rh:52px; width:max-content; min-width:100%; font-size:.8rem; }
+  .zomer-grid { --cw:22px; --nw:160px; --rh:54px; width:max-content; min-width:100%; font-size:.8rem; }
   .zomer-row { display:flex; align-items:stretch; height:var(--rh); }
   .zomer-row.zomer-headrow { height:auto; }
   .zomer-name { flex:0 0 var(--nw); width:var(--nw); height:var(--rh); position:sticky; left:0; z-index:2; background:var(--paper,#fffdf7);
@@ -3923,15 +3923,18 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   .zomer-colh { flex:0 0 var(--cw); width:var(--cw); box-sizing:border-box; border-right:1px solid var(--line,#eee5d4); border-bottom:1px solid var(--line,#eee5d4); }
   .zomer-cell { flex:0 0 var(--cw); width:var(--cw); height:var(--rh); box-sizing:border-box; border-right:1px solid var(--line,#eee5d4); border-bottom:1px solid var(--line,#eee5d4); }
   .zomer-headrow .zomer-colh { height:44px; }
-  .zomer-colh.wkstart, .zomer-cell.wkstart { border-left:2px solid var(--line,#d8c8aa); }
+  .zomer-colh.wkstart, .zomer-cell.wkstart { border-left:2px solid #cbb89a; }
+  .zomer-colh.mndstart, .zomer-cell.mndstart { border-left:2px solid #8a7a60; }
   .zomer-headrow .zomer-name, .zomer-colh { background:var(--paper,#fffdf7); position:sticky; top:0; z-index:1; }
   .zomer-headrow { position:sticky; top:0; z-index:3; }
-  .zomer-colh { display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; text-align:center; }
-  .zomer-colh .zomer-wk { font-weight:700; color:var(--burgundy,#9c3b2e); font-size:.62rem; }
-  .zomer-colh .zomer-cd { color:var(--gray,#7a6f63); font-size:.6rem; }
-  .zomer-row.eigen .zomer-cell[data-own] { cursor:pointer; }
-  .zomer-row.eigen .zomer-cell[data-own]:hover { background:#fdf3e9; }
-  .zomer-cell.sel { background:rgba(156,59,46,.25); box-shadow:inset 0 0 0 2px var(--burgundy,#9c3b2e); }
+  .zomer-colh { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:1px; line-height:1; text-align:center; padding-bottom:2px; }
+  .zomer-colh .zomer-cd { color:var(--burgundy,#9c3b2e); font-size:.5rem; font-weight:700; text-transform:uppercase; min-height:.62rem; }
+  .zomer-colh .zomer-dg { color:var(--gray,#6b5d4a); font-size:.6rem; font-variant-numeric:tabular-nums; }
+  .zomer-add { flex:0 0 auto; width:20px; height:20px; border-radius:50%; border:none; background:var(--burgundy,#9c3b2e); color:#fff; font-size:.95rem; line-height:1; cursor:pointer; padding:0; display:flex; align-items:center; justify-content:center; }
+  .zomer-add:hover { filter:brightness(1.12); }
+  .zomer-datumvelden { display:flex; gap:1rem; flex-wrap:wrap; margin:.4rem 0 .2rem; }
+  .zomer-datumvelden label { display:flex; flex-direction:column; gap:.2rem; font-size:.82rem; color:var(--gray,#5b5247); }
+  .zomer-datumvelden input[type=date] { border:1px solid var(--line,#cbb89a); border-radius:6px; padding:.4rem .5rem; font-size:.95rem; }
   .zomer-entry { position:absolute; top:2px; height:calc(var(--rh) - 5px); pointer-events:none; background:#fff; border:2px solid #6b5d4a; border-radius:4px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.12); }
   .zomer-entry.eigen { border-color:var(--burgundy,#9c3b2e); }
   .zomer-entry img { width:100%; height:100%; object-fit:fill; display:block; }
@@ -3958,7 +3961,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
 <div class="tab-panel" id="panel-zomerplanning">
   <div class="zomer-head">
     <h2>Zomerplanning</h2>
-    <p class="zomer-sub">Waar is iedereen deze zomer? Klik in <b>jouw rij</b> op een begin- en een eind-vak (halve weken van 1 juli t/m 1 september) en teken waar je bent. Je bewerkt alleen je eigen rij.</p>
+    <p class="zomer-sub">Waar is iedereen deze zomer? Klik op het <b>+</b> naast je naam, kies je begin- en einddatum (1 juli t/m 1 september) en teken waar je bent. Je bewerkt alleen je eigen rij.</p>
   </div>
   <div id="zomer-app"><p class="zomer-loading">Laden…</p></div>
 </div><!-- /panel-zomerplanning -->
@@ -7088,20 +7091,17 @@ function openHuisKamerModal(id){
   function esc(s){ return (typeof escapeHtml==='function')?escapeHtml(s):String(s); }
   function volNaam(p){ var vn=p['Voornaam']||p['Roepnaam']||p['Voorletters']||''; var tv=p['Tussenvoegsel']?p['Tussenvoegsel']+' ':''; return (vn+' '+tv+(p['Achternaam']||'')).trim(); }
 
-  // Kolommen: per week twee helften, van 1 juli t/m 1 september.
-  function maakKolommen(jaar){
-    var cols=[], d=new Date(jaar,6,1), eind=new Date(jaar,8,1), idx=0, wk=1;
-    while(d<=eind){
-      var h2=new Date(d); h2.setDate(h2.getDate()+3);
-      var wEnd=new Date(d); wEnd.setDate(wEnd.getDate()+6);
-      var h1tot=new Date(h2); h1tot.setDate(h1tot.getDate()-1);
-      cols.push({idx:idx++, wk:wk, helft:1, van:new Date(d), tot:h1tot});
-      cols.push({idx:idx++, wk:wk, helft:2, van:new Date(h2), tot:wEnd});
-      d=new Date(d); d.setDate(d.getDate()+7); wk++;
-    }
-    return cols;
+  // Kolommen: één per dag, van 1 juli t/m 1 september.
+  function maakDagen(jaar){
+    var dagen=[], d=new Date(jaar,6,1), eind=new Date(jaar,8,1), idx=0;
+    while(d<=eind){ dagen.push({idx:idx++, datum:new Date(d), wkstart:(d.getDay()===1)}); d=new Date(d); d.setDate(d.getDate()+1); }
+    return dagen;
   }
   function dlabel(dt){ return dt.getDate()+' '+MND[dt.getMonth()]; }
+  function pad2(n){ return String(n).length<2?('0'+n):String(n); }
+  function idxNaarIso(idx){ var dt=Z.cols[idx].datum; return dt.getFullYear()+'-'+pad2(dt.getMonth()+1)+'-'+pad2(dt.getDate()); }
+  function datumNaarIdx(iso){ if(!iso) return -1; var p=iso.split('-'); var dt=new Date(+p[0],+p[1]-1,+p[2]); var j=new Date(Z.jaar,6,1);
+    return Math.max(0, Math.min(Z.cols.length-1, Math.round((dt-j)/86400000))); }
 
   // Rijen: personen 2021–2026, gesorteerd op jaar (nieuwste eerst) dan naam.
   function rijen(){
@@ -7129,30 +7129,27 @@ function openHuisKamerModal(id){
   function render(){
     var app=document.getElementById('zomer-app'); if(!app) return;
     if(Z.error){ app.innerHTML='<p class="zomer-loading">'+esc(Z.error)+'</p>'; return; }
-    Z.cols = maakKolommen(Z.jaar);
+    Z.cols = maakDagen(Z.jaar);
     var rs = rijen();
     var heeftEigen = rs.some(function(r){return r.own;});
     var h='';
-    h+='<p class="zomer-jaar">Zomer '+Z.jaar+' · '+(heeftEigen?'klik in <b>jouw rij</b> op een begin- en een eind-vak om te tekenen.':'<i>Je naam (2021–2026) staat niet in de lijst, dus je kunt niet bewerken — wel meekijken.</i>')+'</p>';
-    if(Z.sel){ h+='<p class="zomer-selhint">Beginvak gekozen ('+dlabel(Z.cols[Z.sel.start].van)+'). Klik nu het eindvak in je rij. <button class="zomer-btn ghost" id="zomer-annuleer">annuleren</button></p>'; }
-    // header
+    h+='<p class="zomer-jaar">Zomer '+Z.jaar+' · '+(heeftEigen?'klik op het <b>+</b> naast je naam om een periode toe te voegen.':'<i>Je naam (2021–2026) staat niet in de lijst, dus je kunt niet bewerken — wel meekijken.</i>')+'</p>';
     h+='<div class="zomer-wrap"><div class="zomer-grid">';
+    // header (per dag; maand + dagnummer bij week-/maandstart)
     h+='<div class="zomer-row zomer-headrow"><div class="zomer-name zomer-corner">Naam</div><div class="zomer-cells">';
-    Z.cols.forEach(function(c){ h+='<div class="zomer-colh'+(c.helft===1?' wkstart':'')+'"><span class="zomer-wk">'+(c.helft===1?('wk '+c.wk):'')+'</span><span class="zomer-cd">'+dlabel(c.van)+'</span></div>'; });
+    Z.cols.forEach(function(c){ var md=(c.datum.getDate()===1); var toon=(c.wkstart||md);
+      h+='<div class="zomer-colh'+(c.wkstart?' wkstart':'')+(md?' mndstart':'')+'" title="'+dlabel(c.datum)+'">'+
+         '<span class="zomer-cd">'+(toon?MND[c.datum.getMonth()]:'')+'</span><span class="zomer-dg">'+c.datum.getDate()+'</span></div>'; });
     h+='</div></div>';
     // rijen
     rs.forEach(function(r){
-      h+='<div class="zomer-row'+(r.own?' eigen':'')+'"><div class="zomer-name"><span class="zomer-nm">'+esc(r.naam)+'</span><small>\''+String(r.jaar).slice(-2)+'</small>'+(r.own?'<span class="zomer-jij">jij</span>':'')+'</div>';
-      h+='<div class="zomer-cells" data-rk="'+esc(r.rk)+'">';
-      Z.cols.forEach(function(c){
-        var selCls = (Z.sel && Z.sel.rk===r.rk && Z.sel.start===c.idx)?' sel':'';
-        h+='<div class="zomer-cell'+(c.helft===1?' wkstart':'')+selCls+'" data-rk="'+esc(r.rk)+'" data-idx="'+c.idx+'" '+(r.own?'data-own="1"':'')+' title="'+dlabel(c.van)+' – '+dlabel(c.tot)+'"></div>';
-      });
-      // entries als doodle-overlays
+      h+='<div class="zomer-row'+(r.own?' eigen':'')+'"><div class="zomer-name"><span class="zomer-nm">'+esc(r.naam)+'</span><small>\''+String(r.jaar).slice(-2)+'</small>'+
+        (r.own?'<button class="zomer-add" data-rk="'+esc(r.rk)+'" title="Periode toevoegen">+</button>':'')+'</div>';
+      h+='<div class="zomer-cells">';
+      Z.cols.forEach(function(c){ h+='<div class="zomer-cell'+(c.wkstart?' wkstart':'')+(c.datum.getDate()===1?' mndstart':'')+'"></div>'; });
       entriesVoor(r).forEach(function(e){
         var s=Math.max(0,e.start_idx), t=Math.min(Z.cols.length-1,e.eind_idx);
-        var left=s, span=(t-s+1);
-        h+='<div class="zomer-entry'+(r.own?' eigen':'')+'" style="left:calc(var(--cw)*'+left+');width:calc(var(--cw)*'+span+')" data-id="'+esc(e.id)+'" data-own="'+(r.own?'1':'0')+'" title="'+dlabel(Z.cols[s].van)+' – '+dlabel(Z.cols[t].tot)+'">'+
+        h+='<div class="zomer-entry'+(r.own?' eigen':'')+'" style="left:calc(var(--cw)*'+s+');width:calc(var(--cw)*'+(t-s+1)+')" data-id="'+esc(e.id)+'" data-own="'+(r.own?'1':'0')+'" title="'+dlabel(Z.cols[s].datum)+' – '+dlabel(Z.cols[t].datum)+'">'+
           '<img src="'+esc(e.tekening||'')+'" alt="">'+(r.own?'<button class="zomer-del" data-id="'+esc(e.id)+'" title="Verwijderen">✕</button>':'')+'</div>';
       });
       h+='</div></div>';
@@ -7163,24 +7160,37 @@ function openHuisKamerModal(id){
 
   // ---- Interactie ----
   function onClick(e){
-    if(e.target.id==='zomer-annuleer'){ Z.sel=null; render(); return; }
-    var del=e.target.closest('.zomer-del');
-    if(del){ verwijder(del.dataset.id); return; }
+    var add=e.target.closest('.zomer-add'); if(add){ openDatumModal(add.dataset.rk); return; }
+    var del=e.target.closest('.zomer-del'); if(del){ verwijder(del.dataset.id); return; }
     var entry=e.target.closest('.zomer-entry');
     if(entry && entry.dataset.own==='1'){ if(confirm('Deze tekening verwijderen?')) verwijder(entry.dataset.id); return; }
-    var cell=e.target.closest('.zomer-cell');
-    if(!cell || cell.dataset.own!=='1') return; // alleen eigen rij
-    var rk=cell.dataset.rk, idx=parseInt(cell.dataset.idx);
-    if(!Z.sel || Z.sel.rk!==rk){ Z.sel={rk:rk, start:idx}; render(); return; }
-    // tweede klik -> periode
-    var a=Math.min(Z.sel.start,idx), b=Math.max(Z.sel.start,idx);
-    Z.sel=null;
-    openTeken(rk, a, b);
+  }
+  // Periode-modal: begin- en einddatum kiezen, daarna tekenen.
+  function openDatumModal(rk){
+    var minIso=idxNaarIso(0), maxIso=idxNaarIso(Z.cols.length-1);
+    var ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='zomer-datum';
+    ov.innerHTML='<div class="modal-box zomer-datumbox"><button class="modal-close" id="zd-close">✕</button>'+
+      '<h3 style="margin-top:0">Periode toevoegen</h3>'+
+      '<p class="zomer-tiphint">Kies je begin- en einddatum (zomer '+Z.jaar+').</p>'+
+      '<div class="zomer-datumvelden"><label>Begin <input type="date" id="zd-begin" min="'+minIso+'" max="'+maxIso+'" value="'+minIso+'"></label>'+
+      '<label>Einde <input type="date" id="zd-eind" min="'+minIso+'" max="'+maxIso+'" value="'+minIso+'"></label></div>'+
+      '<div class="hk-actions"><button class="zomer-btn" id="zd-ok">Volgende: tekenen</button><button class="zomer-btn ghost" id="zd-annuleer">Annuleren</button><span id="zd-status" class="zomer-status"></span></div></div>';
+    document.body.appendChild(ov);
+    var close=function(){ ov.remove(); };
+    ov.querySelector('#zd-close').onclick=close; ov.querySelector('#zd-annuleer').onclick=close;
+    ov.addEventListener('click',function(ev){ if(ev.target===ov) close(); });
+    ov.querySelector('#zd-ok').onclick=function(){
+      var bi=ov.querySelector('#zd-begin').value, ei=ov.querySelector('#zd-eind').value;
+      var st=ov.querySelector('#zd-status');
+      if(!bi||!ei){ st.style.color='#c0392b'; st.textContent='Vul beide datums in.'; return; }
+      var a=datumNaarIdx(bi), b=datumNaarIdx(ei); if(b<a){ var tmp=a; a=b; b=tmp; }
+      close(); openTeken(rk, a, b);
+    };
   }
 
   // ---- Tekenmodal (objectmodel: ondersteunt verslepen + ongedaan maken) ----
   function openTeken(rk, a, b){
-    var van=dlabel(Z.cols[a].van), tot=dlabel(Z.cols[b].tot);
+    var van=dlabel(Z.cols[a].datum), tot=dlabel(Z.cols[b].datum);
     var ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='zomer-modal';
     ov.innerHTML='<div class="modal-box zomer-tekenbox"><button class="modal-close" id="zt-close">✕</button>'+
       '<h3 style="margin-top:0">Teken waar je bent</h3>'+
