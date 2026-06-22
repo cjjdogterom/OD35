@@ -3910,15 +3910,19 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   .zomer-jaar { font-size:.9rem; color:var(--ink); margin:.2rem 0 .6rem; }
   .zomer-selhint { font-size:.85rem; color:var(--burgundy,#9c3b2e); margin:.2rem 0 .6rem; }
   .zomer-wrap { overflow:auto; border:1px solid var(--line,#e3dccd); border-radius:10px; max-height:70vh; background:var(--paper,#fffdf7); }
-  .zomer-grid { --cw:46px; --nw:150px; width:max-content; min-width:100%; font-size:.8rem; }
-  .zomer-row { display:flex; align-items:stretch; }
-  .zomer-name { flex:0 0 var(--nw); width:var(--nw); position:sticky; left:0; z-index:2; background:var(--paper,#fffdf7);
-    border-right:2px solid var(--line,#cbb89a); border-bottom:1px solid var(--line,#eee5d4); padding:.35rem .5rem; display:flex; align-items:center; gap:.3rem; box-sizing:border-box; }
-  .zomer-name small { color:var(--gray,#9b8f80); font-variant-numeric:tabular-nums; }
-  .zomer-jij { margin-left:auto; background:var(--burgundy,#9c3b2e); color:#fff; font-size:.6rem; padding:.05rem .35rem; border-radius:6px; text-transform:uppercase; }
+  .zomer-grid { --cw:46px; --nw:160px; --rh:52px; width:max-content; min-width:100%; font-size:.8rem; }
+  .zomer-row { display:flex; align-items:stretch; height:var(--rh); }
+  .zomer-row.zomer-headrow { height:auto; }
+  .zomer-name { flex:0 0 var(--nw); width:var(--nw); height:var(--rh); position:sticky; left:0; z-index:2; background:var(--paper,#fffdf7);
+    border-right:2px solid var(--line,#cbb89a); border-bottom:1px solid var(--line,#eee5d4); padding:.2rem .5rem; display:flex; align-items:center; gap:.3rem; box-sizing:border-box; overflow:hidden; }
+  .zomer-nm { flex:1 1 auto; min-width:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.12; }
+  .zomer-name small { flex:0 0 auto; color:var(--gray,#9b8f80); font-variant-numeric:tabular-nums; }
+  .zomer-jij { flex:0 0 auto; background:var(--burgundy,#9c3b2e); color:#fff; font-size:.6rem; padding:.05rem .35rem; border-radius:6px; text-transform:uppercase; }
   .zomer-row.eigen .zomer-name { background:#fbf1e8; }
-  .zomer-cells { position:relative; display:flex; }
-  .zomer-colh, .zomer-cell { flex:0 0 var(--cw); width:var(--cw); height:42px; box-sizing:border-box; border-right:1px solid var(--line,#eee5d4); border-bottom:1px solid var(--line,#eee5d4); }
+  .zomer-cells { position:relative; display:flex; height:var(--rh); }
+  .zomer-colh { flex:0 0 var(--cw); width:var(--cw); box-sizing:border-box; border-right:1px solid var(--line,#eee5d4); border-bottom:1px solid var(--line,#eee5d4); }
+  .zomer-cell { flex:0 0 var(--cw); width:var(--cw); height:var(--rh); box-sizing:border-box; border-right:1px solid var(--line,#eee5d4); border-bottom:1px solid var(--line,#eee5d4); }
+  .zomer-headrow .zomer-colh { height:44px; }
   .zomer-colh.wkstart, .zomer-cell.wkstart { border-left:2px solid var(--line,#d8c8aa); }
   .zomer-headrow .zomer-name, .zomer-colh { background:var(--paper,#fffdf7); position:sticky; top:0; z-index:1; }
   .zomer-headrow { position:sticky; top:0; z-index:3; }
@@ -3928,7 +3932,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   .zomer-row.eigen .zomer-cell[data-own] { cursor:pointer; }
   .zomer-row.eigen .zomer-cell[data-own]:hover { background:#fdf3e9; }
   .zomer-cell.sel { background:rgba(156,59,46,.25); box-shadow:inset 0 0 0 2px var(--burgundy,#9c3b2e); }
-  .zomer-entry { position:absolute; top:1px; height:40px; pointer-events:none; }
+  .zomer-entry { position:absolute; top:2px; height:calc(var(--rh) - 5px); pointer-events:none; }
   .zomer-entry img { width:100%; height:100%; object-fit:fill; display:block; }
   .zomer-entry.eigen { pointer-events:auto; cursor:pointer; }
   .zomer-del { position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%; border:none; background:#c0392b; color:#fff; font-size:.7rem; line-height:1; cursor:pointer; display:none; padding:0; }
@@ -3939,8 +3943,14 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   .zomer-tekenbox { max-width:720px; text-align:left; }
   .zomer-canvaswrap { border:1px dashed var(--line,#cbb89a); border-radius:8px; background:#fff; margin:.4rem 0; }
   .zomer-tekenbox canvas { width:100%; height:auto; display:block; touch-action:none; cursor:crosshair; border-radius:8px; }
-  .zomer-tools { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; font-size:.85rem; color:var(--gray,#5b5247); margin:.3rem 0 .2rem; }
-  .zomer-tools input[type=color] { vertical-align:middle; }
+  .zomer-toolbar { display:flex; align-items:center; gap:.6rem 1rem; flex-wrap:wrap; font-size:.85rem; color:var(--gray,#5b5247); margin:.3rem 0 .3rem; }
+  .zt-tools { display:flex; gap:.25rem; flex-wrap:wrap; }
+  .zt-tool { background:transparent; border:1px solid var(--line,#cbb89a); border-radius:7px; padding:.3rem .55rem; cursor:pointer; font-size:.82rem; color:var(--ink,#3a2e22); }
+  .zt-tool:hover { border-color:var(--burgundy,#9c3b2e); }
+  .zt-tool.actief { background:var(--burgundy,#9c3b2e); color:#fff; border-color:var(--burgundy,#9c3b2e); }
+  .zt-chk, .zt-lbl { display:inline-flex; align-items:center; gap:.3rem; }
+  .zomer-toolbar input[type=color] { width:34px; height:26px; padding:0; border:1px solid var(--line,#cbb89a); border-radius:5px; vertical-align:middle; }
+  .zomer-tiphint { font-size:.76rem; color:var(--gray,#9b8f80); font-style:italic; margin:.2rem 0 .4rem; }
 </style>
 
 <!-- ==================== TAB: ZOMERPLANNING (jaargang 2021–2026) ==================== -->
@@ -7099,7 +7109,7 @@ function openHuisKamerModal(id){
         var emails=[p['E-mail 1'],p['E-mail 2'],p['E-mail 3']].filter(Boolean).map(function(e){return String(e).trim().toLowerCase();});
         return { naam:volNaam(p)||(p['Achternaam']||'?'), jaar:parseInt(p['Aankomstjaar'])||0, emails:emails, rk:(emails[0]||('p'+(p._id||Math.random()))) , own: emails.indexOf(myEmail())>=0 };
       })
-      .sort(function(a,b){ return (b.jaar-a.jaar) || a.naam.localeCompare(b.naam); });
+      .sort(function(a,b){ return (a.jaar-b.jaar) || a.naam.localeCompare(b.naam); }); // oudste jaargang boven
   }
   function entriesVoor(r){ return Z.entries.filter(function(e){ return r.emails.indexOf((e.email||'').toLowerCase())>=0; }); }
 
@@ -7131,7 +7141,7 @@ function openHuisKamerModal(id){
     h+='</div></div>';
     // rijen
     rs.forEach(function(r){
-      h+='<div class="zomer-row'+(r.own?' eigen':'')+'"><div class="zomer-name">'+esc(r.naam)+' <small>\''+String(r.jaar).slice(-2)+'</small>'+(r.own?'<span class="zomer-jij">jij</span>':'')+'</div>';
+      h+='<div class="zomer-row'+(r.own?' eigen':'')+'"><div class="zomer-name"><span class="zomer-nm">'+esc(r.naam)+'</span><small>\''+String(r.jaar).slice(-2)+'</small>'+(r.own?'<span class="zomer-jij">jij</span>':'')+'</div>';
       h+='<div class="zomer-cells" data-rk="'+esc(r.rk)+'">';
       Z.cols.forEach(function(c){
         var selCls = (Z.sel && Z.sel.rk===r.rk && Z.sel.start===c.idx)?' sel':'';
@@ -7174,24 +7184,50 @@ function openHuisKamerModal(id){
     ov.innerHTML='<div class="modal-box zomer-tekenbox"><button class="modal-close" id="zt-close">✕</button>'+
       '<h3 style="margin-top:0">Teken waar je bent</h3>'+
       '<p class="zomer-selhint">Periode: <b>'+van+' – '+tot+'</b></p>'+
-      '<div class="zomer-canvaswrap"><canvas id="zt-canvas" width="640" height="180"></canvas></div>'+
-      '<div class="zomer-tools"><label>Kleur <input type="color" id="zt-kleur" value="#9c3b2e"></label>'+
-      '<label>Dikte <input type="range" id="zt-dikte" min="1" max="14" value="4"></label>'+
-      '<button class="zomer-btn ghost" id="zt-wis">Wissen</button></div>'+
+      '<div class="zomer-toolbar">'+
+        '<div class="zt-tools" id="zt-tools">'+
+          '<button class="zt-tool actief" data-tool="pen" title="Vrij tekenen">✎ Pen</button>'+
+          '<button class="zt-tool" data-tool="lijn" title="Lijn">／ Lijn</button>'+
+          '<button class="zt-tool" data-tool="rect" title="Rechthoek">▭ Vorm</button>'+
+          '<button class="zt-tool" data-tool="ovaal" title="Ovaal">◯ Ovaal</button>'+
+          '<button class="zt-tool" data-tool="tekst" title="Tekst plaatsen">T Tekst</button>'+
+        '</div>'+
+        '<label class="zt-chk"><input type="checkbox" id="zt-gevuld"> gevuld</label>'+
+        '<label class="zt-lbl">Kleur <input type="color" id="zt-kleur" value="#9c3b2e"></label>'+
+        '<label class="zt-lbl">Dikte <input type="range" id="zt-dikte" min="1" max="18" value="4"></label>'+
+        '<button class="zomer-btn ghost" id="zt-wis">Wissen</button>'+
+      '</div>'+
+      '<div class="zomer-canvaswrap"><canvas id="zt-canvas" width="680" height="200"></canvas></div>'+
+      '<p class="zomer-tiphint" id="zt-tip">Tip: kies een gereedschap, een kleur en dikte. Bij <b>Tekst</b> klik je en typ je je tekst.</p>'+
       '<div class="hk-actions"><button class="zomer-btn" id="zt-opslaan">Opslaan</button><button class="zomer-btn ghost" id="zt-annuleer">Annuleren</button><span id="zt-status" class="zomer-status"></span></div></div>';
     document.body.appendChild(ov);
     var canvas=ov.querySelector('#zt-canvas'), ctx=canvas.getContext('2d');
     ctx.lineCap='round'; ctx.lineJoin='round';
-    var teken=false, lastX=0, lastY=0;
+    var tool='pen', bezig=false, x0=0, y0=0, snap=null;
+    function kleur(){ return ov.querySelector('#zt-kleur').value; }
+    function dikte(){ return parseInt(ov.querySelector('#zt-dikte').value)||4; }
+    function gevuld(){ return ov.querySelector('#zt-gevuld').checked; }
     function pos(ev){ var r=canvas.getBoundingClientRect(), t=(ev.touches&&ev.touches[0])||ev; return {x:(t.clientX-r.left)*(canvas.width/r.width), y:(t.clientY-r.top)*(canvas.height/r.height)}; }
-    function start(ev){ ev.preventDefault(); teken=true; var p=pos(ev); lastX=p.x; lastY=p.y; }
-    function move(ev){ if(!teken)return; ev.preventDefault(); var p=pos(ev);
-      ctx.strokeStyle=ov.querySelector('#zt-kleur').value; ctx.lineWidth=parseInt(ov.querySelector('#zt-dikte').value)||4;
-      ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(p.x,p.y); ctx.stroke(); lastX=p.x; lastY=p.y; }
-    function stop(){ teken=false; }
-    canvas.addEventListener('mousedown',start); canvas.addEventListener('mousemove',move); window.addEventListener('mouseup',stop);
-    canvas.addEventListener('touchstart',start,{passive:false}); canvas.addEventListener('touchmove',move,{passive:false}); canvas.addEventListener('touchend',stop);
-    var close=function(){ window.removeEventListener('mouseup',stop); ov.remove(); };
+    function vorm(x1,y1){
+      ctx.strokeStyle=kleur(); ctx.fillStyle=kleur(); ctx.lineWidth=dikte();
+      if(tool==='lijn'){ ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke(); }
+      else if(tool==='rect'){ var w=x1-x0,h=y1-y0; if(gevuld()) ctx.fillRect(x0,y0,w,h); else ctx.strokeRect(x0,y0,w,h); }
+      else if(tool==='ovaal'){ ctx.beginPath(); ctx.ellipse((x0+x1)/2,(y0+y1)/2,Math.abs(x1-x0)/2,Math.abs(y1-y0)/2,0,0,2*Math.PI); if(gevuld()) ctx.fill(); else ctx.stroke(); }
+    }
+    function down(ev){ ev.preventDefault(); var p=pos(ev); x0=p.x; y0=p.y;
+      if(tool==='tekst'){ var txt=prompt('Welke tekst?'); if(txt){ ctx.fillStyle=kleur(); ctx.textBaseline='top'; ctx.font='600 '+(12+dikte()*4)+'px Georgia,serif'; ctx.fillText(txt, x0, y0); } return; }
+      bezig=true; if(tool!=='pen'){ snap=ctx.getImageData(0,0,canvas.width,canvas.height); }
+    }
+    function move(ev){ if(!bezig)return; ev.preventDefault(); var p=pos(ev);
+      if(tool==='pen'){ ctx.strokeStyle=kleur(); ctx.lineWidth=dikte(); ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(p.x,p.y); ctx.stroke(); x0=p.x; y0=p.y; }
+      else { ctx.putImageData(snap,0,0); vorm(p.x,p.y); }
+    }
+    function up(){ bezig=false; }
+    canvas.addEventListener('mousedown',down); canvas.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
+    canvas.addEventListener('touchstart',down,{passive:false}); canvas.addEventListener('touchmove',move,{passive:false}); canvas.addEventListener('touchend',up);
+    ov.querySelector('#zt-tools').addEventListener('click',function(e){ var b=e.target.closest('.zt-tool'); if(!b)return; tool=b.dataset.tool;
+      ov.querySelectorAll('.zt-tool').forEach(function(x){ x.classList.toggle('actief', x===b); }); });
+    var close=function(){ window.removeEventListener('mouseup',up); ov.remove(); };
     ov.querySelector('#zt-close').onclick=close; ov.querySelector('#zt-annuleer').onclick=close;
     ov.addEventListener('click',function(ev){ if(ev.target===ov) close(); });
     ov.querySelector('#zt-wis').onclick=function(){ ctx.clearRect(0,0,canvas.width,canvas.height); };
