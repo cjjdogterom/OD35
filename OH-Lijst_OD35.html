@@ -5785,11 +5785,12 @@ function eigenAankomstjaar() {
 }
 function isNestorResident() {
   const j = eigenAankomstjaar();
-  return j !== null && j >= 2017 && j <= 2026;
+  return j !== null && j >= NESTOR_MIN_JAAR && j <= NESTOR_MAX_JAAR;
 }
+// De Nestor-tab valt nu onder het tabbladenbeheer (rol + jaargang) met de harde
+// eis 2017–2026; we delegeren naar de centrale zichtbaarheidslogica.
 function updateNestorTabVisibility() {
-  const show = isNestorResident();
-  document.querySelectorAll('.nestor-only').forEach(el => { el.style.display = show ? '' : 'none'; });
+  if (typeof applyTabZichtbaarheid === 'function') applyTabZichtbaarheid();
 }
 
 // ==================== TABBLADEN PER JAARGANG (hoofdadmin) ====================
@@ -5797,6 +5798,7 @@ function updateNestorTabVisibility() {
 let TAB_CONFIG = {};
 const TAB_BEHEER_DEFS = [
   { id:'personen',     label:'Personen' },
+  { id:'nestor',       label:'Nestor' },
   { id:'fotos',        label:"Foto's" },
   { id:'agenda',       label:'Agenda' },
   { id:'contacten',    label:'Contacten' },
@@ -5807,6 +5809,7 @@ const TAB_BEHEER_DEFS = [
 // Alle configureerbare tabbladen voor de rol-matrix (zichtbaarheid per rol).
 const TAB_ROL_DEFS = [
   { id:'personen',       label:'Personen' },
+  { id:'nestor',         label:'Nestor' },
   { id:'fotos',          label:"Foto's" },
   { id:'agenda',         label:'Agenda' },
   { id:'contacten',      label:'Contacten' },
@@ -5820,6 +5823,9 @@ const TAB_ROL_DEFS = [
   { id:'bezoekers',      label:'Bezoekers' },
   { id:'tabbeheer',      label:'Tabbladen' },
 ];
+// Nestor is alleen beschikbaar voor huidige bewoners (aankomstjaar 2017–2026),
+// ongeacht rol of config. Dit is een harde extra voorwaarde.
+const NESTOR_MIN_JAAR = 2017, NESTOR_MAX_JAAR = 2026;
 const TAB_ROLLEN_KOLOMMEN = [ { key:'lid', label:'Niet-admin' }, { key:'admin', label:'Admin' }, { key:'hoofdadmin', label:'Superadmin' } ];
 // Welke tabs zijn van nature alleen voor (hoofd)admins — bepaalt de standaard-vinkjes.
 const TAB_ADMIN_ONLY = ['huisplattegrond','wijzigingen','verjaardagen'];
@@ -5861,6 +5867,8 @@ function applyTabZichtbaarheid() {
       const lijst = (TAB_CONFIG[t.id] || []).map(Number);
       if (lijst.includes(Number(jaar))) zicht = false;
     }
+    // Nestor: harde eis aankomstjaar 2017–2026, ongeacht rol of config.
+    if (t.id === 'nestor' && !(jaar !== null && jaar >= NESTOR_MIN_JAAR && jaar <= NESTOR_MAX_JAAR)) zicht = false;
     // Veiligheid: de superadmin houdt altijd toegang tot het tabbladen-beheer.
     if (t.id === 'tabbeheer' && isHoofdadmin()) zicht = true;
     btn.style.display = zicht ? '' : 'none';
