@@ -7196,15 +7196,17 @@ function openHuisKamerModal(id){
         '<label class="zt-chk"><input type="checkbox" id="zt-gevuld"> gevuld</label>'+
         '<label class="zt-lbl">Kleur <input type="color" id="zt-kleur" value="#9c3b2e"></label>'+
         '<label class="zt-lbl">Dikte <input type="range" id="zt-dikte" min="1" max="18" value="4"></label>'+
+        '<span class="zt-resize"><button class="zomer-btn ghost" id="zt-groter" title="Geselecteerd item groter">＋ Groter</button>'+
+        '<button class="zomer-btn ghost" id="zt-kleiner" title="Geselecteerd item kleiner">－ Kleiner</button></span>'+
         '<button class="zomer-btn ghost" id="zt-terug" title="Laatste stap ongedaan maken">↶ Terug</button>'+
         '<button class="zomer-btn ghost" id="zt-wis">Wissen</button>'+
       '</div>'+
       '<div class="zomer-canvaswrap"><canvas id="zt-canvas" width="680" height="200"></canvas></div>'+
-      '<p class="zomer-tiphint">Kies een gereedschap, kleur en dikte. Bij <b>Tekst</b> klik je en typ je. Met <b>Verplaats</b> sleep je een vorm of tekst. <b>↶ Terug</b> maakt de laatste stap ongedaan.</p>'+
+      '<p class="zomer-tiphint">Kies een gereedschap, kleur en dikte. Bij <b>Tekst</b> klik je en typ je. Met <b>Verplaats</b> sleep je een vorm/tekst; klik 1× om te selecteren en gebruik dan <b>＋ Groter</b> / <b>－ Kleiner</b>. <b>↶ Terug</b> maakt de laatste stap ongedaan.</p>'+
       '<div class="hk-actions"><button class="zomer-btn" id="zt-opslaan">Opslaan</button><button class="zomer-btn ghost" id="zt-annuleer">Annuleren</button><span id="zt-status" class="zomer-status"></span></div></div>';
     document.body.appendChild(ov);
     var canvas=ov.querySelector('#zt-canvas'), ctx=canvas.getContext('2d');
-    var tool='pen', objs=[], hist=[], cur=null, drag=null, bezig=false, x0=0, y0=0, lx=0, ly=0;
+    var tool='pen', objs=[], hist=[], cur=null, drag=null, selObj=null, bezig=false, x0=0, y0=0, lx=0, ly=0;
     function kleur(){ return ov.querySelector('#zt-kleur').value; }
     function dikte(){ return parseInt(ov.querySelector('#zt-dikte').value)||4; }
     function gevuld(){ return ov.querySelector('#zt-gevuld').checked; }
@@ -7223,6 +7225,25 @@ function openHuisKamerModal(id){
         else if(o.type==='ovaal'){ ctx.beginPath(); ctx.ellipse(o.cx,o.cy,Math.abs(o.rx),Math.abs(o.ry),0,0,2*Math.PI); if(o.gevuld) ctx.fill(); else ctx.stroke(); }
         else if(o.type==='tekst'){ ctx.textBaseline='top'; ctx.font='600 '+(o.grootte||20)+'px Georgia,serif'; ctx.fillText(o.txt,o.x,o.y); }
       });
+      if(tool==='verplaats' && selObj && objs.indexOf(selObj)>=0){
+        var bb=bbox(selObj); ctx.save(); ctx.strokeStyle='#1d3866'; ctx.lineWidth=1; ctx.setLineDash([5,4]);
+        ctx.strokeRect(bb.x-4,bb.y-4,bb.w+8,bb.h+8); ctx.restore();
+      }
+    }
+    function bbox(o){
+      if(o.type==='tekst'){ ctx.font='600 '+(o.grootte||20)+'px Georgia,serif'; return {x:o.x,y:o.y,w:ctx.measureText(o.txt).width,h:(o.grootte||20)}; }
+      if(o.type==='rect'){ return {x:Math.min(o.x,o.x+o.w),y:Math.min(o.y,o.y+o.h),w:Math.abs(o.w),h:Math.abs(o.h)}; }
+      if(o.type==='ovaal'){ return {x:o.cx-Math.abs(o.rx),y:o.cy-Math.abs(o.ry),w:Math.abs(o.rx)*2,h:Math.abs(o.ry)*2}; }
+      if(o.type==='lijn'){ return {x:Math.min(o.x0,o.x1),y:Math.min(o.y0,o.y1),w:Math.abs(o.x1-o.x0),h:Math.abs(o.y1-o.y0)}; }
+      if(o.type==='pen'){ var xs=o.pts.map(function(p){return p.x;}),ys=o.pts.map(function(p){return p.y;}); var mnx=Math.min.apply(null,xs),mny=Math.min.apply(null,ys); return {x:mnx,y:mny,w:Math.max.apply(null,xs)-mnx,h:Math.max.apply(null,ys)-mny}; }
+      return {x:0,y:0,w:0,h:0};
+    }
+    function schaal(o,f){
+      if(o.type==='tekst'){ o.grootte=Math.max(6,Math.round((o.grootte||20)*f)); }
+      else if(o.type==='lijn'){ var cx=(o.x0+o.x1)/2,cy=(o.y0+o.y1)/2; o.x0=cx+(o.x0-cx)*f;o.y0=cy+(o.y0-cy)*f;o.x1=cx+(o.x1-cx)*f;o.y1=cy+(o.y1-cy)*f; o.dikte=Math.max(1,(o.dikte||4)*f); }
+      else if(o.type==='rect'){ var rx=o.x+o.w/2,ry=o.y+o.h/2; o.w*=f;o.h*=f;o.x=rx-o.w/2;o.y=ry-o.h/2; o.dikte=Math.max(1,(o.dikte||4)*f); }
+      else if(o.type==='ovaal'){ o.rx*=f;o.ry*=f; o.dikte=Math.max(1,(o.dikte||4)*f); }
+      else if(o.type==='pen'){ var b=bbox(o),ccx=b.x+b.w/2,ccy=b.y+b.h/2; o.pts.forEach(function(p){ p.x=ccx+(p.x-ccx)*f; p.y=ccy+(p.y-ccy)*f; }); o.dikte=Math.max(1,(o.dikte||4)*f); }
     }
     function distSeg(px,py,x1,y1,x2,y2){ var dx=x2-x1,dy=y2-y1; if(!dx&&!dy)return Math.hypot(px-x1,py-y1);
       var t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/(dx*dx+dy*dy))); return Math.hypot(px-(x1+t*dx),py-(y1+t*dy)); }
@@ -7245,7 +7266,7 @@ function openHuisKamerModal(id){
     }
 
     function down(ev){ ev.preventDefault(); var p=pos(ev); x0=p.x; y0=p.y; lx=p.x; ly=p.y;
-      if(tool==='verplaats'){ var o=vind(p.x,p.y); if(o){ snap(); drag=o; } return; }
+      if(tool==='verplaats'){ var o=vind(p.x,p.y); selObj=o; if(o){ snap(); drag=o; } teken(); return; }
       if(tool==='tekst'){ var txt=prompt('Welke tekst?'); if(txt){ snap(); objs.push({type:'tekst',kleur:kleur(),grootte:12+dikte()*4,x:p.x,y:p.y,txt:txt}); teken(); } return; }
       snap(); bezig=true;
       if(tool==='pen') cur={type:'pen',kleur:kleur(),dikte:dikte(),pts:[{x:p.x,y:p.y}]};
@@ -7268,11 +7289,14 @@ function openHuisKamerModal(id){
     canvas.addEventListener('touchstart',down,{passive:false}); canvas.addEventListener('touchmove',move,{passive:false}); canvas.addEventListener('touchend',up);
     ov.querySelector('#zt-tools').addEventListener('click',function(e){ var bn=e.target.closest('.zt-tool'); if(!bn)return; tool=bn.dataset.tool;
       ov.querySelectorAll('.zt-tool').forEach(function(x){ x.classList.toggle('actief', x===bn); });
-      canvas.style.cursor = (tool==='verplaats')?'move':((tool==='tekst')?'text':'crosshair'); });
+      canvas.style.cursor = (tool==='verplaats')?'move':((tool==='tekst')?'text':'crosshair'); teken(); });
     var close=function(){ window.removeEventListener('mouseup',up); ov.remove(); };
     ov.querySelector('#zt-close').onclick=close; ov.querySelector('#zt-annuleer').onclick=close;
     ov.addEventListener('click',function(ev){ if(ev.target===ov) close(); });
     ov.querySelector('#zt-terug').onclick=undo;
+    function resize(f){ if(!selObj || objs.indexOf(selObj)<0) return; snap(); schaal(selObj,f); teken(); }
+    ov.querySelector('#zt-groter').onclick=function(){ resize(1.25); };
+    ov.querySelector('#zt-kleiner').onclick=function(){ resize(0.8); };
     ov.querySelector('#zt-wis').onclick=function(){ if(objs.length){ snap(); objs=[]; teken(); } };
     ov.querySelector('#zt-opslaan').onclick=function(){ bewaar(rk,a,b,canvas,ov,close); };
   }
