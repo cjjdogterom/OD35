@@ -7177,7 +7177,7 @@ function openHuisKamerModal(id){
     openTeken(rk, a, b);
   }
 
-  // ---- Tekenmodal ----
+  // ---- Tekenmodal (objectmodel: ondersteunt verslepen + ongedaan maken) ----
   function openTeken(rk, a, b){
     var van=dlabel(Z.cols[a].van), tot=dlabel(Z.cols[b].tot);
     var ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='zomer-modal';
@@ -7191,46 +7191,89 @@ function openHuisKamerModal(id){
           '<button class="zt-tool" data-tool="rect" title="Rechthoek">▭ Vorm</button>'+
           '<button class="zt-tool" data-tool="ovaal" title="Ovaal">◯ Ovaal</button>'+
           '<button class="zt-tool" data-tool="tekst" title="Tekst plaatsen">T Tekst</button>'+
+          '<button class="zt-tool" data-tool="verplaats" title="Verslepen">✥ Verplaats</button>'+
         '</div>'+
         '<label class="zt-chk"><input type="checkbox" id="zt-gevuld"> gevuld</label>'+
         '<label class="zt-lbl">Kleur <input type="color" id="zt-kleur" value="#9c3b2e"></label>'+
         '<label class="zt-lbl">Dikte <input type="range" id="zt-dikte" min="1" max="18" value="4"></label>'+
+        '<button class="zomer-btn ghost" id="zt-terug" title="Laatste stap ongedaan maken">↶ Terug</button>'+
         '<button class="zomer-btn ghost" id="zt-wis">Wissen</button>'+
       '</div>'+
       '<div class="zomer-canvaswrap"><canvas id="zt-canvas" width="680" height="200"></canvas></div>'+
-      '<p class="zomer-tiphint" id="zt-tip">Tip: kies een gereedschap, een kleur en dikte. Bij <b>Tekst</b> klik je en typ je je tekst.</p>'+
+      '<p class="zomer-tiphint">Kies een gereedschap, kleur en dikte. Bij <b>Tekst</b> klik je en typ je. Met <b>Verplaats</b> sleep je een vorm of tekst. <b>↶ Terug</b> maakt de laatste stap ongedaan.</p>'+
       '<div class="hk-actions"><button class="zomer-btn" id="zt-opslaan">Opslaan</button><button class="zomer-btn ghost" id="zt-annuleer">Annuleren</button><span id="zt-status" class="zomer-status"></span></div></div>';
     document.body.appendChild(ov);
     var canvas=ov.querySelector('#zt-canvas'), ctx=canvas.getContext('2d');
-    ctx.lineCap='round'; ctx.lineJoin='round';
-    var tool='pen', bezig=false, x0=0, y0=0, snap=null;
+    var tool='pen', objs=[], hist=[], cur=null, drag=null, bezig=false, x0=0, y0=0, lx=0, ly=0;
     function kleur(){ return ov.querySelector('#zt-kleur').value; }
     function dikte(){ return parseInt(ov.querySelector('#zt-dikte').value)||4; }
     function gevuld(){ return ov.querySelector('#zt-gevuld').checked; }
     function pos(ev){ var r=canvas.getBoundingClientRect(), t=(ev.touches&&ev.touches[0])||ev; return {x:(t.clientX-r.left)*(canvas.width/r.width), y:(t.clientY-r.top)*(canvas.height/r.height)}; }
-    function vorm(x1,y1){
-      ctx.strokeStyle=kleur(); ctx.fillStyle=kleur(); ctx.lineWidth=dikte();
-      if(tool==='lijn'){ ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke(); }
-      else if(tool==='rect'){ var w=x1-x0,h=y1-y0; if(gevuld()) ctx.fillRect(x0,y0,w,h); else ctx.strokeRect(x0,y0,w,h); }
-      else if(tool==='ovaal'){ ctx.beginPath(); ctx.ellipse((x0+x1)/2,(y0+y1)/2,Math.abs(x1-x0)/2,Math.abs(y1-y0)/2,0,0,2*Math.PI); if(gevuld()) ctx.fill(); else ctx.stroke(); }
+    function snap(){ hist.push(JSON.stringify(objs)); if(hist.length>40) hist.shift(); }
+    function undo(){ if(!hist.length)return; objs=JSON.parse(hist.pop()); teken(); }
+
+    function teken(){
+      ctx.clearRect(0,0,canvas.width,canvas.height); ctx.lineCap='round'; ctx.lineJoin='round';
+      objs.forEach(function(o){
+        ctx.strokeStyle=o.kleur; ctx.fillStyle=o.kleur; ctx.lineWidth=o.dikte||4;
+        if(o.type==='pen'){ ctx.beginPath(); o.pts.forEach(function(p,i){ i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); }); ctx.stroke();
+          if(o.pts.length===1){ ctx.beginPath(); ctx.arc(o.pts[0].x,o.pts[0].y,(o.dikte||4)/2,0,2*Math.PI); ctx.fill(); } }
+        else if(o.type==='lijn'){ ctx.beginPath(); ctx.moveTo(o.x0,o.y0); ctx.lineTo(o.x1,o.y1); ctx.stroke(); }
+        else if(o.type==='rect'){ if(o.gevuld) ctx.fillRect(o.x,o.y,o.w,o.h); else ctx.strokeRect(o.x,o.y,o.w,o.h); }
+        else if(o.type==='ovaal'){ ctx.beginPath(); ctx.ellipse(o.cx,o.cy,Math.abs(o.rx),Math.abs(o.ry),0,0,2*Math.PI); if(o.gevuld) ctx.fill(); else ctx.stroke(); }
+        else if(o.type==='tekst'){ ctx.textBaseline='top'; ctx.font='600 '+(o.grootte||20)+'px Georgia,serif'; ctx.fillText(o.txt,o.x,o.y); }
+      });
     }
-    function down(ev){ ev.preventDefault(); var p=pos(ev); x0=p.x; y0=p.y;
-      if(tool==='tekst'){ var txt=prompt('Welke tekst?'); if(txt){ ctx.fillStyle=kleur(); ctx.textBaseline='top'; ctx.font='600 '+(12+dikte()*4)+'px Georgia,serif'; ctx.fillText(txt, x0, y0); } return; }
-      bezig=true; if(tool!=='pen'){ snap=ctx.getImageData(0,0,canvas.width,canvas.height); }
+    function distSeg(px,py,x1,y1,x2,y2){ var dx=x2-x1,dy=y2-y1; if(!dx&&!dy)return Math.hypot(px-x1,py-y1);
+      var t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/(dx*dx+dy*dy))); return Math.hypot(px-(x1+t*dx),py-(y1+t*dy)); }
+    function raakt(o,x,y){ var m=(o.dikte||4)+6;
+      if(o.type==='tekst'){ ctx.font='600 '+(o.grootte||20)+'px Georgia,serif'; var w=ctx.measureText(o.txt).width,h=(o.grootte||20); return x>=o.x-4&&x<=o.x+w+4&&y>=o.y-4&&y<=o.y+h+4; }
+      if(o.type==='rect'){ return x>=Math.min(o.x,o.x+o.w)-6&&x<=Math.max(o.x,o.x+o.w)+6&&y>=Math.min(o.y,o.y+o.h)-6&&y<=Math.max(o.y,o.y+o.h)+6; }
+      if(o.type==='ovaal'){ var dx=(x-o.cx)/(Math.abs(o.rx)+8),dy=(y-o.cy)/(Math.abs(o.ry)+8); return dx*dx+dy*dy<=1.1; }
+      if(o.type==='lijn'){ return distSeg(x,y,o.x0,o.y0,o.x1,o.y1)<m; }
+      if(o.type==='pen'){ if(o.pts.length===1) return Math.hypot(x-o.pts[0].x,y-o.pts[0].y)<m;
+        for(var i=1;i<o.pts.length;i++){ if(distSeg(x,y,o.pts[i-1].x,o.pts[i-1].y,o.pts[i].x,o.pts[i].y)<m) return true; } return false; }
+      return false;
     }
-    function move(ev){ if(!bezig)return; ev.preventDefault(); var p=pos(ev);
-      if(tool==='pen'){ ctx.strokeStyle=kleur(); ctx.lineWidth=dikte(); ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(p.x,p.y); ctx.stroke(); x0=p.x; y0=p.y; }
-      else { ctx.putImageData(snap,0,0); vorm(p.x,p.y); }
+    function vind(x,y){ for(var i=objs.length-1;i>=0;i--){ if(raakt(objs[i],x,y)) return objs[i]; } return null; }
+    function verschuif(o,dx,dy){
+      if(o.type==='pen'){ o.pts.forEach(function(p){ p.x+=dx; p.y+=dy; }); }
+      else if(o.type==='lijn'){ o.x0+=dx;o.y0+=dy;o.x1+=dx;o.y1+=dy; }
+      else if(o.type==='rect'){ o.x+=dx;o.y+=dy; }
+      else if(o.type==='ovaal'){ o.cx+=dx;o.cy+=dy; }
+      else if(o.type==='tekst'){ o.x+=dx;o.y+=dy; }
     }
-    function up(){ bezig=false; }
+
+    function down(ev){ ev.preventDefault(); var p=pos(ev); x0=p.x; y0=p.y; lx=p.x; ly=p.y;
+      if(tool==='verplaats'){ var o=vind(p.x,p.y); if(o){ snap(); drag=o; } return; }
+      if(tool==='tekst'){ var txt=prompt('Welke tekst?'); if(txt){ snap(); objs.push({type:'tekst',kleur:kleur(),grootte:12+dikte()*4,x:p.x,y:p.y,txt:txt}); teken(); } return; }
+      snap(); bezig=true;
+      if(tool==='pen') cur={type:'pen',kleur:kleur(),dikte:dikte(),pts:[{x:p.x,y:p.y}]};
+      else if(tool==='lijn') cur={type:'lijn',kleur:kleur(),dikte:dikte(),x0:p.x,y0:p.y,x1:p.x,y1:p.y};
+      else if(tool==='rect') cur={type:'rect',kleur:kleur(),dikte:dikte(),gevuld:gevuld(),x:p.x,y:p.y,w:0,h:0};
+      else if(tool==='ovaal') cur={type:'ovaal',kleur:kleur(),dikte:dikte(),gevuld:gevuld(),cx:p.x,cy:p.y,rx:0,ry:0};
+      if(cur){ objs.push(cur); teken(); }
+    }
+    function move(ev){ var p=pos(ev);
+      if(drag){ ev.preventDefault(); verschuif(drag,p.x-lx,p.y-ly); lx=p.x; ly=p.y; teken(); return; }
+      if(!bezig||!cur) return; ev.preventDefault();
+      if(cur.type==='pen') cur.pts.push({x:p.x,y:p.y});
+      else if(cur.type==='lijn'){ cur.x1=p.x; cur.y1=p.y; }
+      else if(cur.type==='rect'){ cur.w=p.x-x0; cur.h=p.y-y0; }
+      else if(cur.type==='ovaal'){ cur.cx=(x0+p.x)/2; cur.cy=(y0+p.y)/2; cur.rx=(p.x-x0)/2; cur.ry=(p.y-y0)/2; }
+      teken();
+    }
+    function up(){ bezig=false; cur=null; drag=null; }
     canvas.addEventListener('mousedown',down); canvas.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
     canvas.addEventListener('touchstart',down,{passive:false}); canvas.addEventListener('touchmove',move,{passive:false}); canvas.addEventListener('touchend',up);
-    ov.querySelector('#zt-tools').addEventListener('click',function(e){ var b=e.target.closest('.zt-tool'); if(!b)return; tool=b.dataset.tool;
-      ov.querySelectorAll('.zt-tool').forEach(function(x){ x.classList.toggle('actief', x===b); }); });
+    ov.querySelector('#zt-tools').addEventListener('click',function(e){ var bn=e.target.closest('.zt-tool'); if(!bn)return; tool=bn.dataset.tool;
+      ov.querySelectorAll('.zt-tool').forEach(function(x){ x.classList.toggle('actief', x===bn); });
+      canvas.style.cursor = (tool==='verplaats')?'move':((tool==='tekst')?'text':'crosshair'); });
     var close=function(){ window.removeEventListener('mouseup',up); ov.remove(); };
     ov.querySelector('#zt-close').onclick=close; ov.querySelector('#zt-annuleer').onclick=close;
     ov.addEventListener('click',function(ev){ if(ev.target===ov) close(); });
-    ov.querySelector('#zt-wis').onclick=function(){ ctx.clearRect(0,0,canvas.width,canvas.height); };
+    ov.querySelector('#zt-terug').onclick=undo;
+    ov.querySelector('#zt-wis').onclick=function(){ if(objs.length){ snap(); objs=[]; teken(); } };
     ov.querySelector('#zt-opslaan').onclick=function(){ bewaar(rk,a,b,canvas,ov,close); };
   }
 
