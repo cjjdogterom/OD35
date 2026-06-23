@@ -3963,7 +3963,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
 <div class="tab-panel" id="panel-zomerplanning">
   <div class="zomer-head">
     <h2>Zomerplanning</h2>
-    <p class="zomer-sub">Waar is iedereen deze zomer? Klik op het <b>+</b> naast je naam, kies je begin- en einddatum (1 juli t/m 1 september) en teken waar je bent. Je bewerkt alleen je eigen rij.</p>
+    <p class="zomer-sub">Waar is iedereen deze zomer? Klik op het <b>+</b> naast je naam, kies je begin- en einddatum (24 juni t/m 1 september) en teken waar je bent. Je bewerkt alleen je eigen rij.</p>
   </div>
   <div id="zomer-app"><p class="zomer-loading">Laden…</p></div>
 </div><!-- /panel-zomerplanning -->
@@ -7093,16 +7093,17 @@ function openHuisKamerModal(id){
   function esc(s){ return (typeof escapeHtml==='function')?escapeHtml(s):String(s); }
   function volNaam(p){ var vn=p['Voornaam']||p['Roepnaam']||p['Voorletters']||''; var tv=p['Tussenvoegsel']?p['Tussenvoegsel']+' ':''; return (vn+' '+tv+(p['Achternaam']||'')).trim(); }
 
-  // Kolommen: één per dag, van 1 juli t/m 1 september.
+  // Kolommen: één per dag, van 24 juni (laatste week van juni) t/m 1 september.
+  function zomerStart(jaar){ return new Date(jaar,5,24); } // 24 juni
   function maakDagen(jaar){
-    var dagen=[], d=new Date(jaar,6,1), eind=new Date(jaar,8,1), idx=0;
+    var dagen=[], d=zomerStart(jaar), eind=new Date(jaar,8,1), idx=0;
     while(d<=eind){ dagen.push({idx:idx++, datum:new Date(d), wkstart:(d.getDay()===1)}); d=new Date(d); d.setDate(d.getDate()+1); }
     return dagen;
   }
   function dlabel(dt){ return dt.getDate()+' '+MND[dt.getMonth()]; }
   function pad2(n){ return String(n).length<2?('0'+n):String(n); }
   function idxNaarIso(idx){ var dt=Z.cols[idx].datum; return dt.getFullYear()+'-'+pad2(dt.getMonth()+1)+'-'+pad2(dt.getDate()); }
-  function datumNaarIdx(iso){ if(!iso) return -1; var p=iso.split('-'); var dt=new Date(+p[0],+p[1]-1,+p[2]); var j=new Date(Z.jaar,6,1);
+  function datumNaarIdx(iso){ if(!iso) return -1; var p=iso.split('-'); var dt=new Date(+p[0],+p[1]-1,+p[2]); var j=zomerStart(Z.jaar);
     return Math.max(0, Math.min(Z.cols.length-1, Math.round((dt-j)/86400000))); }
 
   // Rijen: personen 2021–2026, gesorteerd op jaar (nieuwste eerst) dan naam.
