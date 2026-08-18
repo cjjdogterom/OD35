@@ -7,9 +7,6 @@
     "api/migrate-fotos-r2.js": { "maxDuration": 60 },
     "api/cleanup-supabase-fotos.js": { "maxDuration": 60 }
   },
-  "crons": [
-    { "path": "/api/keepalive", "schedule": "0 6 * * *" }
-  ],
   "headers": [
     {
       "source": "/(.*)",
