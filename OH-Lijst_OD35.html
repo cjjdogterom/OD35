@@ -2414,6 +2414,117 @@
     .bank.vert, .bank.chair { width: 78px; }
     .seat { font-size: 0.54rem; }
   }
+
+  /* ============ HUISAUTO — maandkalender + boeken ============ */
+  .ha-head h2 { margin: 0; }
+  .ha-sub { color: var(--gray); margin: 0.3rem 0 1rem; font-style: italic; }
+  .ha-status {
+    background: var(--paper-warm); border: 1px solid var(--line); border-left: 3px solid var(--burgundy);
+    border-radius: 2px; padding: 0.7rem 0.95rem; margin-bottom: 1.25rem; font-size: 0.98rem; color: var(--ink);
+  }
+  .ha-status.ok { border-left-color: #4a8c4a; }
+  .ha-status.fout { border-left-color: #c0392b; color: #8e2a1f; }
+  .ha-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+  .ha-cal-nav { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
+  .ha-maand { flex: 1; text-align: center; margin: 0; font-family: var(--font-display); }
+  .ha-maand::first-letter { text-transform: uppercase; }
+  .ha-nav-btn {
+    width: 44px; height: 44px; border: 1px solid var(--line); background: #fff; color: var(--burgundy);
+    border-radius: 2px; font-size: 1.5rem; line-height: 1; cursor: pointer;
+  }
+  .ha-nav-btn:hover:not(:disabled) { border-color: var(--burgundy); background: var(--highlight); }
+  .ha-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .ha-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .ha-wd { text-align: center; font-size: 0.8rem; color: var(--gray); font-weight: 600; padding: 0.2rem 0; }
+  .ha-day {
+    position: relative; min-height: 78px; padding: 0.3rem 0.35rem; text-align: left; cursor: pointer;
+    background: #fff; border: 1px solid var(--line); border-radius: 3px; color: var(--ink);
+    font-family: var(--font-body); display: flex; flex-direction: column; gap: 2px; overflow: hidden;
+  }
+  .ha-day:hover { border-color: var(--burgundy); }
+  .ha-dnum { font-weight: 700; font-size: 1rem; }
+  .ha-dlijn { font-size: 0.72rem; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ha-day.deels { background: #dce5f3; background: color-mix(in srgb, var(--burgundy) 16%, #fff); }
+  .ha-day.vol { background: var(--burgundy); color: #fff; border-color: var(--burgundy-deep); }
+  .ha-day.eigen { background: #4a8c4a; color: #fff; border-color: #3f7d3f; }
+  .ha-day.verleden:not(.eigen):not(.vol):not(.deels) { background: var(--paper); }
+  .ha-day.verleden { opacity: 0.7; }
+  .ha-day.buiten { opacity: 0.45; }
+  .ha-day.buiten.deels, .ha-day.buiten.vol, .ha-day.buiten.eigen { opacity: 0.85; }
+  .ha-day.te-ver { background: repeating-linear-gradient(135deg, #fff, #fff 6px, var(--paper) 6px, var(--paper) 12px); }
+  .ha-day.vandaag { box-shadow: inset 0 0 0 2px var(--gold); }
+  .ha-day.gekozen { outline: 3px solid var(--gold); outline-offset: 1px; z-index: 1; }
+  .ha-legend { display: flex; flex-wrap: wrap; gap: 0.6rem 1.2rem; font-size: 0.85rem; color: var(--gray); margin: 0.8rem 0 0; }
+  .ha-legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .ha-demo { width: 16px; height: 16px; border-radius: 3px; border: 1px solid var(--line); background: #fff; display: inline-block; }
+  .ha-demo.deels { background: #dce5f3; background: color-mix(in srgb, var(--burgundy) 16%, #fff); }
+  .ha-demo.vol { background: var(--burgundy); }
+  .ha-demo.eigen { background: #4a8c4a; }
+  .ha-dag {
+    background: var(--paper-warm); border: 1px solid var(--line); border-radius: 3px; padding: 1rem 1.1rem;
+    position: sticky; top: 1rem;
+  }
+  .ha-dag-titel { margin: 0 0 0.8rem; font-family: var(--font-display); }
+  .ha-dag-titel::first-letter { text-transform: uppercase; }
+  .ha-leeg { color: var(--gray); font-style: italic; margin: 0 0 0.9rem; }
+  .ha-rit {
+    background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--burgundy);
+    border-radius: 2px; padding: 0.6rem 0.75rem; margin-bottom: 0.6rem;
+  }
+  .ha-rit.eigen { border-left-color: #4a8c4a; }
+  .ha-rit.overneembaar { border-left-color: #e2680f; }
+  .ha-rit-tijd { font-weight: 700; font-size: 1.02rem; }
+  .ha-rit-wie { margin-top: 0.15rem; }
+  .ha-rit-extra { font-size: 0.88rem; color: var(--gray); margin-top: 0.15rem; }
+  .ha-jaar { font-family: var(--font-mono); font-size: 0.8rem; color: var(--gray); }
+  .ha-tag { display: inline-block; margin-top: 0.35rem; font-size: 0.8rem; color: #a8500d; background: #fff4e6; border: 1px solid #e2680f; border-radius: 2px; padding: 0.1rem 0.45rem; }
+  .ha-btn {
+    background: var(--burgundy); color: #fff; border: none; border-radius: 2px; cursor: pointer;
+    font-family: var(--font-body); font-size: 1rem; padding: 0.7rem 1.2rem; min-height: 44px;
+  }
+  .ha-btn:hover:not(:disabled) { background: var(--burgundy-deep); }
+  .ha-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .ha-btn-licht {
+    background: #fff; color: var(--ink); border: 1px solid var(--line); border-radius: 2px; cursor: pointer;
+    font-family: var(--font-body); font-size: 0.95rem; padding: 0.6rem 1rem; min-height: 44px;
+  }
+  .ha-btn-licht:hover { border-color: var(--burgundy); color: var(--burgundy); }
+  .ha-rit .ha-btn-licht { min-height: 36px; padding: 0.35rem 0.8rem; font-size: 0.88rem; margin-top: 0.45rem; }
+  .ha-boek-knop { width: 100%; }
+  .ha-dag-note { color: var(--gray); font-size: 0.92rem; margin: 0.2rem 0 0; }
+  .ha-form { border-top: 1px solid var(--line); margin-top: 0.4rem; padding-top: 0.9rem; display: flex; flex-direction: column; gap: 0.8rem; }
+  .ha-form h4 { margin: 0; font-size: 1.05rem; }
+  .ha-form label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.95rem; font-weight: 600; }
+  .ha-form label .ha-optie { font-weight: 400; color: var(--gray); }
+  .ha-form [hidden] { display: none !important; }
+  .ha-form select, .ha-form input[type="text"], .ha-form input[type="date"] {
+    font-family: var(--font-body); font-size: 1rem; padding: 0.55rem 0.6rem; border: 1px solid var(--line);
+    border-radius: 2px; background: #fff; color: var(--ink); min-height: 44px; box-sizing: border-box; width: 100%;
+  }
+  .ha-form select:focus, .ha-form input:focus { outline: none; border-color: var(--burgundy); }
+  .ha-rij { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+  .ha-form label.ha-check { flex-direction: row; align-items: center; gap: 0.55rem; font-weight: 400; }
+  .ha-form label.ha-check input { width: 20px; height: 20px; }
+  .ha-form-knoppen { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+  .ha-melding { font-size: 0.92rem; color: #c0392b; }
+  .ha-mijn { margin-top: 2rem; }
+  .ha-mijn h3 { margin: 0 0 0.6rem; font-family: var(--font-display); }
+  .ha-mijn ul { list-style: none; margin: 0; padding: 0; }
+  .ha-mijn li { border-bottom: 1px solid var(--line-soft); padding: 0.55rem 0; }
+  .ha-mijn-link { background: none; border: none; padding: 0; color: var(--burgundy); font-family: var(--font-body); font-size: 1rem; font-weight: 600; cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
+  .ha-mijn-sub { display: block; color: var(--gray); font-size: 0.9rem; }
+  .ha-uitleg { max-width: 680px; margin: 1.8rem auto 0; font-size: 0.88rem; color: var(--gray); line-height: 1.6; text-align: center; }
+  @media (max-width: 860px) {
+    .ha-layout { grid-template-columns: 1fr; }
+    .ha-dag { position: static; }
+  }
+  @media (max-width: 640px) {
+    .ha-cal { gap: 3px; }
+    .ha-day { min-height: 48px; padding: 0.25rem; align-items: center; justify-content: center; }
+    .ha-dlijn { display: none; }
+    .ha-wd { font-size: 0.72rem; }
+    .ha-rij { grid-template-columns: 1fr; }
+  }
   .modal-overlay {
     position: fixed; inset: 0;
     background: rgba(26,24,18,0.65);
@@ -3498,6 +3609,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
     <nav class="tab-nav" id="tab-nav">
       <button class="tab-btn active" data-tab="personen">Personen</button>
       <button class="tab-btn nestor-only" data-tab="nestor" style="display:none">Nestor</button>
+      <button class="tab-btn" data-tab="huisauto" style="display:none">Huisauto</button>
       <button class="tab-btn" data-tab="fotos">Foto's</button>
       <button class="tab-btn" data-tab="agenda">Agenda</button>
       <button class="tab-btn" data-tab="contacten">Contacten</button>
@@ -3567,6 +3679,43 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
     diegene krijgt daar automatisch een mailtje over en kan dan een andere vrije plek pakken.
   </p>
 </div><!-- /panel-nestor -->
+
+<!-- ==================== TAB: HUISAUTO (jaargang 2017 t/m nu) ==================== -->
+<div class="tab-panel" id="panel-huisauto">
+  <div class="ha-head">
+    <h2>Huisauto</h2>
+    <p class="ha-sub">Klik op een dag in de kalender om te zien wie de auto heeft, of om hem zelf te boeken.</p>
+  </div>
+  <div class="ha-status" id="ha-status"></div>
+  <div class="ha-layout">
+    <div class="ha-cal-wrap">
+      <div class="ha-cal-nav">
+        <button type="button" class="ha-nav-btn" id="ha-prev" aria-label="Vorige maand">‹</button>
+        <h3 class="ha-maand" id="ha-maand"></h3>
+        <button type="button" class="ha-nav-btn" id="ha-next" aria-label="Volgende maand">›</button>
+        <button type="button" class="ha-btn-licht ha-vandaag-btn" id="ha-vandaag">Vandaag</button>
+      </div>
+      <div class="ha-cal" id="ha-cal"></div>
+      <div class="ha-legend">
+        <span><i class="ha-demo"></i> Vrij</span>
+        <span><i class="ha-demo deels"></i> Deels geboekt</span>
+        <span><i class="ha-demo vol"></i> (Bijna) hele dag bezet</span>
+        <span><i class="ha-demo eigen"></i> Jouw rit</span>
+      </div>
+    </div>
+    <div class="ha-dag">
+      <h3 class="ha-dag-titel" id="ha-dag-titel"></h3>
+      <div id="ha-dag-lijst"></div>
+      <div id="ha-form-wrap"></div>
+    </div>
+  </div>
+  <div class="ha-mijn" id="ha-mijn"></div>
+  <p class="ha-uitleg">
+    We werken met <strong>anciënniteit</strong>: heb je een ouder (lager) aankomstjaar, dan kun je de boeking
+    van een jongere bewoner overnemen, zolang die rit nog niet begonnen is. Diegene en de chauffeur krijgen daar
+    automatisch een mailtje over. Je kunt maximaal 3 maanden vooruit boeken; een boeking duurt maximaal 7 dagen.
+  </p>
+</div><!-- /panel-huisauto -->
 
 <!-- ==================== TAB: AGENDA ==================== -->
 <div class="tab-panel" id="panel-agenda">
@@ -5789,6 +5938,7 @@ document.getElementById('tab-nav').addEventListener('click', e => {
   if (tab === 'tabbeheer') { renderTabbeheer(); }
   if (tab === 'bezoekers') { loadBezoekers(); startBezoekersAutoRefresh(); } else { stopBezoekersAutoRefresh(); }
   if (tab === 'nestor') { loadNestor(); startNestorAutoRefresh(); } else { stopNestorAutoRefresh(); }
+  if (tab === 'huisauto') { loadHuisauto(); startHuisautoAutoRefresh(); } else { stopHuisautoAutoRefresh(); }
   // Zachte reveal van de panel-blokken bij het wisselen van tab
   if (typeof revealPanel === 'function') revealPanel('panel-' + tab);
 });
@@ -5883,6 +6033,8 @@ function tabDefsJaargang(){ return tabDefsAlle().filter(t => TAB_ADMIN_ONLY.inde
 const NESTOR_MIN_JAAR = 2017, NESTOR_MAX_JAAR = 2026;
 // Zomerplanning: alleen voor jaargang 2021–2026.
 const ZOMER_MIN_JAAR = 2021, ZOMER_MAX_JAAR = 2026;
+// Huisauto: jaargang 2017 t/m het huidige jaar (schuift elk jaar vanzelf mee).
+const HUISAUTO_MIN_JAAR = 2017;
 const TAB_ROLLEN_KOLOMMEN = [ { key:'lid', label:'Niet-admin' }, { key:'admin', label:'Admin' }, { key:'hoofdadmin', label:'Superadmin' } ];
 // Welke tabs zijn van nature alleen voor (hoofd)admins — bepaalt de standaard-vinkjes.
 const TAB_ADMIN_ONLY = ['wijzigingen','verjaardagen'];
@@ -5927,6 +6079,7 @@ function applyTabZichtbaarheid() {
     // Nestor: harde eis aankomstjaar 2017–2026, ongeacht rol of config.
     if (t.id === 'nestor' && !(jaar !== null && jaar >= NESTOR_MIN_JAAR && jaar <= NESTOR_MAX_JAAR)) zicht = false;
     if (t.id === 'zomerplanning' && !(jaar !== null && jaar >= ZOMER_MIN_JAAR && jaar <= ZOMER_MAX_JAAR)) zicht = false;
+    if (t.id === 'huisauto' && !(jaar !== null && jaar >= HUISAUTO_MIN_JAAR && jaar <= new Date().getFullYear())) zicht = false;
     // Veiligheid: de superadmin houdt altijd toegang tot het tabbladen-beheer.
     if (t.id === 'tabbeheer' && isHoofdadmin()) zicht = true;
     btn.style.display = zicht ? '' : 'none';
@@ -6148,6 +6301,462 @@ function startNestorAutoRefresh() {
 }
 function stopNestorAutoRefresh() {
   if (_nestorTimer) { clearInterval(_nestorTimer); _nestorTimer = null; }
+}
+
+// ==================== HUISAUTO — boeken met anciënniteit (jaar 2017 t/m nu) ====================
+// Lezen gaat rechtstreeks uit Supabase (tabel autoboekingen, zie HUISAUTO-SETUP.md).
+// Boeken en annuleren lopen via /api/reserveer-plek (type 'auto'), waar de server de
+// anciënniteit controleert en de mails verstuurt.
+const HA_MAANDEN_VOORUIT = 3;
+const HA_MAX_DAGEN = 7;
+let haBoekingen = [];   // boekingen die in de getoonde kalender vallen
+let haMijn = [];        // mijn komende ritten (als boeker of als chauffeur)
+let haMaand = null;     // eerste dag van de getoonde maand
+let haGekozen = null;   // 'YYYY-MM-DD' van de aangeklikte dag
+let haFormOpen = false;
+let haBusy = false;
+let haBericht = null;   // { tekst, soort: 'ok' | 'fout' } — tijdelijke melding bovenaan
+
+function isHuisautoBewoner() {
+  const j = eigenAankomstjaar();
+  return j !== null && j >= HUISAUTO_MIN_JAAR && j <= new Date().getFullYear();
+}
+function haPad(n) { return String(n).padStart(2, '0'); }
+function haKey(d) { return d.getFullYear() + '-' + haPad(d.getMonth() + 1) + '-' + haPad(d.getDate()); }
+function haVanKey(k) { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); }
+function haTijd(d) { return haPad(d.getHours()) + ':' + haPad(d.getMinutes()); }
+function haDagNaam(d) { return d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' }); }
+function haKorteDag(d) { return d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' }); }
+function haVandaag() { const t = new Date(); t.setHours(0, 0, 0, 0); return t; }
+function haGrens() { const g = haVandaag(); g.setMonth(g.getMonth() + HA_MAANDEN_VOORUIT); return g; }
+function haMijnEmail() { return (currentUserEmail || '').toLowerCase(); }
+function haIsMijn(b) { return (b.email || '').toLowerCase() === haMijnEmail(); }
+function haKanOvernemen(b) {
+  const j = eigenAankomstjaar();
+  return !haIsMijn(b) && j !== null && j < Number(b.aankomstjaar) && new Date(b.start_tijd) > new Date();
+}
+function haJaarKort(j) { return j ? "'" + String(j).slice(-2) : ''; }
+// "10:00 – 16:00", of met datums erbij als de rit over meerdere dagen gaat.
+function haPeriode(b) {
+  const s = new Date(b.start_tijd), e = new Date(b.eind_tijd);
+  const eindIsMiddernacht = haTijd(e) === '00:00';
+  const laatsteDag = eindIsMiddernacht ? new Date(e.getTime() - 1) : e;
+  const eindTijd = eindIsMiddernacht ? '24:00' : haTijd(e);
+  if (haKey(s) === haKey(laatsteDag)) return haTijd(s) + ' – ' + eindTijd;
+  return haKorteDag(s) + ' ' + haTijd(s) + ' – ' + haKorteDag(laatsteDag) + ' ' + eindTijd;
+}
+// Eerste maandag vóór/op de 1e van de maand t/m de zondag na de laatste dag.
+function haGridBereik() {
+  const eerste = new Date(haMaand);
+  const van = new Date(eerste); van.setDate(1 - ((eerste.getDay() + 6) % 7));
+  const laatste = new Date(eerste.getFullYear(), eerste.getMonth() + 1, 0);
+  const tot = new Date(laatste); tot.setDate(laatste.getDate() + (7 - ((laatste.getDay() + 6) % 7)));
+  return { van, tot }; // tot = exclusief (maandag na de laatste week)
+}
+function haOpDag(dagStart) {
+  const dagEind = new Date(dagStart); dagEind.setDate(dagEind.getDate() + 1);
+  return haBoekingen.filter(b => new Date(b.start_tijd) < dagEind && new Date(b.eind_tijd) > dagStart)
+    .sort((a, b) => new Date(a.start_tijd) - new Date(b.start_tijd));
+}
+// Hoeveel van de dag (08:00–22:00) is bezet? Boekingen overlappen nooit, dus optellen mag.
+function haBezetting(dagStart, lijst) {
+  const vs = new Date(dagStart); vs.setHours(8, 0, 0, 0);
+  const ve = new Date(dagStart); ve.setHours(22, 0, 0, 0);
+  let bezet = 0;
+  lijst.forEach(b => {
+    const s = Math.max(vs, new Date(b.start_tijd)), e = Math.min(ve, new Date(b.eind_tijd));
+    if (e > s) bezet += e - s;
+  });
+  return bezet / (ve - vs);
+}
+
+async function loadHuisauto() {
+  if (!isHuisautoBewoner()) return;
+  if (!haMaand) {
+    const t = haVandaag();
+    haMaand = new Date(t.getFullYear(), t.getMonth(), 1);
+    haGekozen = haKey(t);
+  }
+  bindHuisauto();
+  const { van, tot } = haGridBereik();
+  const me = haMijnEmail();
+  try {
+    const [r1, r2] = await Promise.all([
+      db.from('autoboekingen').select('*')
+        .lt('start_tijd', tot.toISOString()).gt('eind_tijd', van.toISOString()).order('start_tijd'),
+      me ? db.from('autoboekingen').select('*').gt('eind_tijd', new Date().toISOString())
+             .or(`email.eq.${me},chauffeur_email.eq.${me}`).order('start_tijd')
+         : Promise.resolve({ data: [] }),
+    ]);
+    if (r1.error) throw r1.error;
+    if (r2.error) throw r2.error;
+    haBoekingen = r1.data || [];
+    haMijn = r2.data || [];
+  } catch (e) {
+    haBoekingen = []; haMijn = [];
+    const st = document.getElementById('ha-status');
+    if (st) {
+      st.className = 'ha-status fout';
+      st.innerHTML = `Kon de boekingen niet laden: ${escapeHtml(e.message || String(e))}<br><small>Is de tabel "autoboekingen" al aangemaakt? Zie HUISAUTO-SETUP.md.</small>`;
+    }
+    haRenderKalender(); haRenderDag();
+    return;
+  }
+  renderHuisauto();
+}
+
+function renderHuisauto() {
+  haRenderStatus();
+  haRenderKalender();
+  haRenderDag();
+  haRenderMijn();
+}
+
+function haRenderStatus() {
+  const st = document.getElementById('ha-status');
+  if (!st) return;
+  if (haBericht) {
+    st.className = 'ha-status ' + haBericht.soort;
+    st.innerHTML = haBericht.tekst;
+    return;
+  }
+  st.className = 'ha-status';
+  const eerst = haMijn.find(b => haIsMijn(b));
+  st.innerHTML = eerst
+    ? `🚗 Jouw eerstvolgende rit: <strong>${escapeHtml(haDagNaam(new Date(eerst.start_tijd)))}, ${escapeHtml(haPeriode(eerst))}</strong>.`
+    : `Je hebt nog geen rit gepland. Klik op een dag in de kalender om de auto te boeken${eigenAankomstjaar() ? ` (jouw jaar: ${eigenAankomstjaar()})` : ''}.`;
+}
+
+function haRenderKalender() {
+  const cal = document.getElementById('ha-cal');
+  const titel = document.getElementById('ha-maand');
+  if (!cal || !haMaand) return;
+  if (titel) titel.textContent = haMaand.toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
+  const { van, tot } = haGridBereik();
+  const vandaag = haVandaag(), grens = haGrens();
+  let h = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'].map(d => `<div class="ha-wd">${d}</div>`).join('');
+  for (const d = new Date(van); d < tot; d.setDate(d.getDate() + 1)) {
+    const lijst = haOpDag(d);
+    const klassen = ['ha-day'];
+    if (lijst.some(haIsMijn)) klassen.push('eigen');
+    else if (lijst.length) klassen.push(haBezetting(d, lijst) >= 0.7 ? 'vol' : 'deels');
+    if (d.getMonth() !== haMaand.getMonth()) klassen.push('buiten');
+    if (d < vandaag) klassen.push('verleden');
+    if (d > grens) klassen.push('te-ver');
+    if (d.getTime() === vandaag.getTime()) klassen.push('vandaag');
+    const key = haKey(d);
+    if (key === haGekozen) klassen.push('gekozen');
+    const lijnen = lijst.slice(0, 2).map(b => {
+      const s = new Date(b.start_tijd);
+      const wanneer = s < d ? '…' : haTijd(s);
+      const voornaam = (b.naam || '').split(' ')[0];
+      return `<span class="ha-dlijn">${escapeHtml(wanneer + ' ' + voornaam)}</span>`;
+    }).join('') + (lijst.length > 2 ? `<span class="ha-dlijn">+${lijst.length - 2} meer</span>` : '');
+    const label = haDagNaam(d) + (lijst.length ? `, ${lijst.length} boeking${lijst.length > 1 ? 'en' : ''}` : ', vrij');
+    h += `<button type="button" class="${klassen.join(' ')}" data-dag="${key}" aria-label="${escapeHtml(label)}"><span class="ha-dnum">${d.getDate()}</span>${lijnen}</button>`;
+  }
+  cal.innerHTML = h;
+  // Pijltjes: niet verder dan de maand waarin de boekgrens valt
+  const next = document.getElementById('ha-next');
+  if (next) next.disabled = haMaand >= new Date(grens.getFullYear(), grens.getMonth(), 1);
+}
+
+function haRenderDag() {
+  const titel = document.getElementById('ha-dag-titel');
+  const lijstEl = document.getElementById('ha-dag-lijst');
+  if (!titel || !lijstEl || !haGekozen) return;
+  const dag = haVanKey(haGekozen);
+  titel.textContent = haDagNaam(dag);
+  const lijst = haOpDag(dag);
+  let h = '';
+  if (!lijst.length) h += '<p class="ha-leeg">Nog niets geboekt — de auto is de hele dag vrij.</p>';
+  lijst.forEach(b => {
+    const mijn = haIsMijn(b), over = haKanOvernemen(b);
+    const chauffeur = b.chauffeur_naam && b.chauffeur_naam !== b.naam ? `Chauffeur: ${escapeHtml(b.chauffeur_naam)}` : 'Rijdt zelf';
+    const notitie = b.notitie ? ` · “${escapeHtml(b.notitie)}”` : '';
+    const annuleerbaar = mijn && new Date(b.eind_tijd) > new Date();
+    h += `<div class="ha-rit${mijn ? ' eigen' : over ? ' overneembaar' : ''}">
+      <div class="ha-rit-tijd">${escapeHtml(haPeriode(b))}</div>
+      <div class="ha-rit-wie"><strong>${escapeHtml(b.naam || '')}</strong>${mijn ? ' (jij)' : ''} <span class="ha-jaar">${haJaarKort(b.aankomstjaar)}</span></div>
+      <div class="ha-rit-extra">${chauffeur}${notitie}</div>
+      ${annuleerbaar ? `<button type="button" class="ha-btn-licht" data-ha-annuleer="${escapeHtml(String(b.id))}">Boeking annuleren</button>` : ''}
+      ${over ? '<span class="ha-tag">Jonger jaar — je kunt deze tijd overnemen</span>' : ''}
+    </div>`;
+  });
+  if (!haFormOpen) {
+    if (dag < haVandaag()) h += '<p class="ha-dag-note">Deze dag is al voorbij.</p>';
+    else if (dag > haGrens()) h += `<p class="ha-dag-note">Je kunt maximaal ${HA_MAANDEN_VOORUIT} maanden vooruit boeken.</p>`;
+    else h += '<button type="button" class="ha-btn ha-boek-knop" id="ha-open-form">Auto boeken op deze dag</button>';
+  }
+  lijstEl.innerHTML = h;
+}
+
+function haRenderMijn() {
+  const el = document.getElementById('ha-mijn');
+  if (!el) return;
+  if (!haMijn.length) { el.innerHTML = ''; return; }
+  const me = haMijnEmail();
+  el.innerHTML = '<h3>Mijn komende ritten</h3><ul>' + haMijn.map(b => {
+    const s = new Date(b.start_tijd);
+    const alsChauffeur = !haIsMijn(b) && (b.chauffeur_email || '').toLowerCase() === me;
+    const sub = alsChauffeur
+      ? `Jij bent chauffeur voor ${escapeHtml(b.naam || 'een huisgenoot')}`
+      : (b.chauffeur_naam && b.chauffeur_naam !== b.naam ? `Chauffeur: ${escapeHtml(b.chauffeur_naam)}` : 'Je rijdt zelf');
+    return `<li><button type="button" class="ha-mijn-link" data-dag="${haKey(s)}">${escapeHtml(haDagNaam(s))} · ${escapeHtml(haPeriode(b))}</button>
+      <span class="ha-mijn-sub">${sub}${b.notitie ? ` · “${escapeHtml(b.notitie)}”` : ''}</span></li>`;
+  }).join('') + '</ul>';
+}
+
+function haTijdOpties(gekozen, metMiddernacht) {
+  let h = '';
+  for (let m = 0; m < 24 * 60; m += 30) {
+    const t = haPad(Math.floor(m / 60)) + ':' + haPad(m % 60);
+    h += `<option value="${t}"${t === gekozen ? ' selected' : ''}>${t}</option>`;
+  }
+  if (metMiddernacht) h += `<option value="24:00"${gekozen === '24:00' ? ' selected' : ''}>24:00</option>`;
+  return h;
+}
+function haPlusMinuten(t, min) {
+  const [u, m] = t.split(':').map(Number);
+  const tot = Math.min(24 * 60, u * 60 + m + min);
+  return haPad(Math.floor(tot / 60)) + ':' + haPad(tot % 60);
+}
+
+function haOpenForm() {
+  const wrap = document.getElementById('ha-form-wrap');
+  if (!wrap || !haGekozen) return;
+  haFormOpen = true;
+  const dag = haVanKey(haGekozen);
+  // Standaard: 10:00–12:00, of vandaag het eerstvolgende halve uur
+  let van = '10:00';
+  if (haGekozen === haKey(new Date())) {
+    const nu = new Date(), min = nu.getHours() * 60 + nu.getMinutes();
+    const volgende = Math.min(23 * 60 + 30, Math.ceil((min + 1) / 30) * 30);
+    van = haPad(Math.floor(volgende / 60)) + ':' + haPad(volgende % 60);
+  }
+  const tot = haPlusMinuten(van, 120);
+  const maxTerug = new Date(dag); maxTerug.setDate(maxTerug.getDate() + HA_MAX_DAGEN);
+  const volgendeDag = new Date(dag); volgendeDag.setDate(volgendeDag.getDate() + 1);
+  const me = haMijnEmail();
+  const huidigJaar = new Date().getFullYear();
+  const huisgenoten = (PEOPLE || []).filter(p => {
+    const j = Number(p['Aankomstjaar']);
+    const emails = [p['E-mail 1'], p['E-mail 2'], p['E-mail 3']].map(e => (e || '').toLowerCase());
+    return j >= HUISAUTO_MIN_JAAR && j <= huidigJaar && !p['Gearchiveerd'] && p._id != null && !emails.includes(me);
+  }).map(p => ({
+    id: p._id,
+    naam: [p['Roepnaam'] || p['Voornaam'] || p['Voorletters'], p['Tussenvoegsel'], p['Achternaam']].filter(Boolean).join(' '),
+    jaar: Number(p['Aankomstjaar']),
+  })).sort((a, b) => a.naam.localeCompare(b.naam, 'nl'));
+
+  wrap.innerHTML = `
+    <form class="ha-form" id="ha-form" novalidate>
+      <h4>Auto boeken</h4>
+      <div class="ha-rij">
+        <label>Van <select id="ha-van">${haTijdOpties(van, false)}</select></label>
+        <label><span id="ha-tot-label">Tot</span> <select id="ha-tot">${haTijdOpties(tot, true)}</select></label>
+      </div>
+      <label class="ha-check"><input type="checkbox" id="ha-meerdaags"> Ik ben meerdere dagen weg</label>
+      <label id="ha-terug-wrap" hidden>Terug op
+        <input type="date" id="ha-terug" value="${haKey(volgendeDag)}" min="${haKey(volgendeDag)}" max="${haKey(maxTerug)}">
+      </label>
+      <label>Chauffeur
+        <select id="ha-chauffeur">
+          <option value="zelf">Ik rijd zelf</option>
+          ${huisgenoten.length ? `<optgroup label="Huisgenoten">${huisgenoten.map(p => `<option value="${escapeHtml(String(p.id))}">${escapeHtml(p.naam)} (${haJaarKort(p.jaar)})</option>`).join('')}</optgroup>` : ''}
+          <option value="anders">Iemand anders…</option>
+        </select>
+      </label>
+      <input type="text" id="ha-chauffeur-naam" placeholder="Naam van de chauffeur" maxlength="80" hidden>
+      <label>Waar ga je heen? <span class="ha-optie">(niet verplicht)</span>
+        <input type="text" id="ha-notitie" maxlength="200" placeholder="Bijv. verhuizing, boodschappen, weekend weg">
+      </label>
+      <div class="ha-form-knoppen">
+        <button type="submit" class="ha-btn" id="ha-boek-btn">Boeken</button>
+        <button type="button" class="ha-btn-licht" id="ha-form-sluit">Annuleren</button>
+      </div>
+      <div class="ha-melding" id="ha-melding" role="alert"></div>
+    </form>`;
+
+  const f = wrap.querySelector('#ha-form');
+  const vanSel = f.querySelector('#ha-van'), totSel = f.querySelector('#ha-tot');
+  const meer = f.querySelector('#ha-meerdaags'), terugWrap = f.querySelector('#ha-terug-wrap');
+  const chSel = f.querySelector('#ha-chauffeur'), chNaam = f.querySelector('#ha-chauffeur-naam');
+  vanSel.addEventListener('change', () => {
+    if (!meer.checked && totSel.value <= vanSel.value) totSel.value = haPlusMinuten(vanSel.value, 60);
+  });
+  meer.addEventListener('change', () => {
+    terugWrap.hidden = !meer.checked;
+    f.querySelector('#ha-tot-label').textContent = meer.checked ? 'Tot (op de terugkomdag)' : 'Tot';
+  });
+  chSel.addEventListener('change', () => {
+    chNaam.hidden = chSel.value !== 'anders';
+    if (!chNaam.hidden) chNaam.focus();
+  });
+  f.querySelector('#ha-form-sluit').addEventListener('click', haSluitForm);
+  f.addEventListener('submit', haSubmit);
+  haRenderDag(); // verbergt de "Auto boeken"-knop
+  f.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function haSluitForm() {
+  haFormOpen = false;
+  const wrap = document.getElementById('ha-form-wrap');
+  if (wrap) wrap.innerHTML = '';
+  haRenderDag();
+}
+
+async function haCall(payload) {
+  const { data: { session } } = await db.auth.getSession();
+  const token = session?.access_token;
+  if (!token) return { ok: false, data: { error: 'Je bent uitgelogd. Log opnieuw in.' } };
+  const res = await fetch('/api/reserveer-plek', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ type: 'auto', ...payload }),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, data };
+}
+
+async function haSubmit(e) {
+  e.preventDefault();
+  if (haBusy) return;
+  const f = e.target;
+  const melding = f.querySelector('#ha-melding');
+  const knop = f.querySelector('#ha-boek-btn');
+  const fout = t => { melding.textContent = t; };
+  melding.textContent = '';
+
+  const dag = haVanKey(haGekozen);
+  const [vu, vm] = f.querySelector('#ha-van').value.split(':').map(Number);
+  const [tu, tm] = f.querySelector('#ha-tot').value.split(':').map(Number);
+  const meerdaags = f.querySelector('#ha-meerdaags').checked;
+  const terug = f.querySelector('#ha-terug').value;
+  if (meerdaags && !terug) return fout('Kies de dag waarop je terug bent.');
+  const start = new Date(dag); start.setHours(vu, vm, 0, 0);
+  const eind = meerdaags ? haVanKey(terug) : new Date(dag);
+  eind.setHours(tu, tm, 0, 0); // 24:00 schuift vanzelf door naar middernacht
+  if (eind <= start) return fout('De eindtijd moet na de begintijd liggen.');
+  if (start.getTime() < Date.now() - 10 * 60 * 1000) return fout('Deze tijd is al voorbij. Kies een latere begintijd.');
+  if (eind - start > HA_MAX_DAGEN * 24 * 3600 * 1000) return fout(`Een boeking mag maximaal ${HA_MAX_DAGEN} dagen duren.`);
+
+  const chVal = f.querySelector('#ha-chauffeur').value;
+  let chauffeur = { type: 'zelf' };
+  if (chVal === 'anders') {
+    const naam = f.querySelector('#ha-chauffeur-naam').value.trim();
+    if (!naam) return fout('Vul de naam van de chauffeur in.');
+    chauffeur = { type: 'anders', naam };
+  } else if (chVal !== 'zelf') {
+    chauffeur = { type: 'huisgenoot', id: chVal };
+  }
+
+  const payload = {
+    actie: 'boek', start: start.toISOString(), eind: eind.toISOString(),
+    chauffeur, notitie: f.querySelector('#ha-notitie').value.trim(),
+  };
+  haBusy = true; knop.disabled = true; knop.textContent = 'Bezig…';
+  try {
+    let r = await haCall(payload);
+    // Overlap met een jonger jaar: eerst bevestigen, dan overnemen
+    if (!r.ok && r.status === 409 && Array.isArray(r.data.overnemen)) {
+      const wie = r.data.overnemen.map(o => `• ${o.naam} (jaar ${o.aankomstjaar}): ${o.periode}`).join('\n');
+      const ok = confirm(`Dit tijdvak is al geboekt door een jonger jaar:\n\n${wie}\n\nOp basis van anciënniteit kun je dit overnemen. Diegene en de chauffeur krijgen dan automatisch een mailtje.\n\nOvernemen?`);
+      if (!ok) { fout('Niet geboekt. Kies eventueel een andere tijd.'); return; }
+      r = await haCall({ ...payload, overnemen: true });
+    }
+    if (!r.ok) { fout(r.data.error || 'Boeken is niet gelukt. Probeer het opnieuw.'); return; }
+
+    let tekst = `✅ Geboekt: <strong>${escapeHtml(haDagNaam(start))}, ${escapeHtml(haPeriode({ start_tijd: start.toISOString(), eind_tijd: eind.toISOString() }))}</strong>.`;
+    if (chauffeur.type === 'huisgenoot') tekst += ' De chauffeur krijgt een bevestigingsmail.';
+    const verdrongen = r.data.verdrongen || [];
+    if (verdrongen.length) tekst += ` Je hebt de boeking van ${verdrongen.map(v => escapeHtml(v.naam || 'iemand')).join(' en ')} overgenomen; diegene heeft een mailtje gekregen.`;
+    haBericht = { tekst, soort: 'ok' };
+    haSluitForm();
+    await loadHuisauto();
+    document.getElementById('ha-status')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (err) {
+    fout('Netwerkfout: ' + (err.message || err));
+  } finally {
+    haBusy = false;
+    if (knop.isConnected) { knop.disabled = false; knop.textContent = 'Boeken'; }
+  }
+}
+
+async function haAnnuleer(id) {
+  if (haBusy) return;
+  const b = haBoekingen.find(x => String(x.id) === String(id));
+  const wat = b ? `${haDagNaam(new Date(b.start_tijd))}, ${haPeriode(b)}` : 'deze boeking';
+  if (!confirm(`Weet je zeker dat je je boeking wilt annuleren?\n\n${wat}`)) return;
+  haBusy = true;
+  try {
+    const r = await haCall({ actie: 'annuleer', id });
+    haBericht = r.ok
+      ? { tekst: 'Je boeking is geannuleerd.' + (b && b.chauffeur_naam && b.chauffeur_naam !== b.naam ? ' De chauffeur krijgt hier een mailtje over.' : ''), soort: 'ok' }
+      : { tekst: escapeHtml(r.data.error || 'Annuleren is niet gelukt.'), soort: 'fout' };
+    await loadHuisauto();
+  } catch (err) {
+    alert('Netwerkfout: ' + (err.message || err));
+  } finally {
+    haBusy = false;
+  }
+}
+
+function haKiesDag(key) {
+  haGekozen = key;
+  haBericht = null;
+  const d = haVanKey(key);
+  const maand = new Date(d.getFullYear(), d.getMonth(), 1);
+  if (haFormOpen) haSluitForm();
+  if (maand.getTime() !== haMaand.getTime()) { haMaand = maand; loadHuisauto(); }
+  else { haRenderStatus(); haRenderKalender(); haRenderDag(); }
+}
+
+function haWisselMaand(stap) {
+  haMaand = new Date(haMaand.getFullYear(), haMaand.getMonth() + stap, 1);
+  const vandaag = haVandaag();
+  haGekozen = (vandaag.getMonth() === haMaand.getMonth() && vandaag.getFullYear() === haMaand.getFullYear())
+    ? haKey(vandaag) : haKey(haMaand);
+  haBericht = null;
+  if (haFormOpen) haSluitForm();
+  loadHuisauto();
+}
+
+let _huisautoBound = false;
+function bindHuisauto() {
+  if (_huisautoBound) return;
+  const panel = document.getElementById('panel-huisauto');
+  if (!panel) return;
+  _huisautoBound = true;
+  document.getElementById('ha-prev').addEventListener('click', () => haWisselMaand(-1));
+  document.getElementById('ha-next').addEventListener('click', () => haWisselMaand(1));
+  document.getElementById('ha-vandaag').addEventListener('click', () => haKiesDag(haKey(haVandaag())));
+  panel.addEventListener('click', e => {
+    const dagBtn = e.target.closest('[data-dag]');
+    if (dagBtn) {
+      haKiesDag(dagBtn.dataset.dag);
+      if (dagBtn.classList.contains('ha-mijn-link') || window.innerWidth <= 860) {
+        document.querySelector('.ha-dag')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return;
+    }
+    const annuleer = e.target.closest('[data-ha-annuleer]');
+    if (annuleer) { haAnnuleer(annuleer.dataset.haAnnuleer); return; }
+    if (e.target.closest('#ha-open-form')) haOpenForm();
+  });
+}
+
+let _huisautoTimer = null;
+function startHuisautoAutoRefresh() {
+  stopHuisautoAutoRefresh();
+  _huisautoTimer = setInterval(() => {
+    // Niet verversen terwijl iemand het formulier invult
+    if (document.visibilityState === 'visible' && !haFormOpen && !haBusy
+        && document.getElementById('panel-huisauto')?.classList.contains('active')) loadHuisauto();
+  }, 30000);
+}
+function stopHuisautoAutoRefresh() {
+  if (_huisautoTimer) { clearInterval(_huisautoTimer); _huisautoTimer = null; }
 }
 
 // ==================== HUISPLATTEGROND (doorsnede OD35) ====================

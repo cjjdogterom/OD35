@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const nodemailer = require('nodemailer');
+const huisauto = require('../lib/huisauto');
 
 const SUPABASE_URL = 'https://mxbtmbcgycjqapjzulrp.supabase.co';
 const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14YnRtYmNneWNqcWFwanp1bHJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MDQ4MzgsImV4cCI6MjA5MzQ4MDgzOH0.6Qowa_mqhH7YtrljF5fZnQzUaG_u4N5TodcnLzRhYSM';
@@ -66,27 +67,32 @@ module.exports = async function handler(req, res) {
   } catch (_) { return res.status(500).json({ error: 'Sessiecontrole mislukt' }); }
   if (!email) return res.status(400).json({ error: 'Geen e-mail in sessie' });
 
-  const { wedstrijd, wedstrijdNaam, plek, actie } = req.body || {};
-  if (!wedstrijd) return res.status(400).json({ error: 'wedstrijd ontbreekt' });
+  const { wedstrijd, wedstrijdNaam, plek, actie, type } = req.body || {};
+  // type 'auto' = huisauto boeken (lib/huisauto.js); anders een bankplek voor een wedstrijd.
+  if (!wedstrijd && type !== 'auto') return res.status(400).json({ error: 'wedstrijd ontbreekt' });
 
   const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!SERVICE) return res.status(500).json({ error: 'Server niet geconfigureerd' });
   const admin = createClient(SUPABASE_URL, SERVICE, { auth: { autoRefreshToken: false, persistSession: false } });
 
-  // Wie is de aanvrager? (bewoner jaar 2017–2026)
+  // Wie is de aanvrager? (bewoner jaar 2017 t/m nu)
   let caller;
   try {
     const { data } = await admin.from('personen')
-      .select('voorletters,tussenvoegsel,achternaam,aankomstjaar,email_1,email_2,email_3')
+      .select('roepnaam,voornaam,voorletters,tussenvoegsel,achternaam,aankomstjaar,email_1,email_2,email_3')
       .or(`email_1.ilike.${email},email_2.ilike.${email},email_3.ilike.${email}`)
       .limit(1);
     caller = data && data[0];
   } catch (_) { return res.status(500).json({ error: 'Kon bewoner niet opzoeken' }); }
   if (!caller) return res.status(403).json({ error: 'Je staat niet als bewoner in de lijst' });
   const jaar = Number(caller.aankomstjaar);
-  if (!(jaar >= 2017 && jaar <= 2026)) {
-    return res.status(403).json({ error: 'Alleen huidige bewoners (jaar 2017–2026) kunnen reserveren' });
+  const maxJaar = Math.max(2026, new Date().getFullYear());
+  if (!(jaar >= 2017 && jaar <= maxJaar)) {
+    return res.status(403).json({ error: `Alleen huidige bewoners (jaar 2017–${maxJaar}) kunnen reserveren` });
   }
+
+  if (type === 'auto') return huisauto(req, res, { admin, email, jaar, caller });
+
   const callerNaam = naamVan(caller) || email;
 
   // Plek verlaten
