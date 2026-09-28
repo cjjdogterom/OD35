@@ -59,7 +59,6 @@ module.exports = async function handler(req, res) {
   // Geblokkeerde adressen: geen toegang meer tot de site (krijgen nooit een inlogcode,
   // ook niet als ze nog in de ledenlijst staan). Adres in kleine letters.
   const GEBLOKKEERD = [
-    'boele@cdehg.nl',
   ];
   if (GEBLOKKEERD.includes(email)) {
     return res.status(403).json({ error: 'Dit account heeft geen toegang meer tot de site.' });

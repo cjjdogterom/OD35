@@ -12046,9 +12046,13 @@ Met vriendelijke groet,"></textarea>
 })();
 
 // ==================== THEME PICKER ====================
+// WK-thema aan/uit. Uit = de optie verdwijnt uit de kiezer en iedereen krijgt het
+// normale thema (ook wie eerder WK had gekozen). Zet op true voor het volgende toernooi.
+const WK_THEMA_AAN = false;
 // Mag de huidige gebruiker het WK-thema zien? Alleen ingelogde bewoners
 // met aankomstjaar 2011 t/m 2026. Niet ingelogd (inlogpagina) = nooit.
 function wkEligible() {
+  if (!WK_THEMA_AAN) return false;
   if (!currentUserEmail) return false;
   const p = (typeof personByEmail === 'function') ? personByEmail(currentUserEmail) : null;
   const j = p && p['Aankomstjaar'] ? Number(p['Aankomstjaar']) : null;

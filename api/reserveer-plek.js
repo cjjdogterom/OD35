@@ -35,6 +35,17 @@ function rateLimited(ip) {
   return arr.length > 20;
 }
 
+// Deze bewoners mogen niet reserveren (geen huisauto, geen bankplek). Een bestaande
+// boeking annuleren mag wel. We kijken naar al hun e-mailadressen in de ledenlijst.
+// E-mailadressen in kleine letters.
+const GEEN_RESERVERINGEN = [
+  'ktavandenberg@gmail.com',       // Kasper van den Berg
+  'boele@cdehg.nl',                // Boele Collot d'Escury
+  'willemboerboom@icloud.com',     // Willem Boerboom
+  'pieterlucasdegraaf@gmail.com',  // Lucas de Graaf
+  'cedric@jacobovits.com',         // Cedric Jacobovits de Szeged
+];
+
 function naamVan(p) {
   return [p.voorletters, p.tussenvoegsel, p.achternaam].filter(Boolean).join(' ').trim();
 }
@@ -89,6 +100,15 @@ module.exports = async function handler(req, res) {
   const maxJaar = Math.max(2026, new Date().getFullYear());
   if (!(jaar >= 2017 && jaar <= maxJaar)) {
     return res.status(403).json({ error: `Alleen huidige bewoners (jaar 2017–${maxJaar}) kunnen reserveren` });
+  }
+
+  const callerEmails = [email, caller.email_1, caller.email_2, caller.email_3]
+    .map(e => String(e || '').trim().toLowerCase()).filter(Boolean);
+  const annuleert = actie === 'verlaat' || actie === 'annuleer';
+  if (!annuleert && callerEmails.some(e => GEEN_RESERVERINGEN.includes(e))) {
+    return res.status(403).json({
+      error: 'Je kunt op dit moment geen reserveringen maken. Vragen? Mail naar omegaksiod35@gmail.com',
+    });
   }
 
   if (type === 'auto') return huisauto(req, res, { admin, email, jaar, caller });
