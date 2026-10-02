@@ -4321,10 +4321,39 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   }
 });
 
+// "Ingelogd blijven": de refresh-token gaat ook naar een HttpOnly-cookie op de server
+// (zie api/request-code.js). Safari/iPhone wist de opslag van een site die je 7 dagen
+// niet bezocht; met het cookie herstelt de site de sessie dan zonder nieuwe inlogcode.
+const SESSIE_MARKER = 'od35_sessie_bewaard'; // laatst bewaarde token, om dubbel posten te voorkomen
+async function bewaarSessieCookie(session) {
+  const rt = session && session.refresh_token;
+  if (!rt) return;
+  try { if (localStorage.getItem(SESSIE_MARKER) === rt) return; } catch (_) {}
+  try {
+    const r = await fetch('/api/request-code', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ actie: 'bewaar', refresh_token: rt }),
+    });
+    if (r.ok) { try { localStorage.setItem(SESSIE_MARKER, rt); } catch (_) {} }
+  } catch (_) { /* volgende keer opnieuw */ }
+}
+async function vergeetSessieCookie() {
+  try { localStorage.removeItem(SESSIE_MARKER); } catch (_) {}
+  try {
+    await fetch('/api/request-code', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ actie: 'vergeet' }),
+    });
+  } catch (_) {}
+}
+
 // Reageer op auth-events: bij een definitieve uitlog (of een verlopen sessie die
 // niet meer te vernieuwen is) terug naar het inlogscherm i.p.v. een lege/kapotte app.
 try {
   db.auth.onAuthStateChange((event, session) => {
+    if (session && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+      bewaarSessieCookie(session);
+    }
     if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
       const main = document.getElementById('main-content');
       if (main && main.style.display !== 'none') location.reload();
@@ -4551,6 +4580,7 @@ function openPersonModal(existingPerson) {
 document.addEventListener('DOMContentLoaded', () => {
   // Volledig uitloggen → terug naar het inlogscherm
   async function logoutFully() {
+    await vergeetSessieCookie(); // eerst, want signOut herlaadt via onAuthStateChange
     try { await db.auth.signOut(); } catch (_) {}
     location.reload();
   }
@@ -4577,6 +4607,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const { error } = await db.auth.signInWithPassword({ email, password: pass });
     btn.disabled = false; btn.textContent = 'Inloggen';
     if (error) { err.textContent = 'Inloggen mislukt: ' + error.message; return; }
+    try { const { data: s } = await db.auth.getSession(); await bewaarSessieCookie(s && s.session); } catch (_) {}
     // Sessie staat — herlaad zodat de app schoon opstart met de juiste rechten
     location.reload();
   });
@@ -10510,8 +10541,14 @@ async function init() {
   // teruggeven, waardoor met RLS alle data faalt en het voelt alsof je bent uitgelogd.
   const { data: { session } } = await db.auth.getSession();
   if (!session) { location.reload(); return; }
-  const { data: { user } } = await db.auth.getUser();
-  if (!user) { try { await db.auth.signOut(); } catch (_) {} location.reload(); return; }
+  const { data: { user: serverUser }, error: userErr } = await db.auth.getUser();
+  // Alleen uitloggen als de server de sessie echt afwijst — niet bij een netwerkhapering
+  // of een korte storing, dan gewoon doorgaan met de sessie die we al hebben.
+  if (!serverUser && userErr && (userErr.status === 401 || userErr.status === 403)) {
+    try { await db.auth.signOut({ scope: 'local' }); } catch (_) {} // alleen dit apparaat
+    location.reload(); return;
+  }
+  const user = serverUser || session.user;
   adminUser = null;
   currentUserEmail = (user && user.email ? user.email : '').toLowerCase();
   if (user && user.email) {
@@ -10548,7 +10585,7 @@ async function init() {
     // een generieke 'verbinding'-melding waar de gebruiker steeds op terugkomt.
     const m = ((e && (e.message || e.code)) || '').toString();
     if ((e && (e.status === 401 || e.status === 403)) || /PGRST301|permission denied|JWT|invalid token|401|403/i.test(m)) {
-      try { await db.auth.signOut(); } catch (_) {}
+      try { await db.auth.signOut({ scope: 'local' }); } catch (_) {} // alleen dit apparaat
       alert('Je sessie is verlopen — log opnieuw in.');
       location.reload();
       return;
@@ -12171,6 +12208,26 @@ function wkEligible() {
     return (typeof db !== 'undefined' && db && db.auth);
   }
 
+  // Geen sessie in de browser? Probeer die te herstellen via het "ingelogd blijven"-cookie.
+  // Eén poging per tabblad, zodat een blijvende fout nooit in een herlaad-lus eindigt.
+  async function herstelSessie() {
+    try {
+      if (sessionStorage.getItem('od35_herstel_geprobeerd')) return false;
+      sessionStorage.setItem('od35_herstel_geprobeerd', '1');
+    } catch (_) {}
+    try {
+      const r = await fetch('/api/request-code', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actie: 'herstel' }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok || !d.access_token || !d.refresh_token) return false;
+      try { localStorage.setItem(SESSIE_MARKER, d.refresh_token); } catch (_) {} // server heeft 'm al
+      const { error } = await db.auth.setSession({ access_token: d.access_token, refresh_token: d.refresh_token });
+      return !error;
+    } catch (_) { return false; }
+  }
+
   async function requestCode(email) {
     const res = await fetch('/api/request-code', {
       method: 'POST',
@@ -12222,6 +12279,8 @@ function wkEligible() {
       return;
     }
     setMsg('Welkom! Een ogenblik…', 'ok');
+    // "Ingelogd blijven"-cookie zetten vóór het herladen (anders wordt het verzoek afgebroken)
+    try { const { data: s } = await db.auth.getSession(); await bewaarSessieCookie(s && s.session); } catch (_) {}
     // Sessie staat nu vast — herlaad zodat de app schoon opstart met de sessie
     location.reload();
   }
@@ -12270,6 +12329,13 @@ function wkEligible() {
       const { data } = await db.auth.getSession();
       if (data && data.session) { unlock(); return; }
     } catch (_) {}
+    // Sessie in de browser gewist (bv. door Safari)? Stil herstellen via het cookie.
+    sendBtn.disabled = true;
+    setMsg('Even kijken of je nog ingelogd bent…', '');
+    const hersteld = await herstelSessie();
+    sendBtn.disabled = false;
+    setMsg('', '');
+    if (hersteld) { unlock(); return; }
     emailInput.focus();
   })();
 
