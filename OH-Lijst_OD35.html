@@ -2909,6 +2909,15 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   padding: 0.3rem 0.7rem; font-size: 0.78rem; cursor: pointer; border-radius: var(--radius); font-family: var(--font-body);
 }
 .wg-del-btn:hover { background: #c0392b; color: #fff; border-color: #c0392b; }
+.meld-btn {
+  background: transparent; border: none; color: var(--gray); font-family: var(--font-body);
+  font-size: 0.85rem; padding: 0.4rem 0.2rem; min-height: 36px; cursor: pointer; text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.meld-btn:hover { color: #c0392b; }
+.meld-btn-licht { color: rgba(255,255,255,0.75); }
+.meld-btn-licht:hover { color: #fff; }
+.login-akkoord { font-size: 0.82rem; }
 .wg-empty { text-align: center; padding: 2.5rem 1rem; color: var(--gray); font-style: italic; }
 
 /* ==================== BEZOEKERS-DASHBOARD ==================== */
@@ -3580,6 +3589,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
     <div class="login-msg" id="login-msg"></div>
 
     <p class="login-help">Lukt inloggen niet? Mail naar <a href="mailto:omegaksiod35@gmail.com">omegaksiod35@gmail.com</a></p>
+    <p class="login-help login-akkoord">Door in te loggen ga je akkoord met de <a href="voorwaarden.html" target="_blank" rel="noopener">gebruiksvoorwaarden</a> en het <a href="privacy.html" target="_blank" rel="noopener">privacybeleid</a>.</p>
 
     <div class="login-links" style="margin-top:1.2rem;">
       <button type="button" class="login-link muted" id="login-admin-link">Beheerder inloggen met wachtwoord</button>
@@ -4544,6 +4554,55 @@ if (IN_APP) {
   }, true);
 }
 
+// ==================== MELDEN VAN ONGEPASTE INHOUD + ACCOUNT VERWIJDEREN ====================
+// Vereist door Apple voor apps waarin leden zelf inhoud plaatsen (foto's, Wandelgangen).
+const BEHEER_MAIL = 'omegaksiod35@gmail.com';
+function meldInhoud(soort, id, auteur, fragment) {
+  const wat = soort === 'foto' ? 'deze foto' : 'dit bericht';
+  if (!confirm(`Wil je ${wat} melden als ongepast?\n\nJe mailprogramma opent met een ingevulde melding aan de beheerders. Zij kijken er binnen 24 uur naar.`)) return;
+  const regels = [
+    `Ik wil ${wat} melden als ongepast.`, '',
+    `Soort: ${soort}`, `ID: ${id || '-'}`,
+    auteur ? `Geplaatst door: ${auteur}` : '',
+    fragment ? `Inhoud: ${fragment}` : '', '',
+    `Gemeld door: ${currentUserEmail || '(onbekend)'}`, '',
+    'Reden (mag je aanvullen):', '',
+  ].filter((r, i, a) => r !== '' || a[i - 1] !== '');
+  location.href = `mailto:${BEHEER_MAIL}?subject=${encodeURIComponent('Melding ongepaste inhoud (' + soort + ')')}&body=${encodeURIComponent(regels.join('\n'))}`;
+}
+document.addEventListener('click', e => {
+  const knop = e.target.closest('[data-meld]');
+  if (!knop) return;
+  e.preventDefault(); e.stopPropagation();
+  meldInhoud(knop.dataset.meld, knop.dataset.meldId, knop.dataset.meldAuteur, knop.dataset.meldFragment);
+}, true);
+
+async function vraagAccountVerwijdering() {
+  if (!currentUserEmail) return;
+  if (!confirm('Account en gegevens verwijderen?\n\nDe beheerders krijgen een verzoek om je account en al je persoonsgegevens te verwijderen. Dat gebeurt binnen een maand; je krijgt een bevestiging per mail. Daarna kun je niet meer inloggen.')) return;
+  const p = personByEmail(currentUserEmail);
+  const naam = p ? [p['Roepnaam'] || p['Voornaam'] || p['Voorletters'], p['Tussenvoegsel'], p['Achternaam']].filter(Boolean).join(' ') : currentUserEmail;
+  const verzoek = {
+    persoon: naam, aanvrager_naam: naam, aanvrager_email: currentUserEmail,
+    veld: 'Account verwijderen',
+    wijziging: 'Verwijder mijn account en al mijn persoonsgegevens (aangevraagd via ' + (IN_APP ? 'de app' : 'de site') + ').',
+    toelichting: null,
+  };
+  try {
+    const { error } = await db.from('wijzigingsverzoeken').insert(verzoek);
+    if (error) throw error;
+    const { data: admins } = await db.from('admin_emails').select('email');
+    fetch(FORM_ENDPOINT, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...verzoek, toelichting: '', adminEmails: (admins || []).map(a => a.email).filter(Boolean) }),
+    }).catch(() => {});
+    alert('Je verzoek is verstuurd.\n\nDe beheerders verwijderen je account en gegevens binnen een maand en laten het je per mail weten.');
+  } catch (_) {
+    // Lukt het niet via de site, dan via de mail
+    location.href = `mailto:${BEHEER_MAIL}?subject=${encodeURIComponent('Account verwijderen')}&body=${encodeURIComponent('Graag mijn account en al mijn persoonsgegevens verwijderen.\n\nNaam: ' + naam + '\nE-mail: ' + currentUserEmail)}`;
+  }
+}
+
 // ==================== APP-WEERGAVE: bovenbalk, menubalk onderin, instellingen ====================
 // In de app (en in de browser met ?appweergave, om te bekijken) krijgt de site een
 // app-indeling: smalle bovenbalk met tandwiel, tabbladen als menubalk onderin.
@@ -4593,6 +4652,9 @@ const APP_ICONEN = (() => {
     faceid: s('<path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M9 9v1.5M15 9v1.5M12 9v4h-1"/><path d="M9.5 16c1.4 1 3.6 1 5 0"/>'),
     plus: s('<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>'),
     uitloggen: s('<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l5-5-5-5M15 12H4"/>'),
+    document: s('<path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3v5h5M8.5 13h7M8.5 16.5h5"/>'),
+    help: s('<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6M12 17.2v.1"/>'),
+    prullenbak: s('<path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/>'),
   };
 })();
 // Vaste plekken in de menubalk; de overige zichtbare tabbladen komen onder "Meer".
@@ -4673,8 +4735,14 @@ function appRenderInstellingen() {
     h += `<button type="button" class="app-rij" data-app-faceid>${APP_ICONEN.faceid}<span class="app-rij-tekst">Face ID-slot<span class="app-rij-sub">De app openen met je gezicht</span></span></button>`;
     h += '</div>';
   }
+  h += '<div class="app-sheet-sectie">Over</div><div class="app-sheet-groep">';
+  h += `<button type="button" class="app-rij" data-app-link="support.html">${APP_ICONEN.help}<span class="app-rij-tekst">Help &amp; contact</span></button>`;
+  h += `<button type="button" class="app-rij" data-app-link="privacy.html">${APP_ICONEN.document}<span class="app-rij-tekst">Privacybeleid</span></button>`;
+  h += `<button type="button" class="app-rij" data-app-link="voorwaarden.html">${APP_ICONEN.document}<span class="app-rij-tekst">Gebruiksvoorwaarden</span></button>`;
+  h += '</div>';
   h += '<div class="app-sheet-sectie">Account</div><div class="app-sheet-groep">';
   h += `<button type="button" class="app-rij gevaar" data-app-uitloggen>${APP_ICONEN.uitloggen}<span class="app-rij-tekst">Uitloggen</span></button>`;
+  h += `<button type="button" class="app-rij gevaar" data-app-verwijder>${APP_ICONEN.prullenbak}<span class="app-rij-tekst">Account verwijderen<span class="app-rij-sub">Je account en gegevens laten verwijderen</span></span></button>`;
   h += '</div>';
   const stats = (document.getElementById('stats')?.textContent || '').trim();
   h += `<p class="app-sheet-voet">Oude Delft 35 · sinds 1891${stats ? '<br>' + escapeHtml(stats) : ''}${window.OD35_APP ? '<br>App-versie ' + escapeHtml(String(window.OD35_APP.versie || '')) : ''}</p>`;
@@ -4726,6 +4794,9 @@ function appBouwWeergave() {
     }
     if (t.closest('[data-app-faceid]')) { appSluitSheets(); appBericht('instellingen'); return; }
     if (t.closest('[data-app-uitloggen]')) { appSluitSheets(); document.getElementById('admin-fab')?.click(); return; }
+    if (t.closest('[data-app-verwijder]')) { appSluitSheets(); vraagAccountVerwijdering(); return; }
+    const link = t.closest('[data-app-link]');
+    if (link) { appSluitSheets(); window.open(link.dataset.appLink, '_blank', 'noopener'); return; }
   });
 
   // De menubalk volgt de gewone tabknoppen (zichtbaarheid per jaargang/rol en actieve tab)
@@ -8470,6 +8541,7 @@ function renderWandelgangen() {
       </div>
       <div class="wg-msg-body">${escapeHtml(m.bericht)}</div>
       ${magWeg ? `<button class="wg-del-btn" data-action="wg-del" data-id="${escapeHtml(m.id)}">Verwijderen</button>` : ''}
+      ${(m.email || '').toLowerCase() !== currentUserEmail ? `<button type="button" class="meld-btn" data-meld="bericht" data-meld-id="${escapeHtml(String(m.id))}" data-meld-auteur="${escapeHtml(naam)}" data-meld-fragment="${escapeHtml(String(m.bericht || '').slice(0, 160))}">⚑ Melden</button>` : ''}
     </div>`;
   }).join('');
 }
@@ -9600,8 +9672,10 @@ function renderEvents() {
     html += `<div class="event-actions">`;
     html += `<div class="event-stats">✓${stats.yes} · ?${stats.maybe} · ✗${stats.no}</div>`;
     html += `<button class="event-lijst-toggle" data-event-id="${escapeHtml(ev.id)}">Deelnemers</button>`;
-    html += `<button class="event-export-btn" data-event-id="${escapeHtml(ev.id)}">↓ Excel</button>`;
-    html += `<button class="event-delete" data-event-id="${escapeHtml(ev.id)}">Verwijder</button>`;
+    if (isAdmin()) {
+      html += `<button class="event-export-btn" data-event-id="${escapeHtml(ev.id)}">↓ Excel</button>`;
+      html += `<button class="event-delete" data-event-id="${escapeHtml(ev.id)}">Verwijder</button>`;
+    }
     html += `</div>`;
 
     // Deelnemerslijst panel (hidden by default)
@@ -9724,6 +9798,7 @@ document.getElementById('event-list').addEventListener('click', e => {
     return;
   }
   if (e.target.matches('.event-delete')) {
+    if (!isAdmin()) return;
     const id = e.target.dataset.eventId;
     if (confirm('Event verwijderen? Aanwezigheid van huisgenoten voor dit event blijft bewaard.')) {
       eventsList = eventsList.filter(ev => ev.id !== id);
@@ -11683,6 +11758,7 @@ function renderLightbox() {
     ${onderschrift}
     <div class="foto-lightbox-counter">${lightboxIndex + 1} / ${fotosList.length}</div>
     ${IN_APP && !isPdf ? `<button type="button" class="foto-lightbox-bewaar" onclick="event.stopPropagation(); appBericht('bewaarFoto', { url: fotosList[lightboxIndex].url })">⤓ Bewaar in fotorol</button>` : ''}
+    ${(foto.uploaded_by || '').toLowerCase() !== currentUserEmail ? `<button type="button" class="meld-btn meld-btn-licht" data-meld="foto" data-meld-id="${escapeHtml(String(foto.id || ''))}" data-meld-auteur="${escapeHtml(foto.uploaded_by || '')}" data-meld-fragment="${escapeHtml(foto.url || '')}">⚑ Melden</button>` : ''}
     ${lightboxIndex > 0 ? `<button class="foto-lightbox-nav foto-lightbox-prev" onclick="lightboxNav(-1)">&#8249;</button>` : ''}
     ${lightboxIndex < fotosList.length - 1 ? `<button class="foto-lightbox-nav foto-lightbox-next" onclick="lightboxNav(1)">&#8250;</button>` : ''}
   `;

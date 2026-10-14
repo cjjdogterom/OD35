@@ -273,9 +273,9 @@ export default function App() {
           onMessage={onMessage}
           onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
           onOpenWindow={e => {
-            const url = e.nativeEvent.targetUrl;
-            if (isEigenHost(url) && !/\.pdf($|\?)/i.test(url)) webRef.current?.injectJavaScript(`location.href=${JSON.stringify(url)}; true;`);
-            else WebBrowser.openBrowserAsync(url, { controlsColor: MARINE }).catch(() => {});
+            // Nieuw venster (privacybeleid, help, PDF, externe link): in een ingebouwde Safari
+            // met "Gereed"-knop, zodat je altijd terugkomt in de app.
+            WebBrowser.openBrowserAsync(e.nativeEvent.targetUrl, { controlsColor: MARINE }).catch(() => {});
           }}
           onLoadEnd={() => setLaadFout(false)}
           onError={() => setLaadFout(true)}

@@ -1,0 +1,41 @@
+/* Opmaak voor de openbare pagina's (privacy, voorwaarden, help) — zelfde stijl als de site */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  --ink: #2a2620;
+  --paper: #f4f1e8;
+  --paper-warm: #e9e4d6;
+  --marine: #2a4d82;
+  --gray: #857058;
+  --line: rgba(42, 38, 32, 0.14);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: 'Lora', Georgia, serif; font-size: 17px; line-height: 1.65;
+  -webkit-text-size-adjust: 100%;
+}
+.doc { max-width: 720px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+.terug { display: inline-block; color: var(--marine); text-decoration: none; font-size: 0.95rem; margin-bottom: 1.5rem; }
+.logo { display: block; width: 84px; margin: 0 auto 0.6rem; }
+.eyebrow {
+  text-align: center; font-family: ui-monospace, Menlo, monospace; font-size: 0.72rem;
+  letter-spacing: 0.22em; text-transform: uppercase; color: var(--marine); margin: 0;
+}
+h1 { font-family: 'Playfair Display', Georgia, serif; font-size: 2.3rem; text-align: center; margin: 0.3rem 0 0.2rem; line-height: 1.2; }
+.datum { text-align: center; color: var(--gray); font-style: italic; margin: 0 0 2rem; }
+h2 {
+  font-family: 'Playfair Display', Georgia, serif; font-size: 1.4rem; margin: 2.2rem 0 0.6rem;
+  padding-top: 1.2rem; border-top: 1px solid var(--line);
+}
+h3 { font-size: 1.05rem; margin: 1.4rem 0 0.3rem; }
+p, ul { margin: 0 0 1rem; }
+ul { padding-left: 1.3rem; }
+li { margin-bottom: 0.4rem; }
+a { color: var(--marine); }
+.contact {
+  background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--marine);
+  border-radius: 4px; padding: 1rem 1.2rem; margin: 1.5rem 0 1rem;
+}
+.contact p { margin: 0; }
+.voet { margin-top: 3rem; text-align: center; color: var(--gray); font-size: 0.95rem; }
