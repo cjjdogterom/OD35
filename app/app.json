@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "Oude Delft 35",
+    "slug": "oude-delft-35",
+    "owner": "ticketflowtickets",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F4F1E8",
+    "ios": {
+      "bundleIdentifier": "nl.oudedelft35.app",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDevelopmentRegion": "nl",
+        "NSCameraUsageDescription": "Om een foto te maken en die in een album te zetten.",
+        "NSPhotoLibraryUsageDescription": "Om foto's te kiezen die je in een album wilt zetten."
+      }
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-logo.png",
+          "imageWidth": 200,
+          "backgroundColor": "#F4F1E8"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Om de app te beveiligen, zodat alleen jij de ledenlijst kunt openen."
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Om een oud-huisgenoot in je contacten te zetten."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Om foto's te kiezen die je in een album wilt zetten.",
+          "savePhotosPermission": "Om foto's uit de albums in je fotorol te bewaren.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      "expo-notifications",
+      "expo-web-browser"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a6b74920-b085-43c0-a8bc-62de492e16a7"
+      }
+    }
+  }
+}

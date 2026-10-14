@@ -4386,13 +4386,21 @@ try {
 // In de app draait deze site in een WKWebView. De app zet window.OD35_APP vóór de
 // scripts van de site en luistert naar window.webkit.messageHandlers.od35. Alleen
 // dan tonen we app-knoppen (contacten, fotorol); in een gewone browser verandert niets.
-const IN_APP = !!(window.OD35_APP && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.od35);
+// Twee soorten brug: de Expo-app (window.ReactNativeWebView) en de oudere Swift-app
+// (window.webkit.messageHandlers.od35).
+const APP_BRUG_RN = !!(window.OD35_APP && window.ReactNativeWebView);
+const APP_BRUG_WK = !!(window.OD35_APP && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.od35);
+const IN_APP = APP_BRUG_RN || APP_BRUG_WK;
 if (IN_APP) document.documentElement.classList.add('in-app');
 let appPushToken = null;   // apparaatnummer voor pushmeldingen, krijgen we van de app
 function appBericht(type, data) {
   if (!IN_APP) return false;
-  try { window.webkit.messageHandlers.od35.postMessage(Object.assign({ type }, data || {})); return true; }
-  catch (_) { return false; }
+  const bericht = Object.assign({ type }, data || {});
+  try {
+    if (APP_BRUG_RN) window.ReactNativeWebView.postMessage(JSON.stringify(bericht));
+    else window.webkit.messageHandlers.od35.postMessage(bericht);
+    return true;
+  } catch (_) { return false; }
 }
 function appToast(tekst) {
   let el = document.getElementById('app-toast');
@@ -4450,6 +4458,19 @@ if (IN_APP) {
     e.preventDefault(); e.stopPropagation();
     zetPersoonInContacten(knop.dataset.appContact);
   }, true);
+  // "App-instellingen" (Face ID-slot aan/uit) onderaan het thema-menuutje
+  const voegAppInstellingenToe = () => {
+    const pop = document.getElementById('theme-popover');
+    if (!pop || pop.querySelector('.app-instellingen-btn')) return;
+    const knop = document.createElement('button');
+    knop.type = 'button';
+    knop.className = 'theme-option app-instellingen-btn';
+    knop.innerHTML = '<div style="font-size:1.4rem;width:28px;text-align:center">📱</div><div><div style="font-weight:600;font-size:1.02rem">App-instellingen</div><div style="font-size:0.72rem;color:var(--gray)">Face ID-slot aan of uit</div></div>';
+    knop.addEventListener('click', ev => { ev.stopPropagation(); pop.classList.remove('open'); appBericht('instellingen'); });
+    pop.appendChild(knop);
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', voegAppInstellingenToe);
+  else voegAppInstellingenToe();
 }
 
 // Supabase rij → persoon object (Dutch veldnamen)

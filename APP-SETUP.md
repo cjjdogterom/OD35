@@ -1,15 +1,19 @@
 # iPhone-app "Oude Delft 35" — setup
 
-De app staat in de map `ios/` (Xcode-project `ios/OD35.xcodeproj`). Het is de website
-in een app-jasje, met daarbovenop:
+De app staat in de map `app/` en is een **Expo**-app (zelfde opzet als de TicketFlow-app).
+Bouwen, ondertekenen en uploaden gaat via **EAS** in de cloud — er is geen Xcode of
+certificaat op deze Mac nodig. Expo-project: `@ticketflowtickets/oude-delft-35`.
+
+Het is de website in een app-jasje, met daarbovenop:
 
 - **Face ID-slot** — na de eerste keer inloggen vraagt de app of je hem wilt beveiligen.
-  Aan/uit later via Instellingen → Oude Delft 35. Na 1 minuut op de achtergrond gaat hij weer op slot.
+  Wijzigen via het thema-knopje op de site → **App-instellingen** (alleen zichtbaar in de app).
+  Na 1 minuut op de achtergrond gaat hij weer op slot.
 - **Zet in mijn contacten** — knop op de persoonskaart; opent het iPhone-scherm "Nieuw contact", al ingevuld.
 - **Bewaar in fotorol** — knop in de fotoweergave.
 - **Pushmeldingen** — bij een nieuw agendapunt (beheerder kiest bij opslaan) en bij de huisauto
   (overgenomen, je bent chauffeur, rit geannuleerd). Aantikken opent het juiste tabblad.
-- Bellen/mailen/appen via de iPhone, downloads (Excel) via het deelmenu, externe links in een ingebouwde Safari,
+- Bellen/mailen/appen via de iPhone, externe links in een ingebouwde Safari,
   naar beneden trekken = verversen, nette melding zonder internet.
 
 De app laadt altijd de live site, dus wijzigingen aan de site zijn meteen in de app te zien.
@@ -21,10 +25,10 @@ Draai dit in **Supabase → SQL Editor**:
 
 ```sql
 create table if not exists public.push_tokens (
-  token      text primary key,          -- apparaatnummer van Apple
+  token      text primary key,          -- ExponentPushToken[…] van de app
   email      text not null,             -- login-e-mail (kleine letters)
   platform   text not null default 'ios',
-  omgeving   text not null default 'production',  -- 'sandbox' voor builds uit Xcode
+  omgeving   text not null default 'production',
   bijgewerkt timestamptz not null default now()
 );
 create index if not exists push_tokens_email_idx on public.push_tokens (email);
@@ -50,8 +54,7 @@ begin
     return;
   end if;
   insert into push_tokens (token, email, platform, omgeving, bijgewerkt)
-  values (p_token, lower(auth.email()), 'ios',
-          case when p_omgeving = 'sandbox' then 'sandbox' else 'production' end, now())
+  values (p_token, lower(auth.email()), 'ios', coalesce(p_omgeving, 'production'), now())
   on conflict (token) do update
     set email = excluded.email, omgeving = excluded.omgeving, bijgewerkt = now();
 end;
@@ -61,31 +64,23 @@ grant execute on function public.registreer_push_token(text, text) to authentica
 ```
 
 Lezen en versturen gebeurt alleen door de server (service-role), dus er is geen lees-policy.
+Meldingen gaan via de Expo-pushdienst (`lib/push.js`); daarvoor is **geen** Apple-sleutel in
+Vercel nodig — EAS koppelt de pushsleutel van Apple bij het bouwen.
 
-## 2. Apple — sleutel voor pushmeldingen (eenmalig)
+## 2. Nieuwe versie bouwen en naar TestFlight sturen
 
-1. Ga naar [developer.apple.com/account/resources/authkeys](https://developer.apple.com/account/resources/authkeys/list) → **+**.
-2. Naam: `OD35 push`, vink **Apple Push Notifications service (APNs)** aan → Continue → Register.
-3. **Download** het `.p8`-bestand (kan maar één keer!) en noteer de **Key ID**.
-4. Je **Team ID** staat op [developer.apple.com/account](https://developer.apple.com/account) → Membership details.
+```bash
+cd app
+npx eas-cli@latest build --platform ios --profile production --auto-submit
+```
 
-Zet in **Vercel → Settings → Environment Variables** (Production):
-
-| Naam | Waarde |
-|---|---|
-| `APNS_KEY` | de hele inhoud van het `.p8`-bestand (inclusief `-----BEGIN PRIVATE KEY-----`) |
-| `APNS_KEY_ID` | de Key ID (10 tekens) |
-| `APNS_TEAM_ID` | je Team ID (10 tekens) |
-| `APNS_BUNDLE_ID` | `nl.oudedelft35.app` |
-
-Daarna opnieuw deployen. Zonder deze variabelen doet de server niets met pushmeldingen (geen fout).
-
-## 3. Nieuwe versie naar TestFlight
-
-1. Verhoog in Xcode bij het target **OD35 → General** het **Build**-nummer (1, 2, 3 …).
-2. **Product → Archive** (bovenin "Any iOS Device" kiezen).
-3. In de Organizer: **Distribute App → App Store Connect → Upload**.
-4. Na ±15 minuten verschijnt de build in App Store Connect → TestFlight.
+- Het buildnummer gaat automatisch omhoog (`autoIncrement`).
+- De eerste keer vraagt EAS om in te loggen bij Apple en maakt het zelf een
+  distributiecertificaat, provisioning profile en pushsleutel aan. Die bewaart EAS; volgende
+  keren gaat het vanzelf.
+- `--auto-submit` zet de build na het bouwen direct in App Store Connect → TestFlight
+  (verwerking bij Apple duurt ±15 minuten).
+- Alleen de site aangepast? Dan is geen nieuwe app-versie nodig: de app laadt de live site.
 
 Een TestFlight-build werkt 90 dagen. Voor externe testers (via openbare link) keurt Apple
 de eerste build van een versie; geef daarbij een testaccount op (e-mail + wachtwoord via
@@ -93,7 +88,7 @@ de eerste build van een versie; geef daarbij een testaccount op (e-mail + wachtw
 
 ## Server-onderdelen
 
-- `lib/push.js` — verstuurt meldingen via APNs (HTTP/2 + ES256-token), ruimt ongeldige toestellen op.
+- `lib/push.js` — verstuurt meldingen via de Expo-pushdienst, ruimt verwijderde apps op.
 - `lib/huisauto.js` — meldingen bij overname / chauffeur / annulering.
 - `api/gmail-send.js` — `type: 'push-agenda'`, alleen voor beheerders.
-- Geen extra Vercel-functies (Hobby-plan: max 12).
+- Geen extra Vercel-functies (Hobby-plan: max 12). `.vercelignore` houdt `app/` van de website.
