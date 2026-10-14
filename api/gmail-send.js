@@ -59,6 +59,34 @@ module.exports = async function handler(req, res) {
     return res.status(403).json({ error: 'Alleen admins mogen mail versturen via deze endpoint' });
   }
 
+  // Pushmelding "Nieuw in de agenda" naar iedereen met de iPhone-app (lib/push.js).
+  // Hier wél een echte beheerderscontrole: hoofdadmin of een rij in de tabel admins.
+  if (req.body && req.body.type === 'push-agenda') {
+    const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!SERVICE) return res.status(500).json({ error: 'Server niet geconfigureerd' });
+    const { createClient } = require('@supabase/supabase-js');
+    const { stuurPush } = require('../lib/push');
+    const admin = createClient('https://mxbtmbcgycjqapjzulrp.supabase.co', SERVICE, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    let isBeheerder = userEmail === 'cjj.dogterom@gmail.com';
+    if (!isBeheerder) {
+      const { data } = await admin.from('admins').select('email').eq('email', userEmail).limit(1);
+      isBeheerder = !!(data && data.length);
+    }
+    if (!isBeheerder) return res.status(403).json({ error: 'Alleen beheerders mogen pushmeldingen versturen' });
+
+    const { data: ev } = await admin.from('evenementen').select('titel,datum,tijd').eq('id', req.body.eventId).maybeSingle();
+    if (!ev) return res.status(404).json({ error: 'Agendapunt niet gevonden' });
+    const datum = ev.datum
+      ? new Date(ev.datum + 'T12:00:00Z').toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam', weekday: 'long', day: 'numeric', month: 'long' })
+      : '';
+    const tijd = ev.tijd ? ', ' + String(ev.tijd).slice(0, 5) : '';
+    const r = await stuurPush(admin, '*', { titel: 'Nieuw in de agenda', tekst: `${ev.titel}${datum ? ' — ' + datum + tijd : ''}`, tab: 'agenda' });
+    if (r.reden) return res.status(503).json({ error: r.reden });
+    return res.status(200).json({ ok: true, ...r });
+  }
+
   const { subject, html, text, recipients, fromName, replyTo } = req.body || {};
   if (!subject || (!html && !text) || !Array.isArray(recipients) || recipients.length === 0) {
     return res.status(400).json({ error: 'subject, html (of text) en recipients[] zijn verplicht' });

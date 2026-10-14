@@ -2415,6 +2415,27 @@
     .seat { font-size: 0.54rem; }
   }
 
+  /* ============ IPHONE-APP — alleen zichtbaar in de app ============ */
+  .app-contact-btn {
+    display: inline-flex; align-items: center; gap: 0.4rem; margin: 1rem 0 0.25rem;
+    background: var(--burgundy); color: #fff; border: none; border-radius: 2px; cursor: pointer;
+    font-family: var(--font-body); font-size: 1rem; padding: 0.75rem 1.2rem; min-height: 44px;
+  }
+  .app-contact-btn:active { background: var(--burgundy-deep); }
+  .foto-lightbox-bewaar {
+    background: rgba(255,255,255,0.14); color: #fff; border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 2px; font-family: var(--font-body); font-size: 1rem; padding: 0.65rem 1.2rem;
+    min-height: 44px; cursor: pointer; margin-top: 0.4rem;
+  }
+  #app-toast {
+    position: fixed; left: 50%; bottom: calc(1.5rem + env(safe-area-inset-bottom)); z-index: 20000;
+    transform: translate(-50%, 1rem); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+    background: var(--ink); color: var(--paper); padding: 0.8rem 1.2rem; border-radius: 6px;
+    font-family: var(--font-body); font-size: 1rem; max-width: calc(100vw - 2rem); text-align: center;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+  }
+  #app-toast.zichtbaar { opacity: 1; transform: translate(-50%, 0); }
+
   /* ============ HUISAUTO — maandkalender + boeken ============ */
   .ha-head h2 { margin: 0; }
   .ha-sub { color: var(--gray); margin: 0.3rem 0 1rem; font-style: italic; }
@@ -4361,6 +4382,76 @@ try {
   });
 } catch (_) {}
 
+// ==================== IPHONE-APP (brug met de app "Oude Delft 35") ====================
+// In de app draait deze site in een WKWebView. De app zet window.OD35_APP vóór de
+// scripts van de site en luistert naar window.webkit.messageHandlers.od35. Alleen
+// dan tonen we app-knoppen (contacten, fotorol); in een gewone browser verandert niets.
+const IN_APP = !!(window.OD35_APP && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.od35);
+if (IN_APP) document.documentElement.classList.add('in-app');
+let appPushToken = null;   // apparaatnummer voor pushmeldingen, krijgen we van de app
+function appBericht(type, data) {
+  if (!IN_APP) return false;
+  try { window.webkit.messageHandlers.od35.postMessage(Object.assign({ type }, data || {})); return true; }
+  catch (_) { return false; }
+}
+function appToast(tekst) {
+  let el = document.getElementById('app-toast');
+  if (!el) { el = document.createElement('div'); el.id = 'app-toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+  el.textContent = tekst;
+  el.classList.add('zichtbaar');
+  clearTimeout(appToast._t);
+  appToast._t = setTimeout(() => el.classList.remove('zichtbaar'), 3500);
+}
+async function registreerPushToken(token, omgeving) {
+  appPushToken = token;
+  if (!currentUserEmail || !token) return;
+  try { await db.rpc('registreer_push_token', { p_token: token, p_omgeving: omgeving || 'production' }); }
+  catch (_) { /* tabel/functie nog niet aangemaakt: zie APP-SETUP.md */ }
+}
+// Berichten van de app → site
+window.od35App = {
+  ontvang(bericht) {
+    if (!bericht || !bericht.type) return;
+    if (bericht.type === 'melding') appToast(bericht.tekst || '');
+    if (bericht.type === 'pushToken') registreerPushToken(bericht.token, bericht.omgeving);
+    if (bericht.type === 'openTab') {
+      const knop = document.querySelector('.tab-btn[data-tab="' + String(bericht.tab).replace(/[^a-z0-9_-]/gi, '') + '"]');
+      if (knop && knop.style.display !== 'none') { knop.click(); knop.scrollIntoView({ block: 'nearest', inline: 'center' }); }
+    }
+  },
+};
+// "Zet in mijn contacten": de gegevens van een persoon naar het iPhone-contactscherm
+function zetPersoonInContacten(id) {
+  const p = (PEOPLE || []).find(x => String(x._id) === String(id));
+  if (!p) return;
+  const adres = getAdres(p)[0];
+  appBericht('contact', {
+    voornaam: p['Roepnaam'] || p['Voornaam'] || p['Voorletters'] || '',
+    tussenvoegsel: p['Tussenvoegsel'] || '',
+    achternaam: p['Achternaam'] || '',
+    titel: p['Titel'] || '',
+    aankomstjaar: p['Aankomstjaar'] ? Number(p['Aankomstjaar']) : null,
+    emails: getEmails(p).map(e => e.value),
+    mobiel: getMobiel(p).map(m => m.value),
+    vast: getVast(p).map(v => v.value),
+    straat: adres ? adres.value : '',
+    postcode: p['Postcode'] || '',
+    plaats: p['Plaats'] || '',
+    land: p['Land'] || '',
+    geboortedag: p['Geboortedag'] ? Number(p['Geboortedag']) : null,
+    geboortemaand: p['Geboortemaand'] ? Number(p['Geboortemaand']) : null,
+    geboortejaar: p['Geboortejaar'] ? Number(p['Geboortejaar']) : null,
+  });
+}
+if (IN_APP) {
+  document.addEventListener('click', e => {
+    const knop = e.target.closest('[data-app-contact]');
+    if (!knop) return;
+    e.preventDefault(); e.stopPropagation();
+    zetPersoonInContacten(knop.dataset.appContact);
+  }, true);
+}
+
 // Supabase rij → persoon object (Dutch veldnamen)
 function dbRowToPerson(row) {
   const p = {
@@ -4580,6 +4671,11 @@ function openPersonModal(existingPerson) {
 document.addEventListener('DOMContentLoaded', () => {
   // Volledig uitloggen → terug naar het inlogscherm
   async function logoutFully() {
+    // iPhone-app: geen pushmeldingen meer naar dit toestel voor dit account
+    if (IN_APP && appPushToken) {
+      try { await db.from('push_tokens').delete().eq('token', appPushToken); } catch (_) {}
+    }
+    appBericht('uitgelogd');
     await vergeetSessieCookie(); // eerst, want signOut herlaadt via onAuthStateChange
     try { await db.auth.signOut(); } catch (_) {}
     location.reload();
@@ -5155,6 +5251,11 @@ function renderDetails(p) {
   }
 
   html += '</div>';
+
+  // Alleen in de iPhone-app: in één tik naar de iPhone-contacten
+  if (IN_APP && (emails.length || mobiel.length || vast.length)) {
+    html += `<button type="button" class="app-contact-btn" data-app-contact="${escapeHtml(String(p._id || ''))}">📇 Zet in mijn contacten</button>`;
+  }
 
   // Meta strip
   html += '<div class="meta-strip">';
@@ -9313,6 +9414,22 @@ document.getElementById('event-form').addEventListener('submit', async e => {
   form.classList.remove('open');
   renderEvents();
   render();
+
+  // Pushmelding naar iedereen met de iPhone-app (de server controleert of je beheerder bent)
+  if (confirm(`Een pushmelding sturen naar iedereen met de app?\n\n"Nieuw in de agenda: ${data.titel}"`)) {
+    try {
+      const { data: { session } } = await db.auth.getSession();
+      const r = await fetch('/api/gmail-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+        body: JSON.stringify({ type: 'push-agenda', eventId: data.id }),
+      });
+      const res = await r.json().catch(() => ({}));
+      alert(r.ok ? `Pushmelding verstuurd naar ${res.verstuurd || 0} toestel(len).` : 'Pushmelding niet verstuurd: ' + (res.error || 'onbekende fout'));
+    } catch (err) {
+      alert('Pushmelding niet verstuurd: ' + (err.message || err));
+    }
+  }
 });
 document.getElementById('event-list').addEventListener('click', e => {
   // Jaargang toevoegen (heeft data-action; check VOOR de generieke export-btn)
@@ -10596,6 +10713,9 @@ async function init() {
   // Search tekst
   PEOPLE.forEach(p => { p._searchText = buildSearchText(p); });
 
+  // iPhone-app: ingelogd → de app kan nu Face ID voorstellen en pushmeldingen aanzetten
+  appBericht('ingelogd', { email: currentUserEmail });
+
   // Jaar filter opbouwen
   const jaarFilterEl = document.getElementById('jaar-filter');
   while (jaarFilterEl.options.length > 1) jaarFilterEl.remove(1);
@@ -11276,6 +11396,7 @@ function renderLightbox() {
     ${mediaHtml}
     ${onderschrift}
     <div class="foto-lightbox-counter">${lightboxIndex + 1} / ${fotosList.length}</div>
+    ${IN_APP && !isPdf ? `<button type="button" class="foto-lightbox-bewaar" onclick="event.stopPropagation(); appBericht('bewaarFoto', { url: fotosList[lightboxIndex].url })">⤓ Bewaar in fotorol</button>` : ''}
     ${lightboxIndex > 0 ? `<button class="foto-lightbox-nav foto-lightbox-prev" onclick="lightboxNav(-1)">&#8249;</button>` : ''}
     ${lightboxIndex < fotosList.length - 1 ? `<button class="foto-lightbox-nav foto-lightbox-next" onclick="lightboxNav(1)">&#8250;</button>` : ''}
   `;
