@@ -81,5 +81,13 @@ module.exports = async function handler(req, res) {
   } catch (e) {
     return res.status(500).json({ error: 'Opslaan mislukt' });
   }
+
+  // Bewaartermijn (zie privacy.html): bezoeken ouder dan 12 maanden opruimen.
+  try {
+    const grens = new Date();
+    grens.setMonth(grens.getMonth() - 12);
+    await admin.from('bezoeken').delete().lt('ingelogd_op', grens.toISOString());
+  } catch (_) { /* opruimen is niet kritiek */ }
+
   return res.status(200).json({ ok: true });
 };
