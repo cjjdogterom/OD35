@@ -2436,6 +2436,90 @@
   }
   #app-toast.zichtbaar { opacity: 1; transform: translate(-50%, 0); }
 
+  /* ============ APP-WEERGAVE — eigen indeling in de iPhone-app ============
+     (in de browser te bekijken met ?appweergave) */
+  #app-topbar, #app-tabbar, .app-sheet { display: none; }
+  .app-weergave #app-topbar, .app-weergave #app-tabbar { display: flex; }
+  .app-weergave body { padding-top: 58px; padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
+  /* De website-onderdelen die in de app vervangen worden */
+  .app-weergave header,
+  .app-weergave #nav-sticky,
+  .app-weergave .theme-fab,
+  .app-weergave .admin-fab,
+  .app-weergave .to-top,
+  .app-weergave .theme-popover { display: none !important; }
+  .app-weergave #app-toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
+
+  #app-topbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9000; height: 58px;
+    align-items: center; gap: 0.6rem; padding: 0 0.75rem 0 1rem;
+    background: var(--paper); border-bottom: 1px solid var(--line);
+  }
+  #app-topbar .app-top-logo { width: 34px; height: 34px; object-fit: contain; }
+  #app-topbar .app-top-titel { flex: 1; min-width: 0; line-height: 1.15; }
+  #app-topbar .app-top-titel small {
+    display: block; font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--burgundy);
+  }
+  #app-topbar .app-top-titel strong {
+    display: block; font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .app-icoonknop {
+    width: 46px; height: 46px; border: none; background: transparent; color: var(--burgundy);
+    display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer;
+  }
+  .app-icoonknop:active { background: var(--paper-warm); }
+  .app-icoonknop svg { width: 27px; height: 27px; }
+
+  #app-tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 9000;
+    padding: 4px 4px env(safe-area-inset-bottom);
+    background: var(--paper); border-top: 1px solid var(--line);
+    box-shadow: 0 -4px 18px rgba(0,0,0,0.05);
+  }
+  .app-tab {
+    flex: 1; min-width: 0; height: 60px; border: none; background: transparent; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    color: var(--gray); font-family: var(--font-body); font-size: 0.74rem;
+  }
+  .app-tab svg { width: 26px; height: 26px; }
+  .app-tab span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .app-tab.actief { color: var(--burgundy); font-weight: 600; }
+
+  /* Uitschuifpanelen (Meer / Instellingen) */
+  .app-weergave .app-sheet.open { display: block; }
+  .app-sheet { position: fixed; inset: 0; z-index: 9500; }
+  .app-sheet-achtergrond { position: absolute; inset: 0; background: rgba(26,24,18,0.45); }
+  .app-sheet-paneel {
+    position: absolute; left: 0; right: 0; bottom: 0; max-height: 86vh; overflow-y: auto;
+    background: var(--paper); border-radius: 18px 18px 0 0;
+    padding: 0.5rem 1rem calc(1.2rem + env(safe-area-inset-bottom));
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.2); animation: appSheetIn .22s ease-out;
+  }
+  @keyframes appSheetIn { from { transform: translateY(30px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+  .app-sheet-greep { width: 42px; height: 5px; border-radius: 3px; background: var(--line); margin: 0.2rem auto 0.6rem; }
+  .app-sheet-kop { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
+  .app-sheet-kop h2 { margin: 0; font-family: var(--font-display); font-size: 1.4rem; }
+  .app-sheet-sectie {
+    font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--gray); margin: 1.1rem 0.25rem 0.4rem;
+  }
+  .app-sheet-groep { background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .app-rij {
+    display: flex; align-items: center; gap: 0.85rem; width: 100%; min-height: 54px; padding: 0.5rem 1rem;
+    border: none; background: transparent; text-align: left; cursor: pointer;
+    font-family: var(--font-body); font-size: 1.05rem; color: var(--ink);
+  }
+  .app-rij + .app-rij { border-top: 1px solid var(--line-soft); }
+  .app-rij:active { background: var(--paper-warm); }
+  .app-rij svg { width: 24px; height: 24px; color: var(--burgundy); flex: 0 0 auto; }
+  .app-rij .app-rij-tekst { flex: 1; min-width: 0; }
+  .app-rij .app-rij-sub { display: block; font-size: 0.85rem; color: var(--gray); }
+  .app-rij .app-vink { color: var(--burgundy); font-weight: 700; }
+  .app-rij.gevaar, .app-rij.gevaar svg { color: #b03a2e; }
+  .app-sheet-voet { text-align: center; color: var(--gray); font-size: 0.82rem; margin-top: 1rem; }
+
   /* ============ HUISAUTO — maandkalender + boeken ============ */
   .ha-head h2 { margin: 0; }
   .ha-sub { color: var(--gray); margin: 0.3rem 0 1rem; font-style: italic; }
@@ -4458,19 +4542,200 @@ if (IN_APP) {
     e.preventDefault(); e.stopPropagation();
     zetPersoonInContacten(knop.dataset.appContact);
   }, true);
-  // "App-instellingen" (Face ID-slot aan/uit) onderaan het thema-menuutje
-  const voegAppInstellingenToe = () => {
-    const pop = document.getElementById('theme-popover');
-    if (!pop || pop.querySelector('.app-instellingen-btn')) return;
-    const knop = document.createElement('button');
-    knop.type = 'button';
-    knop.className = 'theme-option app-instellingen-btn';
-    knop.innerHTML = '<div style="font-size:1.4rem;width:28px;text-align:center">📱</div><div><div style="font-weight:600;font-size:1.02rem">App-instellingen</div><div style="font-size:0.72rem;color:var(--gray)">Face ID-slot aan of uit</div></div>';
-    knop.addEventListener('click', ev => { ev.stopPropagation(); pop.classList.remove('open'); appBericht('instellingen'); });
-    pop.appendChild(knop);
+}
+
+// ==================== APP-WEERGAVE: bovenbalk, menubalk onderin, instellingen ====================
+// In de app (en in de browser met ?appweergave, om te bekijken) krijgt de site een
+// app-indeling: smalle bovenbalk met tandwiel, tabbladen als menubalk onderin.
+// De gewone tabknoppen blijven bestaan (verborgen) en blijven de bron van waarheid:
+// welke tabs iemand mag zien (jaargang, beheerder) komt daar vandaan.
+const APP_WEERGAVE = (() => {
+  if (IN_APP) return true;
+  try {
+    const p = new URLSearchParams(location.search);
+    if (p.has('appweergave')) sessionStorage.setItem('od35_appweergave', p.get('appweergave') === '0' ? '' : '1');
+    return sessionStorage.getItem('od35_appweergave') === '1';
+  } catch (_) { return false; }
+})();
+if (APP_WEERGAVE) {
+  document.documentElement.classList.add('app-weergave');
+  // Tot onder de thuisbalk van de iPhone kunnen tekenen (env(safe-area-inset-bottom))
+  const vp = document.querySelector('meta[name="viewport"]');
+  if (vp && !/viewport-fit/.test(vp.content)) vp.content += ', viewport-fit=cover';
+}
+
+const APP_ICONEN = (() => {
+  const s = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  return {
+    personen: s('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.6c2.6.2 4.5 1.9 5 4.9"/>'),
+    agenda: s('<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>'),
+    fotos: s('<rect x="3" y="4.5" width="18" height="15" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 8.5"/>'),
+    huisauto: s('<path d="M4 16v-4l2-5h12l2 5v4"/><path d="M3 16h18v2.5H3z"/><circle cx="7.5" cy="18.5" r="1.6"/><circle cx="16.5" cy="18.5" r="1.6"/><path d="M5.5 12h13"/>'),
+    nestor: s('<rect x="3" y="5" width="18" height="11" rx="1.5"/><path d="M8 20h8M12 16v4"/>'),
+    contacten: s('<path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><circle cx="11.5" cy="10" r="2.3"/><path d="M8 16c.6-1.8 2-2.7 3.5-2.7S14.4 14.2 15 16M18 8h2M18 12h2"/>'),
+    wandelgangen: s('<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>'),
+    klaverjas: s('<rect x="4" y="3.5" width="11" height="15" rx="1.5"/><path d="M9 20.5l9.5-2.5-3-11.5"/><path d="M9.5 9c-1.5-1.6-3.2-.4-2.4 1.2.6 1.1 2.4 2.4 2.4 2.4s1.8-1.3 2.4-2.4c.8-1.6-.9-2.8-2.4-1.2z"/>'),
+    zomerplanning: s('<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>'),
+    huisplattegrond: s('<path d="M3 11 12 4l9 7"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-6h4v6"/>'),
+    geschiedenis: s('<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 7.5h7M9 11h5"/>'),
+    wijzigingen: s('<path d="M3 13h5l1.5 3h5l1.5-3h5"/><path d="M5 5h14l2 8v6H3v-6z"/>'),
+    verjaardagen: s('<path d="M4 21h16v-8H4z"/><path d="M4 16.5c2 1.5 4-1.5 6 0s4-1.5 6 0 3 0 4 0"/><path d="M12 13V9M12 6.5c-1-1-.5-2.5 0-3.5.5 1 1 2.5 0 3.5z"/>'),
+    adminbeheer: s('<path d="M12 3 5 6v5.5c0 4.4 3 8 7 9.5 4-1.5 7-5.1 7-9.5V6z"/><path d="m9 12 2 2 4-4"/>'),
+    bezoekers: s('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
+    tabbeheer: s('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'),
+    meer: s('<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>'),
+    tandwiel: s('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
+    sluiten: s('<path d="M6 6l12 12M18 6 6 18"/>'),
+    wijziging: s('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>'),
+    uitnodigen: s('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6 8.5 7 8.5-7"/>'),
+    idee: s('<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.4 1.1 2.2h5c0-.8.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/>'),
+    thema: s('<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18 4 4 0 0 0 0-8 2 2 0 0 1 0-4 4 4 0 0 0 0-6z"/>'),
+    faceid: s('<path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M9 9v1.5M15 9v1.5M12 9v4h-1"/><path d="M9.5 16c1.4 1 3.6 1 5 0"/>'),
+    plus: s('<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>'),
+    uitloggen: s('<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l5-5-5-5M15 12H4"/>'),
   };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', voegAppInstellingenToe);
-  else voegAppInstellingenToe();
+})();
+// Vaste plekken in de menubalk; de overige zichtbare tabbladen komen onder "Meer".
+const APP_HOOFDTABS = ['personen', 'agenda', 'fotos', 'huisauto'];
+
+function appTabs() {
+  return [...document.querySelectorAll('#tab-nav .tab-btn[data-tab]')]
+    .filter(b => b.style.display !== 'none')
+    .map(b => {
+      const c = b.cloneNode(true);
+      c.querySelectorAll('.tab-badge').forEach(x => x.remove());
+      return { id: b.dataset.tab, label: c.textContent.replace(/\s+/g, ' ').trim(), actief: b.classList.contains('active') };
+    });
+}
+function appOpenTab(id) {
+  const knop = document.querySelector('#tab-nav .tab-btn[data-tab="' + id + '"]');
+  if (knop) knop.click();
+  appSluitSheets();
+  window.scrollTo({ top: 0 });
+}
+function appSluitSheets() {
+  document.querySelectorAll('.app-sheet.open').forEach(s => s.classList.remove('open'));
+}
+function appRenderBalken() {
+  const balk = document.getElementById('app-tabbar');
+  const titel = document.getElementById('app-top-tab');
+  if (!balk) return;
+  const tabs = appTabs();
+  const hoofd = APP_HOOFDTABS.map(id => tabs.find(t => t.id === id)).filter(Boolean).slice(0, 4);
+  const rest = tabs.filter(t => !hoofd.includes(t));
+  const actief = tabs.find(t => t.actief);
+  const meerActief = actief && rest.includes(actief);
+  balk.innerHTML = hoofd.map(t =>
+    `<button type="button" class="app-tab${t.actief ? ' actief' : ''}" data-app-tab="${t.id}" aria-label="${escapeHtml(t.label)}">${APP_ICONEN[t.id] || APP_ICONEN.meer}<span>${escapeHtml(t.label)}</span></button>`
+  ).join('') + (rest.length
+    ? `<button type="button" class="app-tab${meerActief ? ' actief' : ''}" data-app-meer aria-label="Meer">${APP_ICONEN.meer}<span>Meer</span></button>`
+    : '');
+  if (titel) titel.textContent = actief ? actief.label : 'Oude Delft 35';
+  const meerLijst = document.getElementById('app-meer-lijst');
+  if (meerLijst) {
+    meerLijst.innerHTML = rest.map(t =>
+      `<button type="button" class="app-rij" data-app-tab="${t.id}">${APP_ICONEN[t.id] || APP_ICONEN.meer}<span class="app-rij-tekst">${escapeHtml(t.label)}</span>${t.actief ? '<span class="app-vink">✓</span>' : ''}</button>`
+    ).join('');
+  }
+}
+function appRenderInstellingen() {
+  const el = document.getElementById('app-instellingen-inhoud');
+  if (!el) return;
+  const zichtbaar = id => { const x = document.getElementById(id); return !!x && getComputedStyle(x).display !== 'none'; };
+  const p = currentUserEmail ? personByEmail(currentUserEmail) : null;
+  const ikNaam = p
+    ? [p['Roepnaam'] || p['Voornaam'] || p['Voorletters'], p['Tussenvoegsel'], p['Achternaam']].filter(Boolean).join(' ')
+    : currentUserEmail;
+  let h = '';
+  if (ikNaam) h += `<p class="app-sheet-voet" style="margin:0 0 0.4rem;">Ingelogd als <strong>${escapeHtml(ikNaam)}</strong>${p && p['Aankomstjaar'] ? ' · ' + escapeHtml(String(p['Aankomstjaar'])) : ''}</p>`;
+  h += '<div class="app-sheet-sectie">Doen</div><div class="app-sheet-groep">';
+  h += `<button type="button" class="app-rij" data-app-klik="global-wijziging-btn">${APP_ICONEN.wijziging}<span class="app-rij-tekst">Wijziging indienen<span class="app-rij-sub">Klopt er iets niet in de ledenlijst?</span></span></button>`;
+  h += `<button type="button" class="app-rij" data-app-klik="invite-member-btn">${APP_ICONEN.uitnodigen}<span class="app-rij-tekst">Iemand uitnodigen<span class="app-rij-sub">Stuur de inschrijflink door</span></span></button>`;
+  if (document.getElementById('idee-btn') && getComputedStyle(document.querySelector('.hero-idee') || document.body).display !== 'none') {
+    h += `<button type="button" class="app-rij" data-app-klik="idee-btn">${APP_ICONEN.idee}<span class="app-rij-tekst">Idee voor de site<span class="app-rij-sub">Laat het ons weten</span></span></button>`;
+  }
+  if (zichtbaar('admin-bar') && document.getElementById('add-person-btn')) {
+    h += `<button type="button" class="app-rij" data-app-klik="add-person-btn">${APP_ICONEN.plus}<span class="app-rij-tekst">Persoon toevoegen<span class="app-rij-sub">Alleen voor beheerders</span></span></button>`;
+  }
+  h += '</div>';
+  // Thema's: dezelfde keuzes als het thema-menu van de site
+  const themas = [...document.querySelectorAll('#theme-popover .theme-option[data-theme-choice]')].filter(b => b.style.display !== 'none');
+  if (themas.length) {
+    h += '<div class="app-sheet-sectie">Thema</div><div class="app-sheet-groep">';
+    themas.forEach(b => {
+      const naam = (b.querySelector('div > div') || b).textContent.trim();
+      h += `<button type="button" class="app-rij" data-app-thema="${escapeHtml(b.dataset.themeChoice)}">${APP_ICONEN.thema}<span class="app-rij-tekst">${escapeHtml(naam)}</span>${b.classList.contains('active') ? '<span class="app-vink">✓</span>' : ''}</button>`;
+    });
+    h += '</div>';
+  }
+  if (IN_APP) {
+    h += '<div class="app-sheet-sectie">App</div><div class="app-sheet-groep">';
+    h += `<button type="button" class="app-rij" data-app-faceid>${APP_ICONEN.faceid}<span class="app-rij-tekst">Face ID-slot<span class="app-rij-sub">De app openen met je gezicht</span></span></button>`;
+    h += '</div>';
+  }
+  h += '<div class="app-sheet-sectie">Account</div><div class="app-sheet-groep">';
+  h += `<button type="button" class="app-rij gevaar" data-app-uitloggen>${APP_ICONEN.uitloggen}<span class="app-rij-tekst">Uitloggen</span></button>`;
+  h += '</div>';
+  const stats = (document.getElementById('stats')?.textContent || '').trim();
+  h += `<p class="app-sheet-voet">Oude Delft 35 · sinds 1891${stats ? '<br>' + escapeHtml(stats) : ''}${window.OD35_APP ? '<br>App-versie ' + escapeHtml(String(window.OD35_APP.versie || '')) : ''}</p>`;
+  el.innerHTML = h;
+}
+
+function appBouwWeergave() {
+  const main = document.getElementById('main-content');
+  if (!main || document.getElementById('app-topbar')) return;
+  // In #main-content, zodat de balken pas verschijnen na het inloggen.
+  main.insertAdjacentHTML('beforeend', `
+    <div id="app-topbar">
+      <img src="logo_od35.png" alt="" class="app-top-logo">
+      <div class="app-top-titel"><small>Oude Delft 35</small><strong id="app-top-tab">Personen</strong></div>
+      <button type="button" class="app-icoonknop" id="app-instellingen-knop" aria-label="Instellingen">${APP_ICONEN.tandwiel}</button>
+    </div>
+    <nav id="app-tabbar" aria-label="Tabbladen"></nav>
+    <div class="app-sheet" id="app-meer-sheet" role="dialog" aria-label="Meer tabbladen">
+      <div class="app-sheet-achtergrond" data-app-sluit></div>
+      <div class="app-sheet-paneel">
+        <div class="app-sheet-greep"></div>
+        <div class="app-sheet-kop"><h2>Meer</h2><button type="button" class="app-icoonknop" data-app-sluit aria-label="Sluiten">${APP_ICONEN.sluiten}</button></div>
+        <div class="app-sheet-groep" id="app-meer-lijst"></div>
+      </div>
+    </div>
+    <div class="app-sheet" id="app-instellingen-sheet" role="dialog" aria-label="Instellingen">
+      <div class="app-sheet-achtergrond" data-app-sluit></div>
+      <div class="app-sheet-paneel">
+        <div class="app-sheet-greep"></div>
+        <div class="app-sheet-kop"><h2>Instellingen</h2><button type="button" class="app-icoonknop" data-app-sluit aria-label="Sluiten">${APP_ICONEN.sluiten}</button></div>
+        <div id="app-instellingen-inhoud"></div>
+      </div>
+    </div>`);
+
+  main.addEventListener('click', e => {
+    const t = e.target;
+    if (t.closest('[data-app-sluit]')) { appSluitSheets(); return; }
+    const tab = t.closest('[data-app-tab]');
+    if (tab) { appOpenTab(tab.dataset.appTab); return; }
+    if (t.closest('[data-app-meer]')) { appRenderBalken(); document.getElementById('app-meer-sheet').classList.add('open'); return; }
+    if (t.closest('#app-instellingen-knop')) { appRenderInstellingen(); document.getElementById('app-instellingen-sheet').classList.add('open'); return; }
+    const klik = t.closest('[data-app-klik]');
+    if (klik) { appSluitSheets(); document.getElementById(klik.dataset.appKlik)?.click(); return; }
+    const thema = t.closest('[data-app-thema]');
+    if (thema) {
+      document.querySelector('#theme-popover .theme-option[data-theme-choice="' + thema.dataset.appThema + '"]')?.click();
+      appRenderInstellingen();
+      return;
+    }
+    if (t.closest('[data-app-faceid]')) { appSluitSheets(); appBericht('instellingen'); return; }
+    if (t.closest('[data-app-uitloggen]')) { appSluitSheets(); document.getElementById('admin-fab')?.click(); return; }
+  });
+
+  // De menubalk volgt de gewone tabknoppen (zichtbaarheid per jaargang/rol en actieve tab)
+  const nav = document.getElementById('tab-nav');
+  if (nav) new MutationObserver(appRenderBalken).observe(nav, { subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+  appRenderBalken();
+}
+if (APP_WEERGAVE) {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appBouwWeergave);
+  else appBouwWeergave();
 }
 
 // Supabase rij → persoon object (Dutch veldnamen)
