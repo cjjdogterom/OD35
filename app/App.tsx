@@ -4,7 +4,7 @@
 // via window.ReactNativeWebView.postMessage (zie IN_APP in OH-Lijst_OD35.html).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, AppState, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import type { ShouldStartLoadRequest } from 'react-native-webview/lib/WebViewTypes';
@@ -17,6 +17,8 @@ import { Directory, File, Paths } from 'expo-file-system';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Notifications from 'expo-notifications';
 import * as WebBrowser from 'expo-web-browser';
+import * as Haptics from 'expo-haptics';
+import * as Sharing from 'expo-sharing';
 
 const START_URL = 'https://www.oudedelft35.nl/';
 const EIGEN_HOSTS = ['oudedelft35.nl', 'oudedelft35.com', 'od-35.vercel.app'];
@@ -65,6 +67,7 @@ export default function App() {
   const [afgeschermd, setAfgeschermd] = useState(false); // ledenlijst verbergen in het app-overzicht
   const [laadFout, setLaadFout] = useState(false);
   const [bezigOntgrendelen, setBezigOntgrendelen] = useState(false);
+  const bezigRef = useRef(false);
   const naarAchtergrond = useRef<number | null>(null);
   const ingelogd = useRef(false);
   const wachtendTab = useRef<string | null>(null);
@@ -82,16 +85,21 @@ export default function App() {
 
   // ---------- Face ID-slot ----------
   const ontgrendel = useCallback(async () => {
-    if (bezigOntgrendelen) return;
+    if (bezigRef.current) return; // al een Face ID-vraag bezig
     if ((await AsyncStorage.getItem(SLEUTEL_FACEID)) !== '1') { setVergrendeld(false); return; }
+    bezigRef.current = true;
     setBezigOntgrendelen(true);
-    const r = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Ontgrendel Oude Delft 35',
-      cancelLabel: 'Annuleer',
-    });
-    setBezigOntgrendelen(false);
-    if (r.success) setVergrendeld(false);
-  }, [bezigOntgrendelen]);
+    try {
+      const r = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Ontgrendel Oude Delft 35',
+        cancelLabel: 'Annuleer',
+      });
+      if (r.success) setVergrendeld(false);
+    } finally {
+      bezigRef.current = false;
+      setBezigOntgrendelen(false);
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -110,8 +118,7 @@ export default function App() {
       }
     });
     return () => sub.remove();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [ontgrendel]);
 
   // ---------- Pushmeldingen ----------
   const regelPushmeldingen = useCallback(async () => {
@@ -225,6 +232,21 @@ export default function App() {
     }
   }, [toonMelding]);
 
+  // ---------- Bestand delen (downloads van de site) ----------
+  const deelBestand = useCallback(async (naam: string, base64: string, mime: string) => {
+    if (!naam || !base64) return;
+    try {
+      const veiligeNaam = naam.replace(/[\\/:*?"<>|]+/g, '_').slice(0, 120);
+      const bestand = new File(Paths.cache, veiligeNaam);
+      if (bestand.exists) bestand.delete();
+      bestand.write(base64, { encoding: 'base64' });
+      if (!(await Sharing.isAvailableAsync())) { toonMelding('Delen is niet beschikbaar op dit toestel.'); return; }
+      await Sharing.shareAsync(bestand.uri, { mimeType: mime || undefined, dialogTitle: veiligeNaam });
+    } catch {
+      toonMelding('Het bestand kon niet worden geopend.');
+    }
+  }, [toonMelding]);
+
   // ---------- Berichten van de site ----------
   const onMessage = useCallback((e: WebViewMessageEvent) => {
     let b: Bericht;
@@ -235,15 +257,22 @@ export default function App() {
       case 'contact': zetInContacten(b); break;
       case 'bewaarFoto': bewaarFoto(tekst(b.url)); break;
       case 'instellingen': toonInstellingen(); break;
+      case 'tik': Haptics.selectionAsync().catch(() => {}); break;
+      case 'deelBestand': deelBestand(tekst(b.naam), typeof b.base64 === 'string' ? b.base64 : '', tekst(b.mime)); break;
     }
-  }, [naInloggen, zetInContacten, bewaarFoto, toonInstellingen]);
+  }, [naInloggen, zetInContacten, bewaarFoto, toonInstellingen, deelBestand]);
 
   // ---------- Navigatie: eigen site in de app, de rest erbuiten ----------
   const onShouldStartLoadWithRequest = useCallback((req: ShouldStartLoadRequest) => {
     const url = req.url;
     const scheme = url.split(':')[0].toLowerCase();
     if (['tel', 'mailto', 'sms', 'facetime', 'facetime-audio', 'maps', 'whatsapp'].includes(scheme)) {
-      Linking.openURL(url).catch(() => {});
+      Linking.openURL(url).catch(() => {
+        if (scheme === 'mailto') {
+          const adres = decodeURIComponent(url.slice(7).split('?')[0]);
+          Alert.alert('Geen mail-app', `Er is geen mail-app ingesteld op deze iPhone. Mail zelf naar ${adres}.`);
+        }
+      });
       return false;
     }
     if (['about', 'blob', 'data', 'javascript'].includes(scheme)) return true;
@@ -256,12 +285,14 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
-      <SafeAreaView style={styles.scherm} edges={['top', 'left', 'right']}>
+      <View style={styles.scherm}>
         <WebView
           ref={webRef}
           source={{ uri: START_URL }}
           style={styles.web}
           containerStyle={styles.web}
+          contentInsetAdjustmentBehavior="never"
+          automaticallyAdjustContentInsets={false}
           originWhitelist={['*']}
           applicationNameForUserAgent={`OD35App/${VERSIE}`}
           injectedJavaScriptBeforeContentLoaded={VLAG_JS}
@@ -281,7 +312,7 @@ export default function App() {
           onError={() => setLaadFout(true)}
           onContentProcessDidTerminate={() => webRef.current?.reload()}
         />
-      </SafeAreaView>
+      </View>
 
       {laadFout && (
         <View style={styles.overlay}>

@@ -2436,11 +2436,26 @@
   }
   #app-toast.zichtbaar { opacity: 1; transform: translate(-50%, 0); }
 
-  /* ============ APP-WEERGAVE — eigen indeling in de iPhone-app ============
-     (in de browser te bekijken met ?appweergave) */
+  /* ============ APP-WEERGAVE — eigen indeling in de iPhone-app (Liquid Glass) ============
+     In de browser te bekijken met ?appweergave. De app tekent van rand tot rand: de inhoud
+     scrollt door achter de statusbalk en de glazen balken (viewport-fit=cover). */
+  :root {
+    --app-top-h: 56px;
+    --app-tab-h: 64px;
+    --app-glas: color-mix(in srgb, var(--paper) 62%, transparent);
+    --app-glas-sterk: color-mix(in srgb, var(--paper) 82%, transparent);
+    --app-glas-rand: rgba(255, 255, 255, 0.55);
+    --app-glas-schaduw: 0 10px 34px rgba(20, 24, 40, 0.16), 0 2px 6px rgba(20, 24, 40, 0.08);
+    --app-glas-glans: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+    --app-blur: blur(22px) saturate(185%);
+  }
   #app-topbar, #app-tabbar, .app-sheet { display: none; }
   .app-weergave #app-topbar, .app-weergave #app-tabbar { display: flex; }
-  .app-weergave body { padding-top: 58px; padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
+  .app-weergave body {
+    padding-top: calc(var(--app-top-h) + env(safe-area-inset-top));
+    padding-bottom: calc(var(--app-tab-h) + 26px + env(safe-area-inset-bottom));
+    -webkit-tap-highlight-color: transparent;
+  }
   /* De website-onderdelen die in de app vervangen worden */
   .app-weergave header,
   .app-weergave #nav-sticky,
@@ -2448,76 +2463,138 @@
   .app-weergave .admin-fab,
   .app-weergave .to-top,
   .app-weergave .theme-popover { display: none !important; }
-  .app-weergave #app-toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
-
-  #app-topbar {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 9000; height: 58px;
-    align-items: center; gap: 0.6rem; padding: 0 0.75rem 0 1rem;
-    background: var(--paper); border-bottom: 1px solid var(--line);
+  /* Inlog- en inschrijfscherm niet onder de statusbalk */
+  .app-weergave #pw-screen, .app-weergave #ins-screen { padding-top: max(1rem, env(safe-area-inset-top)); }
+  /* Vensters en fotoweergave boven de balken, met ruimte voor statusbalk en thuisbalk */
+  .app-weergave .modal-overlay {
+    z-index: 9800;
+    padding-top: calc(env(safe-area-inset-top) + 0.6rem);
+    padding-bottom: calc(env(safe-area-inset-bottom) + 0.6rem);
   }
-  #app-topbar .app-top-logo { width: 34px; height: 34px; object-fit: contain; }
-  #app-topbar .app-top-titel { flex: 1; min-width: 0; line-height: 1.15; }
+  .app-weergave .foto-lightbox { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  .app-weergave .foto-lightbox-close { top: calc(env(safe-area-inset-top) + 0.75rem); }
+  /* Plakkende onderdelen onder de glazen bovenbalk laten stoppen */
+  .app-weergave .ha-dag { top: calc(var(--app-top-h) + env(safe-area-inset-top) + 0.75rem); }
+  /* Toetsenbord open: menubalk weg, zodat hij het invoerveld niet afdekt */
+  .app-weergave.toetsenbord-open #app-tabbar { opacity: 0; transform: translateY(140%); pointer-events: none; }
+  .app-weergave #app-toast { bottom: calc(var(--app-tab-h) + 34px + env(safe-area-inset-bottom)); }
+  /* Balken en knoppen zijn bediening, geen tekst: niet selecteren of lang-indrukken */
+  #app-topbar, #app-tabbar, .app-sheet-kop, .app-rij, .app-tab {
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  }
+
+  /* — Bovenbalk: glas over de inhoud, tot achter de statusbalk — */
+  #app-topbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9000;
+    height: calc(var(--app-top-h) + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 0.6rem 0 1rem;
+    align-items: center; gap: 0.6rem;
+    background: var(--app-glas-sterk);
+    -webkit-backdrop-filter: var(--app-blur); backdrop-filter: var(--app-blur);
+    border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
+  }
+  #app-topbar .app-top-logo { width: 32px; height: 32px; object-fit: contain; }
+  #app-topbar .app-top-titel { flex: 1; min-width: 0; line-height: 1.12; }
   #app-topbar .app-top-titel small {
-    display: block; font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.18em;
+    display: block; font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.18em;
     text-transform: uppercase; color: var(--burgundy);
   }
   #app-topbar .app-top-titel strong {
-    display: block; font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; color: var(--ink);
+    display: block; font-family: var(--font-display); font-size: 1.22rem; font-weight: 600; color: var(--ink);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  /* Ronde glazen knop (zoals de knoppen in iOS 26) */
   .app-icoonknop {
-    width: 46px; height: 46px; border: none; background: transparent; color: var(--burgundy);
-    display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer;
+    width: 44px; height: 44px; flex: 0 0 auto; border-radius: 50%; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; color: var(--burgundy);
+    background: var(--app-glas);
+    -webkit-backdrop-filter: var(--app-blur); backdrop-filter: var(--app-blur);
+    border: 0.5px solid var(--app-glas-rand);
+    box-shadow: 0 2px 10px rgba(20, 24, 40, 0.10), var(--app-glas-glans);
+    transition: transform .15s ease;
   }
-  .app-icoonknop:active { background: var(--paper-warm); }
-  .app-icoonknop svg { width: 27px; height: 27px; }
+  .app-icoonknop:active { transform: scale(0.92); }
+  .app-icoonknop svg { width: 24px; height: 24px; }
 
+  /* — Menubalk: zwevende glazen capsule met meeschuivende "pil" — */
   #app-tabbar {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 9000;
-    padding: 4px 4px env(safe-area-inset-bottom);
-    background: var(--paper); border-top: 1px solid var(--line);
-    box-shadow: 0 -4px 18px rgba(0,0,0,0.05);
+    position: fixed; z-index: 9000;
+    left: 14px; right: 14px; bottom: calc(env(safe-area-inset-bottom) + 10px);
+    height: var(--app-tab-h); padding: 5px; border-radius: 999px;
+    background: var(--app-glas);
+    -webkit-backdrop-filter: var(--app-blur); backdrop-filter: var(--app-blur);
+    border: 0.5px solid var(--app-glas-rand);
+    box-shadow: var(--app-glas-schaduw), var(--app-glas-glans);
+    transition: opacity .2s ease, transform .25s ease;
+  }
+  .app-tab-pil {
+    position: absolute; top: 5px; bottom: 5px; left: 0; width: 0; border-radius: 999px; pointer-events: none;
+    background: color-mix(in srgb, var(--burgundy) 13%, rgba(255, 255, 255, 0.55));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 4px rgba(20, 24, 40, 0.10);
+    transition: transform .35s cubic-bezier(.3, 1.4, .5, 1), width .35s cubic-bezier(.3, 1.4, .5, 1);
   }
   .app-tab {
-    flex: 1; min-width: 0; height: 60px; border: none; background: transparent; cursor: pointer;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-    color: var(--gray); font-family: var(--font-body); font-size: 0.74rem;
+    position: relative; z-index: 1;
+    flex: 1; min-width: 0; height: 100%; border: none; background: transparent; cursor: pointer; border-radius: 999px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    color: var(--ink); opacity: 0.72; font-family: var(--font-body); font-size: 0.68rem;
+    transition: transform .15s ease, opacity .2s ease, color .2s ease;
   }
-  .app-tab svg { width: 26px; height: 26px; }
+  .app-tab svg { width: 25px; height: 25px; }
   .app-tab span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-  .app-tab.actief { color: var(--burgundy); font-weight: 600; }
+  .app-tab:active { transform: scale(0.9); }
+  .app-tab.actief { color: var(--burgundy); opacity: 1; font-weight: 600; }
 
-  /* Uitschuifpanelen (Meer / Instellingen) */
+  /* — Uitschuifpanelen (Meer / Instellingen): glazen kaart die van onder komt — */
   .app-weergave .app-sheet.open { display: block; }
   .app-sheet { position: fixed; inset: 0; z-index: 9500; }
-  .app-sheet-achtergrond { position: absolute; inset: 0; background: rgba(26,24,18,0.45); }
+  .app-sheet-achtergrond { position: absolute; inset: 0; background: rgba(20, 22, 30, 0.32); animation: appVaag .2s ease-out; }
   .app-sheet-paneel {
-    position: absolute; left: 0; right: 0; bottom: 0; max-height: 86vh; overflow-y: auto;
-    background: var(--paper); border-radius: 18px 18px 0 0;
-    padding: 0.5rem 1rem calc(1.2rem + env(safe-area-inset-bottom));
-    box-shadow: 0 -10px 40px rgba(0,0,0,0.2); animation: appSheetIn .22s ease-out;
+    position: absolute; left: 8px; right: 8px; bottom: calc(env(safe-area-inset-bottom) + 8px);
+    max-height: calc(88vh - env(safe-area-inset-top)); overflow-y: auto; -webkit-overflow-scrolling: touch;
+    background: var(--app-glas-sterk);
+    -webkit-backdrop-filter: blur(30px) saturate(190%); backdrop-filter: blur(30px) saturate(190%);
+    border: 0.5px solid var(--app-glas-rand); border-radius: 30px;
+    padding: 0.5rem 1rem 1.2rem;
+    box-shadow: 0 18px 50px rgba(20, 24, 40, 0.28), var(--app-glas-glans);
+    animation: appSheetIn .32s cubic-bezier(.2, 1.1, .4, 1);
   }
-  @keyframes appSheetIn { from { transform: translateY(30px); opacity: 0.6; } to { transform: none; opacity: 1; } }
-  .app-sheet-greep { width: 42px; height: 5px; border-radius: 3px; background: var(--line); margin: 0.2rem auto 0.6rem; }
+  @keyframes appSheetIn { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes appVaag { from { opacity: 0; } to { opacity: 1; } }
+  .app-sheet-greep { width: 38px; height: 5px; border-radius: 3px; background: rgba(0, 0, 0, 0.18); margin: 0.25rem auto 0.6rem; }
   .app-sheet-kop { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
   .app-sheet-kop h2 { margin: 0; font-family: var(--font-display); font-size: 1.4rem; }
   .app-sheet-sectie {
-    font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--gray); margin: 1.1rem 0.25rem 0.4rem;
+    font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--gray); margin: 1.1rem 0.35rem 0.4rem;
   }
-  .app-sheet-groep { background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .app-sheet-groep {
+    background: rgba(255, 255, 255, 0.72); border: 0.5px solid rgba(0, 0, 0, 0.06);
+    border-radius: 18px; overflow: hidden;
+  }
   .app-rij {
     display: flex; align-items: center; gap: 0.85rem; width: 100%; min-height: 54px; padding: 0.5rem 1rem;
     border: none; background: transparent; text-align: left; cursor: pointer;
     font-family: var(--font-body); font-size: 1.05rem; color: var(--ink);
   }
-  .app-rij + .app-rij { border-top: 1px solid var(--line-soft); }
-  .app-rij:active { background: var(--paper-warm); }
+  .app-rij + .app-rij { border-top: 0.5px solid var(--line); }
+  .app-rij:active { background: rgba(0, 0, 0, 0.05); }
   .app-rij svg { width: 24px; height: 24px; color: var(--burgundy); flex: 0 0 auto; }
   .app-rij .app-rij-tekst { flex: 1; min-width: 0; }
   .app-rij .app-rij-sub { display: block; font-size: 0.85rem; color: var(--gray); }
   .app-rij .app-vink { color: var(--burgundy); font-weight: 700; }
   .app-rij.gevaar, .app-rij.gevaar svg { color: #b03a2e; }
+  .app-sheet-kop .app-icoonknop { width: 38px; height: 38px; }
+  .app-sheet-kop .app-icoonknop svg { width: 20px; height: 20px; }
+  /* Wie "doorzichtigheid verminderen" aan heeft in iOS: dichte balken */
+  @media (prefers-reduced-transparency: reduce) {
+    #app-topbar, #app-tabbar, .app-icoonknop, .app-sheet-paneel {
+      background: var(--paper); -webkit-backdrop-filter: none; backdrop-filter: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .app-tab-pil, .app-sheet-paneel, .app-sheet-achtergrond, #app-tabbar { transition: none; animation: none; }
+  }
   .app-sheet-voet { text-align: center; color: var(--gray); font-size: 0.82rem; margin-top: 1rem; }
 
   /* ============ HUISAUTO — maandkalender + boeken ============ */
@@ -4546,6 +4623,35 @@ function zetPersoonInContacten(id) {
   });
 }
 if (IN_APP) {
+  // Downloads (Excel, ZIP) werken niet in een app-webweergave: geef het bestand aan de
+  // iPhone, die het deelmenu toont (Bewaar in Bestanden, AirDrop, Mail …).
+  const MAX_DEEL_MB = 40;
+  const blobNaarBase64 = blob => new Promise((ok, fout) => {
+    const r = new FileReader();
+    r.onload = () => ok(String(r.result).split(',')[1] || '');
+    r.onerror = fout;
+    r.readAsDataURL(blob);
+  });
+  const vervangDownloads = () => {
+    if (window.XLSX && typeof XLSX.writeFile === 'function') {
+      XLSX.writeFile = (wb, naam) => appBericht('deelBestand', {
+        naam, base64: XLSX.write(wb, { bookType: 'xlsx', type: 'base64' }),
+        mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+    }
+    if (typeof _downloadBlob === 'function') {
+      _downloadBlob = async (blob, naam) => {
+        if (blob.size > MAX_DEEL_MB * 1024 * 1024) {
+          alert(`Dit bestand is te groot voor de app (meer dan ${MAX_DEEL_MB} MB). Download het op een computer via www.oudedelft35.nl.`);
+          return;
+        }
+        appBericht('deelBestand', { naam, base64: await blobNaarBase64(blob), mime: blob.type || 'application/octet-stream' });
+      };
+    }
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', vervangDownloads);
+  else vervangDownloads();
+
   document.addEventListener('click', e => {
     const knop = e.target.closest('[data-app-contact]');
     if (!knop) return;
@@ -4687,12 +4793,13 @@ function appRenderBalken() {
   const rest = tabs.filter(t => !hoofd.includes(t));
   const actief = tabs.find(t => t.actief);
   const meerActief = actief && rest.includes(actief);
-  balk.innerHTML = hoofd.map(t =>
+  balk.innerHTML = '<span class="app-tab-pil" aria-hidden="true"></span>' + hoofd.map(t =>
     `<button type="button" class="app-tab${t.actief ? ' actief' : ''}" data-app-tab="${t.id}" aria-label="${escapeHtml(t.label)}">${APP_ICONEN[t.id] || APP_ICONEN.meer}<span>${escapeHtml(t.label)}</span></button>`
   ).join('') + (rest.length
     ? `<button type="button" class="app-tab${meerActief ? ' actief' : ''}" data-app-meer aria-label="Meer">${APP_ICONEN.meer}<span>Meer</span></button>`
     : '');
   if (titel) titel.textContent = actief ? actief.label : 'Oude Delft 35';
+  appZetPil(balk);
   const meerLijst = document.getElementById('app-meer-lijst');
   if (meerLijst) {
     meerLijst.innerHTML = rest.map(t =>
@@ -4700,6 +4807,28 @@ function appRenderBalken() {
     ).join('');
   }
 }
+// De glazen "pil" schuift van de vorige naar de nieuwe actieve knop (zoals in iOS 26).
+let appPilVorige = null;
+function appZetPil(balk) {
+  const pil = balk.querySelector('.app-tab-pil');
+  const doel = balk.querySelector('.app-tab.actief');
+  if (!pil) return;
+  if (!doel || !doel.offsetWidth) { pil.style.opacity = '0'; return; }
+  const nieuw = { x: doel.offsetLeft, w: doel.offsetWidth };
+  pil.style.opacity = '1';
+  if (appPilVorige) {
+    pil.style.transition = 'none';
+    pil.style.transform = `translateX(${appPilVorige.x}px)`;
+    pil.style.width = appPilVorige.w + 'px';
+    void pil.offsetWidth; // eerst op de oude plek, dan animeren
+    pil.style.transition = '';
+  }
+  pil.style.transform = `translateX(${nieuw.x}px)`;
+  pil.style.width = nieuw.w + 'px';
+  appPilVorige = nieuw;
+}
+window.addEventListener('resize', () => { appPilVorige = null; const b = document.getElementById('app-tabbar'); if (b) appZetPil(b); });
+
 function appRenderInstellingen() {
   const el = document.getElementById('app-instellingen-inhoud');
   if (!el) return;
@@ -4781,9 +4910,9 @@ function appBouwWeergave() {
     const t = e.target;
     if (t.closest('[data-app-sluit]')) { appSluitSheets(); return; }
     const tab = t.closest('[data-app-tab]');
-    if (tab) { appOpenTab(tab.dataset.appTab); return; }
-    if (t.closest('[data-app-meer]')) { appRenderBalken(); document.getElementById('app-meer-sheet').classList.add('open'); return; }
-    if (t.closest('#app-instellingen-knop')) { appRenderInstellingen(); document.getElementById('app-instellingen-sheet').classList.add('open'); return; }
+    if (tab) { appBericht('tik'); appOpenTab(tab.dataset.appTab); return; }
+    if (t.closest('[data-app-meer]')) { appBericht('tik'); appRenderBalken(); document.getElementById('app-meer-sheet').classList.add('open'); return; }
+    if (t.closest('#app-instellingen-knop')) { appBericht('tik'); appRenderInstellingen(); document.getElementById('app-instellingen-sheet').classList.add('open'); return; }
     const klik = t.closest('[data-app-klik]');
     if (klik) { appSluitSheets(); document.getElementById(klik.dataset.appKlik)?.click(); return; }
     const thema = t.closest('[data-app-thema]');
@@ -4798,6 +4927,14 @@ function appBouwWeergave() {
     const link = t.closest('[data-app-link]');
     if (link) { appSluitSheets(); window.open(link.dataset.appLink, '_blank', 'noopener'); return; }
   });
+
+  // Toetsenbord open (typen in een veld): menubalk tijdelijk weg, anders dekt hij het veld af
+  const isTypveld = el => el && (el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable ||
+    (el.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset|file|range|color|image)$/i.test(el.type)));
+  document.addEventListener('focusin', e => { if (isTypveld(e.target)) document.documentElement.classList.add('toetsenbord-open'); });
+  document.addEventListener('focusout', () => setTimeout(() => {
+    if (!isTypveld(document.activeElement)) document.documentElement.classList.remove('toetsenbord-open');
+  }, 50));
 
   // De menubalk volgt de gewone tabknoppen (zichtbaarheid per jaargang/rol en actieve tab)
   const nav = document.getElementById('tab-nav');
