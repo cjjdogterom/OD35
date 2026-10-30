@@ -155,6 +155,9 @@ tr.grp-row td{background:var(--sunk);border-bottom:1px solid var(--strong)}
 .hide-sm{}
 @media (max-width:620px){.hide-sm{display:none}h1{font-size:1.45rem}.big{font-size:2rem}}
 .list-plain{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px;max-width:72ch}
+.hl-betalers{display:grid;grid-template-columns:repeat(auto-fill,minmax(11rem,1fr));gap:4px 12px}
+tr.sub td{background:var(--surface)}
+tr.sug td{opacity:.85}
 details.help summary{cursor:pointer;font-weight:500;font-size:.88rem;color:var(--accent)}
 footer.foot{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);font-size:.8rem;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between}
 @media (prefers-reduced-motion:no-preference){.toast{animation:drop .2s ease-out}@keyframes drop{from{transform:translate(-50%,-6px);opacity:0}}}
@@ -376,7 +379,14 @@ function sanctionFor(saldo){let s=null;for(const x of [...S.sanctions].sort((a,b
 function sanctionClass(s){if(!s)return'';const max=Math.max(...S.sanctions.map(x=>x.min));return s.min===max?'crit':'warn'}
 
 /* ---------- mutaties ---------- */
-function mutate(fn){fn();billCache.clear();UI.dirty=true;saveDraft();render()}
+function mutate(fn){fn();billCache.clear();UI.dirty=true;UI.wijzigingen=(UI.wijzigingen||0)+1;saveDraft();render();autoSave()}
+// Elke wijziging van een beheerder wordt na een korte pauze vanzelf opgeslagen (alleen met de site-koppeling).
+let _autoTimer=null;
+function autoSave(){
+  if(!BE||!UI.editor||UI.autoStop)return;
+  clearTimeout(_autoTimer);
+  _autoTimer=setTimeout(()=>{if(UI.saving)return autoSave();if(UI.dirty)save(true)},1500);
+}
 function toast(text,err){UI.toast={text,err};render();clearTimeout(toast.t);toast.t=setTimeout(()=>{UI.toast=null;render()},err?7000:3800)}
 function ask(text,yesLabel,yes){UI.confirm={text,yesLabel,yes};render()}
 
@@ -534,11 +544,20 @@ function buildDocument(){
     '<script id="app-code">'+$('#app-code').textContent+'<\/script>'];
   return '<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>'+reset+'</style></head><body>\n'+parts.join('\n')+'</body></html>';
 }
-async function save(){
-  if(BE){UI.saving=true;render();const prev=S.rev||0;S.savedAt=new Date().toISOString();
-    try{const r=await BE.save(S,prev);S.rev=(r&&r.rev)||prev+1;store.del(DRAFT);UI.dirty=false;UI.saving=false;toast('Opgeslagen. Iedereen ziet nu de nieuwe stand.')}
-    catch(e){UI.saving=false;if(e&&e.code==='conflict')toast('Iemand anders heeft intussen opgeslagen. Herlaad de pagina en voer je wijziging opnieuw in.',true);else if(e&&e.code==='not_writer'){UI.editor=false;toast('Je hebt geen beheerdersrechten voor de huisrekening.',true)}else toast('Opslaan is mislukt: '+((e&&e.message)||e),true)}
-    render();return}
+async function save(auto){
+  if(BE){
+    // Focus en cursor bewaren: render() bouwt de pagina opnieuw op terwijl je misschien al verder typt.
+    const actief=document.activeElement,focusId=actief&&actief.id;
+    const herstelFocus=()=>{if(!focusId)return;const x=document.getElementById(focusId);if(x&&x!==document.activeElement){const sel=actief.selectionStart;x.focus();try{if(sel!=null)x.setSelectionRange(sel,sel)}catch(_){}}};
+    const n=UI.wijzigingen||0,prev=S.rev||0;
+    UI.saving=true;if(!auto){render();herstelFocus()}
+    S.savedAt=new Date().toISOString();
+    try{const r=await BE.save(S,prev);S.rev=(r&&r.rev)||prev+1;UI.saving=false;
+      // Tijdens het opslaan opnieuw gewijzigd? Dan blijft het concept staan en volgt er nog een opslag.
+      if((UI.wijzigingen||0)===n){UI.dirty=false;store.del(DRAFT)}else{saveDraft();autoSave()}
+      if(!auto)toast('Opgeslagen. Iedereen ziet nu de nieuwe stand.')}
+    catch(e){UI.saving=false;UI.autoStop=true;if(e&&e.code==='conflict')toast('Iemand anders heeft intussen opgeslagen. Herlaad de pagina; je wijzigingen staan als concept klaar.',true);else if(e&&e.code==='not_writer'){UI.editor=false;toast('Je hebt geen beheerdersrechten voor de huisrekening.',true)}else toast('Automatisch opslaan is mislukt: '+((e&&e.message)||e)+'. Klik op Opslaan om het opnieuw te proberen.',true)}
+    render();herstelFocus();return}
   if(!ART){toast(UI.local?'Dit is een lokale kopie. Opslaan werkt alleen in de versie op claude.ai.':'Opslaan is in deze weergave niet beschikbaar. Open de huisrekening op claude.ai.',true);return}
   UI.saving=true;render();
   S.rev=(S.rev||0)+1;S.savedAt=new Date().toISOString();
@@ -603,7 +622,7 @@ function render(){
   <footer class="foot"><span>Beheerder${(S.house.beheerders||[]).length>1?'s':''}: ${esc(beh||'nog niet ingesteld')} · vragen naar ${esc(S.house.email||'')}</span>
     <span>${BE?(UI.editor?'Je bent beheerder.':''):UI.editor?(UI.forced?'Bewerken staat aan op dit apparaat. <button class="ghost" data-act="editoff">Uitzetten</button>':'Je bent beheerder.'):'<button class="ghost" data-act="editon">Beheerder? Bewerken inschakelen</button>'}</span></footer>
   </div>
-  ${UI.dirty&&UI.editor?`<div class="savebar"><div class="in"><span>${UI.saving?'Opslaan…':'Je hebt wijzigingen die nog niet gedeeld zijn.'}</span><div class="row"><button class="ghost" data-act="discard" ${UI.saving?'disabled':''}>Wijzigingen weggooien</button><button class="primary" data-act="save" ${UI.saving?'disabled':''}>Opslaan en delen</button></div></div></div>`:''}
+  ${UI.dirty&&UI.editor?`<div class="savebar"><div class="in"><span>${UI.saving?'Opslaan…':BE&&!UI.autoStop?'Wordt automatisch opgeslagen…':'Je hebt wijzigingen die nog niet gedeeld zijn.'}</span><div class="row"><button class="ghost" data-act="discard" ${UI.saving?'disabled':''}>Wijzigingen weggooien</button><button class="primary" data-act="save" ${UI.saving?'disabled':''}>Opslaan en delen</button></div></div></div>`:''}
   ${UI.toast?`<div class="toast ${UI.toast.err?'err':''}" role="status">${esc(UI.toast.text)}</div>`:''}
   ${UI.confirm?`<div class="overlay"><div class="dialog" role="dialog" aria-modal="true"><p style="margin:0">${esc(UI.confirm.text)}</p><div class="row end"><button data-act="confirm-no">Annuleren</button><button class="primary" data-act="confirm-yes">${esc(UI.confirm.yesLabel)}</button></div></div></div>`:''}`;
   if(focusId){const el=document.getElementById(focusId);if(el){el.focus({preventScroll:true});if(sel&&el.setSelectionRange)try{el.setSelectionRange(sel[0],sel[1])}catch(e){}}}
@@ -880,39 +899,43 @@ function hlMonthTotal(h,mid){
   if(h.type==='pp')return (+h.amountPP||0)*h.payers.filter(id=>P(id)).length;
   return sum(S.transactions.filter(t=>t.monthId===mid&&t.kind==='cost'&&t.huislastId===h.id).map(t=>-t.amount));
 }
+// Vaste lasten die in het afschrift terugkomen maar nog geen huislast zijn (afschrijvingen in 2+ maanden).
+function hlSuggesties(){
+  const g={};
+  for(const t of S.transactions){if(t.kind!=='todo'||!(t.amount<0))continue;const mo=M(t.monthId);if(!mo||mo.closed)continue;
+    const k=(t.name||'').toUpperCase().trim();if(!k)continue;const x=g[k]=g[k]||{name:k,months:new Set(),last:t,n:0};x.months.add(t.monthId);x.n++;if((t.date||'')>(x.last.date||''))x.last=t}
+  const alle={};for(const t of S.transactions){if(!(t.amount<0))continue;const k=(t.name||'').toUpperCase().trim();(alle[k]=alle[k]||new Set()).add(t.monthId)}
+  return Object.values(g).filter(x=>(alle[x.name]||x.months).size>=2).sort((a,b)=>a.name.localeCompare(b.name));
+}
 function vHuislasten(m){
-  const table=lineMatrix(m,isHL,{title:`Huislasten ${esc(m.label.toLowerCase())}`,note:`Per persoon wat hij in ${esc(m.label.toLowerCase())} voor elke huislast betaalt. In het Overzicht zie je per post hoe het bedrag berekend is.`,empty:`Nog geen huislasten op de rekening van ${esc(m.label.toLowerCase())}.`});
-  if(!UI.editor)return table;
-  const om=openMonth(),hl=S.huislasten||[];
+  const hl=S.huislasten||[],ed=UI.editor,om=ed?openMonth():m,vm=S.months[S.months.findIndex(x=>x.id===om.id)-1];
   const ppl=[...S.people].sort((a,b)=>HOUSE.indexOf(a.status)-HOUSE.indexOf(b.status)||byName(a,b)).filter(p=>UI.matrixAll||HOUSE.includes(p.status)||hl.some(h=>h.payers.includes(p.id)));
-  const groups=[...new Set(hl.map(h=>h.group||'Huislasten').concat(['Vaste lasten','Huishouden','Sparen']))];
-  const ms=S.months.slice(-6),hist=ms.map(mo=>({mo,posts:hlPosts(mo.id)})),labels=[...new Set(hist.flatMap(h=>h.posts.map(x=>x.label)))];
-  return table+`
-  <section class="block"><div class="spread"><h2>Huislasten beheren</h2><button class="primary" data-act="addhl">+ Huislast toevoegen</button></div>
-    <p class="note">Een huislast met een banktekst wordt bij het importeren van het afschrift automatisch herkend en verdeeld over de mensen die hem betalen. Meerdere teksten scheid je met een komma. Een vast bedrag per persoon (zoals sparen) komt elke maand vanzelf op de rekening, zonder banktransactie.</p>
-    <datalist id="hl-groups">${groups.map(g=>`<option value="${esc(g)}"></option>`).join('')}</datalist>
-    <div class="scroll tbl"><table><thead><tr><th>Huislast</th><th>Groep</th><th>Soort</th><th>Herkennen op banktekst / bedrag p.p.</th><th class="r">Betalers</th><th class="r">In ${esc(om.label.toLowerCase())}</th><th></th></tr></thead><tbody>
-      ${hl.map(h=>`<tr><td><input id="hn-${h.id}" value="${esc(h.name)}" data-ch="hl" data-id="${h.id}" data-f="name" style="width:11rem" aria-label="Naam huislast"></td>
-        <td><input id="hg-${h.id}" value="${esc(h.group||'')}" list="hl-groups" data-ch="hl" data-id="${h.id}" data-f="group" style="width:10rem" aria-label="Groep"></td>
-        <td><select id="ht-${h.id}" data-ch="hl" data-id="${h.id}" data-f="type" aria-label="Soort"><option value="bank" ${h.type!=='pp'?'selected':''}>Uit bankafschrift</option><option value="pp" ${h.type==='pp'?'selected':''}>Vast bedrag p.p.</option></select></td>
-        <td>${h.type==='pp'?`<span class="row" style="gap:6px;flex-wrap:nowrap"><span class="small muted">€</span><input type="number" step="0.01" id="ha-${h.id}" value="${h.amountPP||''}" data-ch="hl" data-id="${h.id}" data-f="amountPP" style="width:6rem" aria-label="Bedrag per persoon"><span class="small muted">per persoon per maand</span></span>`
-          :`<input id="hm-${h.id}" value="${esc(h.match||'')}" placeholder="bijv. ZIGGO" data-ch="hl" data-id="${h.id}" data-f="match" style="width:14rem" aria-label="Banktekst">`}</td>
-        <td class="r num">${h.payers.filter(id=>P(id)).length}</td><td class="r num">${eur(hlMonthTotal(h,om.id))}</td>
-        <td><button class="ghost danger" data-act="delhl" data-id="${h.id}" aria-label="Huislast ${esc(h.name)} verwijderen">×</button></td></tr>`).join('')||'<tr><td colspan="7" class="muted">Nog geen huislasten.</td></tr>'}
-    </tbody></table></div></section>
-  <section class="block"><h2>Wie betaalt welke huislast</h2>
-    <p class="note">Vink per persoon aan voor welke huislasten hij betaalt. Iemand die een half jaar weg is, zet je bijvoorbeeld uit bij Ziggo en Makro maar aan bij sparen. Wijzigingen gelden voor de lopende maand; afgesloten maanden veranderen niet.</p>
-    <div class="row"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div></div>
-    <div class="scroll tbl"><table class="matrix"><thead><tr><th class="n">Naam</th>${hl.map(h=>`<th class="c">${esc(h.name)}</th>`).join('')}<th class="r">Aantal</th></tr>
-      <tr><td class="n small muted">Snel kiezen</td>${hl.map(h=>`<td class="c"><select id="hf-${h.id}" data-ch="hlfill" data-id="${h.id}" aria-label="Snel kiezen voor ${esc(h.name)}" style="width:2.6rem;padding:2px"><option value="">…</option><option value="bewoner">Alle bewoners</option><option value="huis">Alle huisgenoten</option><option value="none">Niemand</option></select></td>`).join('')}<td></td></tr></thead><tbody>
-      ${ppl.map(p=>`<tr><td class="n">${esc(p.name)} <span class="small muted">${esc(statusLabel(p.status).split(',')[0])}</span></td>${hl.map(h=>`<td class="c"><input type="checkbox" id="hp-${h.id}-${p.id}" data-ch="hlpayer" data-id="${h.id}" data-pid="${p.id}" ${h.payers.includes(p.id)?'checked':''} aria-label="${esc(p.name)} betaalt ${esc(h.name)}"></td>`).join('')}<td class="r num">${hl.filter(h=>h.payers.includes(p.id)).length}</td></tr>`).join('')}
-      <tr class="total"><td class="n">Betalers</td>${hl.map(h=>`<td class="c num">${h.payers.filter(id=>P(id)).length}</td>`).join('')}<td></td></tr>
-    </tbody></table></div></section>
-  ${hist.length>1&&labels.length?`<section class="block"><h2>Verloop per maand</h2><p class="note">Totaal per huislast per maand, zodat je ziet of iets duurder wordt of ontbreekt.</p>
-    <div class="scroll tbl"><table><thead><tr><th>Post</th>${hist.map(h=>`<th class="r">${esc(h.mo.label)}</th>`).join('')}</tr></thead><tbody>
-      ${labels.map(lb=>`<tr><td>${esc(lb)}</td>${hist.map(h=>{const x=h.posts.find(y=>y.label===lb);return `<td class="r num">${x?eur(x.total):'<span class="muted">—</span>'}</td>`}).join('')}</tr>`).join('')}
-      <tr class="total"><td>Totaal</td>${hist.map(h=>`<td class="r num">${eur(sum(h.posts.map(x=>x.total)))}</td>`).join('')}</tr>
-    </tbody></table></div></section>`:''}`;
+  const sug=ed?hlSuggesties():[],cols=ed?7:5;
+  const rij=h=>{const n=h.payers.filter(id=>P(id)).length,tot=hlMonthTotal(h,om.id),open=UI.hlOpen===h.id;
+    const herken=!ed?`<span class="small muted">${h.type==='pp'?'vast bedrag p.p.':esc(h.match||'')}</span>`
+      :`<span class="row" style="gap:6px;flex-wrap:nowrap"><select id="ht-${h.id}" data-ch="hl" data-id="${h.id}" data-f="type" aria-label="Soort" style="width:auto"><option value="bank" ${h.type!=='pp'?'selected':''}>Banktekst</option><option value="pp" ${h.type==='pp'?'selected':''}>Vast p.p. €</option></select>`
+        +(h.type==='pp'?`<input type="number" step="0.01" id="ha-${h.id}" value="${h.amountPP||''}" data-ch="hl" data-id="${h.id}" data-f="amountPP" style="width:6rem" aria-label="Bedrag per persoon per maand">`
+          :`<input id="hm-${h.id}" value="${esc(h.match||'')}" placeholder="bijv. ZIGGO" data-ch="hl" data-id="${h.id}" data-f="match" style="width:12rem" aria-label="Banktekst">`)+`</span>`;
+    return `<tr${open?' class="sel"':''}><td>${ed?`<input id="hn-${h.id}" value="${esc(h.name)}" data-ch="hl" data-id="${h.id}" data-f="name" style="width:11rem" aria-label="Naam huislast">`:esc(h.name)}</td>
+      <td>${herken}</td>
+      <td class="r">${ed?`<button class="ghost" data-act="hlopen" data-id="${h.id}" aria-expanded="${open}">${n} ${open?'▴':'▾'}</button>`:n}</td>
+      <td class="r num">${eur(tot)}</td><td class="r num">${n?eur(tot/n):'<span class="muted">—</span>'}</td>
+      ${ed?`<td class="r num muted">${vm?eur(hlMonthTotal(h,vm.id)):'—'}</td><td><button class="ghost danger" data-act="delhl" data-id="${h.id}" aria-label="Huislast ${esc(h.name)} verwijderen">×</button></td>`:''}</tr>`
+    +(open?`<tr class="sub"><td colspan="${cols}"><div class="row" style="gap:10px;margin-bottom:6px">
+        <select id="hf-${h.id}" data-ch="hlfill" data-id="${h.id}" aria-label="Snel kiezen" style="width:auto"><option value="">Snel kiezen…</option><option value="bewoner">Alle bewoners</option><option value="huis">Alle huisgenoten</option><option value="none">Niemand</option></select>
+        <div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div></div>
+        <div class="hl-betalers">${ppl.map(p=>`<label class="small"><input type="checkbox" id="hp-${h.id}-${p.id}" data-ch="hlpayer" data-id="${h.id}" data-pid="${p.id}" ${h.payers.includes(p.id)?'checked':''}> ${esc(p.name)}</label>`).join('')}</div></td></tr>`:'');
+  };
+  const totaal=sum(hl.map(h=>hlMonthTotal(h,om.id)));
+  return `<section class="block"><div class="spread"><h2>Huislasten ${esc(om.label.toLowerCase())}</h2>${ed?'<button class="primary" data-act="addhl">+ Huislast</button>':''}</div>
+    <p class="note">${ed?'Alles staat in één tabel en is aan te passen. Een huislast met een banktekst wordt bij het inlezen van het afschrift (PDF of CSV) vanzelf herkend; meerdere teksten scheid je met een komma. Klik op het aantal betalers om te kiezen wie meebetaalt. Wijzigingen gelden voor de lopende maand.':'Wat elke huislast deze maand kost en hoeveel dat per persoon is. In het Overzicht zie je je eigen bedrag per post.'}</p>
+    <div class="scroll tbl"><table><thead><tr><th>Huislast</th><th>Herkennen op</th><th class="r">Betalers</th><th class="r">Totaal</th><th class="r">Per persoon</th>${ed?`<th class="r">${vm?esc(vm.label):'Vorige'}</th><th></th>`:''}</tr></thead><tbody>
+      ${hl.map(rij).join('')||`<tr><td colspan="${cols}" class="muted">Nog geen huislasten.</td></tr>`}
+      <tr class="total"><td>Totaal</td><td></td><td></td><td class="r num">${eur(totaal)}</td><td></td>${ed?'<td></td><td></td>':''}</tr>
+      ${sug.length?`<tr class="sub"><td colspan="${cols}"><b>Herkend in het afschrift</b> <span class="small muted">— komt elke maand terug maar is nog geen huislast</span></td></tr>`
+        +sug.map(x=>`<tr class="sug"><td>${esc(x.name)}</td><td class="small muted">${x.months.size>1?x.months.size+' maanden':'ook in eerdere maand'}</td><td></td><td class="r num">${eur(-x.last.amount)}</td><td></td><td></td>
+          <td><button class="ghost" data-act="hlsug" data-name="${esc(x.name)}">+ Toevoegen</button></td></tr>`).join(''):''}
+    </tbody></table></div></section>`;
 }
 function vService(m){
   const B=bill(m.id);
@@ -1242,6 +1265,11 @@ const acts={
   openevent:el=>{UI.eventId=UI.eventId===el.dataset.id?null:el.dataset.id;render();const p=$('#event-panel');if(p)p.scrollIntoView({block:'start'})},
   closeevent:()=>{UI.eventId=null;render()},
   delevent:()=>{const e=E(UI.eventId);ask(`“${e.name}” verwijderen? Gekoppelde transacties komen terug bij Te verwerken.`,'Verwijderen',()=>{mutate(()=>{S.events=S.events.filter(x=>x.id!==e.id);for(const t of S.transactions)if(t.eventId===e.id){t.kind='todo';t.eventId=null}});UI.eventId=null;render()})},
+  hlopen:el=>{UI.hlOpen=UI.hlOpen===el.dataset.id?null:el.dataset.id;render()},
+  hlsug:el=>{const naam=el.dataset.name,id=uid('hl'),c=C('vast'),mooi=naam.toLowerCase().replace(/(^|\s)\S/g,x=>x.toUpperCase());
+    mutate(()=>{S.huislasten=S.huislasten||[];S.huislasten.push({id,name:mooi,match:naam,type:'bank',amountPP:0,group:'Vaste lasten',payers:[...(c?c.payers:[])]});
+      for(const t of S.transactions){const mo=M(t.monthId);if(t.kind==='todo'&&mo&&!mo.closed&&(t.name||'').toUpperCase().trim()===naam)Object.assign(t,{kind:'cost',huislastId:id,label:mooi,categoryId:null,auto:true,suggested:false})}});
+    UI.hlOpen=id;render();toast(`“${mooi}” is nu een huislast en wordt voortaan herkend. Kies wie hem betaalt.`)},
   addhl:()=>{const id=uid('hl'),c=C('vast');mutate(()=>{S.huislasten=S.huislasten||[];S.huislasten.push({id,name:'Nieuwe huislast',match:'',type:'bank',amountPP:0,group:'Vaste lasten',payers:[...(c?c.payers:[])]})});setTimeout(()=>{const x=$('#hn-'+id);if(x){x.focus();x.select()}},0)},
   delhl:el=>{const h=H(el.dataset.id),linked=S.transactions.filter(t=>t.kind==='cost'&&t.huislastId===h.id&&M(t.monthId)&&!M(t.monthId).closed);
     ask(`Huislast “${h.name}” verwijderen?`+(linked.length?` ${linked.length} gekoppelde transactie${linked.length>1?'s gaan':' gaat'} terug naar Te verwerken.`:'')+' Afgesloten maanden blijven zoals ze zijn.','Verwijderen',()=>mutate(()=>{S.huislasten=S.huislasten.filter(x=>x.id!==h.id);for(const t of linked){t.kind='todo';t.huislastId=null}}))},
@@ -1267,7 +1295,7 @@ const acts={
   closemonth:()=>{const m=openMonth(),todo=S.transactions.filter(t=>t.monthId===m.id&&t.kind==='todo').length;
     ask(`${m.label} afsluiten? De bedragen worden vastgezet en ${MONTHS[(+addMonthId(m.id,1).split('-')[1])-1]} begint.`+(todo?` Er staan nog ${todo} transacties bij Te verwerken; die schuiven door naar de volgende maand.`:'')+(m.pils&&(!pilsCalc(m.pils).fustKnown||!pilsCalc(m.pils).kratKnown)?' Let op: de eindvoorraad fusten of kratten is nog niet ingevuld, dus er wordt geen verlies berekend.':''),'Maand afsluiten',closeMonth)},
   reopen:()=>{const om=openMonth();ask(`${M(UI.month).label} heropenen? ${om.label} verdwijnt en de transacties daarvan gaan terug naar ${M(UI.month).label}.`,'Heropenen',reopenMonth)},
-  save:()=>save(),
+  save:()=>{UI.autoStop=false;save()},
   discard:()=>ask('Alle wijzigingen sinds de laatste keer opslaan weggooien?','Weggooien',()=>{store.del(DRAFT);location.reload()}),
   'confirm-yes':()=>{const f=UI.confirm.yes;UI.confirm=null;f();render()},
   'confirm-no':()=>{UI.confirm=null;render()},
@@ -1282,8 +1310,8 @@ const acts={
     if(used)return toast('Deze kostenpost wordt nog gebruikt door transacties, extra correcties of vaste bedragen.',true);ask('Kostenpost verwijderen?','Verwijderen',()=>mutate(()=>{S.categories=S.categories.filter(c=>c.id!==id);S.bankRules=S.bankRules.filter(r=>r.categoryId!==id||r.action==='kas')}))},
   addperson:()=>mutate(()=>S.people.push({id:uid('p'),name:'Nieuwe huisgenoot',status:'bewoner',startSaldo:0,ibans:[],aliases:[],fixedCorrection:0,note:''})),
   delperson:el=>{const id=el.dataset.id,used=S.months.some(m=>m.snapshot&&m.snapshot[id]&&Math.abs(m.snapshot[id].end)>0.005)||S.transactions.some(t=>t.personId===id||t.paidBy===id);
-    if(used)return toast('Deze persoon heeft een saldo of transacties. Zet de status op Oud-huisgenoot in plaats van verwijderen.',true);
-    ask(`${P(id).name} verwijderen?`,'Verwijderen',()=>mutate(()=>{S.people=S.people.filter(p=>p.id!==id);for(const c of S.categories)c.payers=c.payers.filter(x=>x!==id);for(const r of S.rooms)if(r.personId===id)r.personId=null}))},
+    // Ook met een saldo mag je iemand verwijderen; afgesloten maanden en oude transacties blijven staan.
+    ask(`${P(id).name} verwijderen?`+(used?' Deze persoon heeft nog een saldo of transacties. Die tellen dan niet meer mee in de lopende maand; afgesloten maanden blijven zoals ze zijn.':''),'Verwijderen',()=>mutate(()=>{S.people=S.people.filter(p=>p.id!==id);for(const c of S.categories)c.payers=c.payers.filter(x=>x!==id);for(const h of S.huislasten||[])h.payers=h.payers.filter(x=>x!==id);for(const e of S.events||[])if(e.participants)e.participants=e.participants.filter(x=>x!==id);for(const r of S.rooms)if(r.personId===id)r.personId=null}))},
   addroom:()=>mutate(()=>S.rooms.push({id:uid('k'),name:'Nieuwe kamer',code:'',servicekosten:null,huurtoeslag:false,personId:null})),
   delroom:el=>ask('Kamer verwijderen?','Verwijderen',()=>mutate(()=>{S.rooms=S.rooms.filter(r=>r.id!==el.dataset.id)})),
   addrc:()=>mutate(()=>S.recurring.push({id:uid('rc'),label:'Nieuw vast bedrag',categoryId:S.categories[0].id,amount:0})),
