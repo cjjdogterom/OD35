@@ -1,0 +1,56 @@
+<!--
+  Inlogmail (Supabase → Authentication → Emails → Templates → "Magic Link").
+  Plak alles vanaf <!doctype html> in het veld "Message body".
+  Onderwerp (Subject): Je inlogcode voor Oude Delft 35: {{ .Token }}
+-->
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Je inlogcode voor Oude Delft 35</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f1e8;">
+<div style="display:none;max-height:0;overflow:hidden;">Je code is {{ .Token }}. Vul hem in op de site of in de app.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f1e8;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#fbf9f3;border:1px solid #ddd6c4;border-top:4px solid #2a4d82;">
+        <tr>
+          <td align="center" style="padding:32px 32px 8px;">
+            <img src="https://www.oudedelft35.nl/logo_od35.png" width="72" alt="Oude Delft 35" style="display:block;width:72px;height:auto;border:0;">
+            <p style="margin:16px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#857058;">Oude Delft 35 &middot; sinds 1891</p>
+            <h1 style="margin:8px 0 0;font-family:'Playfair Display',Georgia,serif;font-size:26px;font-weight:600;color:#2a4d82;">Je inlogcode</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 32px 0;font-family:Georgia,'Times New Roman',serif;font-size:16px;line-height:1.6;color:#2a2620;">
+            Hallo,<br><br>
+            Vul deze code in op de site of in de app om in te loggen bij de oud-huisgenotenlijst:
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:24px 32px;">
+            <div style="display:inline-block;padding:16px 28px;background:#f4f1e8;border:1px solid #ddd6c4;border-radius:10px;font-family:'Courier New',Courier,monospace;font-size:34px;font-weight:bold;letter-spacing:10px;color:#2a4d82;">{{ .Token }}</div>
+            <p style="margin:12px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#857058;">De code werkt maar één keer en verloopt na korte tijd.</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 32px 28px;font-family:Georgia,'Times New Roman',serif;font-size:14px;line-height:1.6;color:#857058;border-bottom:1px solid #e9e4d6;">
+            Heb je niet geprobeerd in te loggen? Dan kun je deze mail negeren; zonder de code kan niemand inloggen.
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:20px 32px 28px;font-family:Georgia,'Times New Roman',serif;font-size:12px;line-height:1.6;color:#857058;">
+            Oude Delft 35 &middot; Delft<br>
+            Vragen? <a href="mailto:omegaksiod35@gmail.com" style="color:#2a4d82;">omegaksiod35@gmail.com</a>
+            &middot; <a href="https://www.oudedelft35.nl/" style="color:#2a4d82;">oudedelft35.nl</a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
