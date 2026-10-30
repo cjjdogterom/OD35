@@ -54,10 +54,6 @@
       "source": "/huisrekening/(.*)",
       "headers": [
         {
-          "key": "X-Frame-Options",
-          "value": "SAMEORIGIN"
-        },
-        {
           "key": "Cache-Control",
           "value": "no-cache"
         }

@@ -1,3 +1,4 @@
+-- Dit bestand mag je opnieuw uitvoeren; bestaande gegevens blijven staan.
 -- Huisrekening Omega Ksi: tabellen voor de OD35-site.
 -- Uitvoeren in Supabase → SQL editor (of als migratie in supabase/migrations).
 
@@ -22,6 +23,12 @@ create table if not exists public.huisrekening_toegang (
 -- Alleen de server (service role, via /api/huisrekening) leest en schrijft deze tabellen.
 -- Daarom RLS aan en geen policies: de browser kan er niet rechtstreeks bij.
 alter table public.huisrekening enable row level security;
+-- Jaargangen waarvan iedereen automatisch lezer is (aangevinkt door de hoofdadmin).
+create table if not exists public.huisrekening_jaargangen (
+  jaar integer primary key
+);
+alter table public.huisrekening_jaargangen enable row level security;
+
 alter table public.huisrekening_toegang enable row level security;
 
 -- Opslaan met versiecontrole: lukt alleen als niemand anders intussen heeft opgeslagen.

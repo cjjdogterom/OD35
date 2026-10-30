@@ -2598,10 +2598,15 @@
   .app-sheet-voet { text-align: center; color: var(--gray); font-size: 0.82rem; margin-top: 1rem; }
 
   /* ============ HUISREKENING — app in iframe + toegangsbeheer ============ */
-  .hr-frame { display: block; width: 100%; height: calc(100vh - 150px); min-height: 520px; border: 0; background: transparent; }
+  .hr-open { text-align: center; padding: 2rem 1rem; }
+  .hr-open p { color: var(--gray); margin: 0 0 1rem; }
+  .hr-open-knop { display: inline-block; background: var(--burgundy); color: #fff; padding: 0.8rem 1.6rem; border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 1.05rem; }
   .hr-toegang { background: var(--paper-warm); border: 1px solid var(--line); border-radius: 10px; padding: 0.7rem 1rem; margin-bottom: 1rem; }
   .hr-toegang summary { cursor: pointer; font-weight: 600; }
   .hr-toegang-sub { color: var(--gray); font-weight: 400; font-size: 0.85rem; }
+  .hr-kop { margin: 0.9rem 0 0.4rem; font-size: 0.95rem; }
+  .hr-jaren { display: grid; grid-template-columns: repeat(auto-fill, minmax(4.6rem, 1fr)); gap: 0.3rem 0.6rem; max-height: 11rem; overflow-y: auto; padding: 0.2rem 0; }
+  .hr-jaren label { display: flex; align-items: center; gap: 0.3rem; font-size: 0.9rem; cursor: pointer; white-space: nowrap; }
   .hr-uitleg { color: var(--gray); font-size: 0.9rem; margin: 0.6rem 0; }
   .hr-lijst { list-style: none; padding: 0; margin: 0.5rem 0; }
   .hr-lijst li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid var(--line); }
@@ -3929,18 +3934,25 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
   <div id="hr-toegang" class="hr-toegang" style="display:none">
     <details>
       <summary>Wie heeft toegang? <span class="hr-toegang-sub">(alleen jij ziet dit)</span></summary>
-      <p class="hr-uitleg">Een <strong>lezer</strong> kan de huisrekening bekijken. Een <strong>beheerder</strong> kan
-      hem ook invoeren en opslaan. Dat geldt alleen voor de huisrekening, niet voor de rest van de site.</p>
+      <h4 class="hr-kop">1. Jaargangen <span class="hr-toegang-sub">— iedereen uit een aangevinkt jaar kan meekijken</span></h4>
+      <div id="hr-jaren" class="hr-jaren"></div>
+      <h4 class="hr-kop">2. Beheerders en losse lezers</h4>
+      <p class="hr-uitleg">Een <strong>beheerder</strong> kan de huisrekening invoeren en opslaan. Dat geldt alleen voor
+      de huisrekening, niet voor de rest van de site. Een losse <strong>lezer</strong> is iemand buiten de aangevinkte jaargangen.</p>
       <ul id="hr-toegang-lijst" class="hr-lijst"></ul>
       <form id="hr-toegang-form" class="hr-form">
-        <input type="email" id="hr-toegang-email" placeholder="e-mailadres van de huisgenoot" required autocomplete="off">
-        <select id="hr-toegang-rol"><option value="lezer">Lezer</option><option value="beheerder">Beheerder</option></select>
+        <input type="text" id="hr-toegang-email" list="hr-namen" placeholder="Typ een naam…" required autocomplete="off">
+        <datalist id="hr-namen"></datalist>
+        <select id="hr-toegang-rol"><option value="beheerder">Beheerder</option><option value="lezer">Lezer</option></select>
         <button type="submit">Toevoegen</button>
       </form>
       <p id="hr-toegang-melding" class="hr-melding"></p>
     </details>
   </div>
-  <iframe id="hr-frame" class="hr-frame" title="Huisrekening"></iframe>
+  <div class="hr-open">
+    <p>De huisrekening opent op een eigen pagina, over het hele scherm.</p>
+    <a class="hr-open-knop" href="/huisrekening/huisrekening.html">Huisrekening openen</a>
+  </div>
 </div><!-- /panel-huisrekening -->
 
 <!-- ==================== TAB: AGENDA ==================== -->
@@ -7386,7 +7398,7 @@ function haWisselMaand(stap) {
 }
 
 // ==================== HUISREKENING ====================
-// De app zelf staat in /huisrekening/huisrekening.html (eigen CSS en scripts) en draait in een iframe.
+// De app zelf staat in /huisrekening/huisrekening.html (eigen CSS en scripts) en opent als eigen pagina.
 // Toegang: hoofdadmin altijd; anderen via tabel huisrekening_toegang (lezer/beheerder), los van site-admins.
 var HR_STATUS = null; // var: applyTabZichtbaarheid kan al eerder draaien
 async function hrFetch(pad, opties) {
@@ -7405,45 +7417,82 @@ async function laadHuisrekeningStatus() {
   if (typeof appRenderBalken === 'function' && document.getElementById('app-tabbar')) appRenderBalken();
 }
 function openHuisrekening() {
-  const frame = document.getElementById('hr-frame');
-  if (frame && !frame.getAttribute('src')) frame.src = '/huisrekening/huisrekening.html';
+  // Alleen de hoofdadmin blijft op dit tabblad (voor het toegangsbeheer); de rest gaat meteen fullscreen.
+  if (!(HR_STATUS && HR_STATUS.hoofdadmin)) { location.href = '/huisrekening/huisrekening.html'; return; }
   const blok = document.getElementById('hr-toegang');
   if (blok) blok.style.display = HR_STATUS && HR_STATUS.hoofdadmin ? '' : 'none';
   if (HR_STATUS && HR_STATUS.hoofdadmin) laadHrToegang();
 }
+// Naam + jaar van een lid voor in de lijst en de zoekbox.
+function hrNaam(p) {
+  return [p['Roepnaam'] || p['Voornaam'] || p['Voorletters'], p['Tussenvoegsel'], p['Achternaam']].filter(Boolean).join(' ')
+    + (p['Aankomstjaar'] ? ` (${p['Aankomstjaar']})` : '');
+}
+function hrEmailVan(p) { return String(p['E-mail 1'] || p['E-mail 2'] || p['E-mail 3'] || '').trim().toLowerCase(); }
 async function laadHrToegang() {
   const ul = document.getElementById('hr-toegang-lijst');
   const melding = document.getElementById('hr-toegang-melding');
   try {
-    const { lijst } = await hrFetch('?actie=toegang');
-    ul.innerHTML = lijst.length ? lijst.map(r => `<li><span>${escapeHtml(r.email)}</span>
+    const { lijst, jaargangen } = await hrFetch('?actie=toegang');
+    // Jaargangen: alle jaren uit de ledenlijst, nieuwste eerst.
+    const aan = new Set((jaargangen || []).map(Number));
+    const jaren = [...new Set(PEOPLE.map(p => Number(p['Aankomstjaar'])).filter(Boolean))].sort((a, b) => b - a);
+    document.getElementById('hr-jaren').innerHTML = jaren.map(j =>
+      `<label><input type="checkbox" data-hr-jaar="${j}"${aan.has(j) ? ' checked' : ''}> ${j}</label>`).join('');
+    // Zoekbox: alle leden met een e-mailadres.
+    document.getElementById('hr-namen').innerHTML = PEOPLE.filter(hrEmailVan)
+      .map(p => `<option value="${escapeHtml(hrNaam(p))}"></option>`).join('');
+    ul.innerHTML = lijst.length ? lijst.map(r => {
+      const p = personByEmail(r.email);
+      return `<li><span>${escapeHtml(p ? hrNaam(p) : r.email)}</span>
       <select data-hr-rol="${escapeHtml(r.email)}"><option value="lezer"${r.rol === 'lezer' ? ' selected' : ''}>Lezer</option><option value="beheerder"${r.rol === 'beheerder' ? ' selected' : ''}>Beheerder</option></select>
-      <button type="button" data-hr-weg="${escapeHtml(r.email)}">Verwijderen</button></li>`).join('')
-      : '<li><span>Nog niemand. Alleen jij kunt de huisrekening zien.</span></li>';
+      <button type="button" data-hr-weg="${escapeHtml(r.email)}">Verwijderen</button></li>`;
+    }).join('') : '<li><span>Nog niemand. Jij bent de enige beheerder.</span></li>';
   } catch (e) { melding.textContent = e.message; }
 }
 async function zetHrToegang(email, rol) {
   const melding = document.getElementById('hr-toegang-melding');
+  const p = personByEmail(email); const wie = p ? hrNaam(p) : email;
   try {
     await hrFetch('?actie=toegang', { method: 'POST', body: JSON.stringify({ email, rol }) });
-    melding.textContent = rol ? `${email} is nu ${rol}.` : `${email} heeft geen toegang meer.`;
+    melding.textContent = rol ? `${wie} is nu ${rol}.` : `${wie} heeft geen eigen toegang meer.`;
     laadHrToegang();
   } catch (e) { melding.textContent = e.message; }
+}
+let _hrJaarTimer = null;
+function bewaarHrJaren() {
+  clearTimeout(_hrJaarTimer);
+  _hrJaarTimer = setTimeout(async () => {
+    const melding = document.getElementById('hr-toegang-melding');
+    const jaren = [...document.querySelectorAll('[data-hr-jaar]:checked')].map(i => Number(i.dataset.hrJaar));
+    try {
+      await hrFetch('?actie=toegang', { method: 'POST', body: JSON.stringify({ jaargangen: jaren }) });
+      melding.textContent = jaren.length ? `Jaargangen opgeslagen: ${jaren.sort().join(', ')}.` : 'Geen jaargangen meer aangevinkt.';
+    } catch (e) { melding.textContent = e.message; }
+  }, 600);
 }
 document.addEventListener('submit', e => {
   if (e.target.id !== 'hr-toegang-form') return;
   e.preventDefault();
   const inp = document.getElementById('hr-toegang-email');
-  zetHrToegang(inp.value.trim().toLowerCase(), document.getElementById('hr-toegang-rol').value);
+  const tekst = inp.value.trim();
+  const p = PEOPLE.find(x => hrEmailVan(x) && hrNaam(x) === tekst);
+  const email = p ? hrEmailVan(p) : tekst.toLowerCase();
+  if (!email.includes('@')) {
+    document.getElementById('hr-toegang-melding').textContent = 'Kies een naam uit de lijst (of typ een e-mailadres).';
+    return;
+  }
+  zetHrToegang(email, document.getElementById('hr-toegang-rol').value);
   inp.value = '';
 });
 document.addEventListener('change', e => {
+  if (e.target.dataset && e.target.dataset.hrJaar) return bewaarHrJaren();
   const em = e.target.dataset && e.target.dataset.hrRol;
   if (em) zetHrToegang(em, e.target.value);
 });
 document.addEventListener('click', e => {
   const knop = e.target.closest && e.target.closest('[data-hr-weg]');
-  if (knop && confirm(`Toegang van ${knop.dataset.hrWeg} tot de huisrekening intrekken?`)) zetHrToegang(knop.dataset.hrWeg, null);
+  if (knop && confirm('Eigen toegang tot de huisrekening intrekken? (Via een aangevinkte jaargang kan iemand nog steeds meekijken.)')) zetHrToegang(knop.dataset.hrWeg, null);
 });
 
 let _huisautoBound = false;
