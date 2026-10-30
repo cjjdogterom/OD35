@@ -1,6 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const nodemailer = require('nodemailer');
 const huisauto = require('../lib/huisauto');
+const huisrekening = require('../lib/huisrekening');
 
 const SUPABASE_URL = 'https://mxbtmbcgycjqapjzulrp.supabase.co';
 const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14YnRtYmNneWNqcWFwanp1bHJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MDQ4MzgsImV4cCI6MjA5MzQ4MDgzOH0.6Qowa_mqhH7YtrljF5fZnQzUaG_u4N5TodcnLzRhYSM';
@@ -58,6 +59,27 @@ module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // /api/huisrekening (zie vercel.json): GET/PUT vanaf dezelfde site, dus zonder Origin-header.
+  if (req.query && req.query.huisrekening) {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) return res.status(401).json({ error: 'Niet ingelogd' });
+    let email = null;
+    try {
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        headers: { apikey: ANON_KEY, Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) return res.status(401).json({ error: 'Ongeldige sessie' });
+      email = ((await r.json()).email || '').toLowerCase();
+    } catch (_) { return res.status(500).json({ error: 'Sessiecontrole mislukt' }); }
+    if (!email) return res.status(401).json({ error: 'Geen e-mail in sessie' });
+    const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!SERVICE) return res.status(500).json({ error: 'Server niet geconfigureerd' });
+    const admin = createClient(SUPABASE_URL, SERVICE, { auth: { autoRefreshToken: false, persistSession: false } });
+    return huisrekening(req, res, { admin, email });
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   if (!isAllowed) return res.status(403).json({ error: 'Origin not allowed' });
 

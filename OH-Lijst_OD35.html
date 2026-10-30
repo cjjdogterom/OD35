@@ -2597,6 +2597,20 @@
   }
   .app-sheet-voet { text-align: center; color: var(--gray); font-size: 0.82rem; margin-top: 1rem; }
 
+  /* ============ HUISREKENING — app in iframe + toegangsbeheer ============ */
+  .hr-frame { display: block; width: 100%; height: calc(100vh - 150px); min-height: 520px; border: 0; background: transparent; }
+  .hr-toegang { background: var(--paper-warm); border: 1px solid var(--line); border-radius: 10px; padding: 0.7rem 1rem; margin-bottom: 1rem; }
+  .hr-toegang summary { cursor: pointer; font-weight: 600; }
+  .hr-toegang-sub { color: var(--gray); font-weight: 400; font-size: 0.85rem; }
+  .hr-uitleg { color: var(--gray); font-size: 0.9rem; margin: 0.6rem 0; }
+  .hr-lijst { list-style: none; padding: 0; margin: 0.5rem 0; }
+  .hr-lijst li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid var(--line); }
+  .hr-lijst li span { flex: 1 1 12rem; overflow-wrap: anywhere; }
+  .hr-lijst button, .hr-form button { cursor: pointer; }
+  .hr-form { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
+  .hr-form input { flex: 1 1 14rem; min-width: 0; padding: 0.45rem 0.6rem; }
+  .hr-melding { font-size: 0.85rem; color: var(--gray); margin: 0.4rem 0 0; min-height: 1em; }
+
   /* ============ HUISAUTO — maandkalender + boeken ============ */
   .ha-head h2 { margin: 0; }
   .ha-sub { color: var(--gray); margin: 0.3rem 0 1rem; font-style: italic; }
@@ -3802,6 +3816,7 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
       <button class="tab-btn active" data-tab="personen">Personen</button>
       <button class="tab-btn nestor-only" data-tab="nestor" style="display:none">Nestor</button>
       <button class="tab-btn" data-tab="huisauto" style="display:none">Huisauto</button>
+      <button class="tab-btn" data-tab="huisrekening" style="display:none">Huisrekening</button>
       <button class="tab-btn" data-tab="fotos">Foto's</button>
       <button class="tab-btn" data-tab="agenda">Agenda</button>
       <button class="tab-btn" data-tab="contacten">Contacten</button>
@@ -3908,6 +3923,25 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
     automatisch een mailtje over. Je kunt maximaal 3 maanden vooruit boeken; een boeking duurt maximaal 7 dagen.
   </p>
 </div><!-- /panel-huisauto -->
+
+<!-- ==================== TAB: HUISREKENING (toegang via hoofdadmin) ==================== -->
+<div class="tab-panel" id="panel-huisrekening">
+  <div id="hr-toegang" class="hr-toegang" style="display:none">
+    <details>
+      <summary>Wie heeft toegang? <span class="hr-toegang-sub">(alleen jij ziet dit)</span></summary>
+      <p class="hr-uitleg">Een <strong>lezer</strong> kan de huisrekening bekijken. Een <strong>beheerder</strong> kan
+      hem ook invoeren en opslaan. Dat geldt alleen voor de huisrekening, niet voor de rest van de site.</p>
+      <ul id="hr-toegang-lijst" class="hr-lijst"></ul>
+      <form id="hr-toegang-form" class="hr-form">
+        <input type="email" id="hr-toegang-email" placeholder="e-mailadres van de huisgenoot" required autocomplete="off">
+        <select id="hr-toegang-rol"><option value="lezer">Lezer</option><option value="beheerder">Beheerder</option></select>
+        <button type="submit">Toevoegen</button>
+      </form>
+      <p id="hr-toegang-melding" class="hr-melding"></p>
+    </details>
+  </div>
+  <iframe id="hr-frame" class="hr-frame" title="Huisrekening"></iframe>
+</div><!-- /panel-huisrekening -->
 
 <!-- ==================== TAB: AGENDA ==================== -->
 <div class="tab-panel" id="panel-agenda">
@@ -6564,6 +6598,7 @@ document.getElementById('tab-nav').addEventListener('click', e => {
   if (tab === 'tabbeheer') { renderTabbeheer(); }
   if (tab === 'bezoekers') { loadBezoekers(); startBezoekersAutoRefresh(); } else { stopBezoekersAutoRefresh(); }
   if (tab === 'nestor') { loadNestor(); startNestorAutoRefresh(); } else { stopNestorAutoRefresh(); }
+  if (tab === 'huisrekening') openHuisrekening();
   if (tab === 'huisauto') { loadHuisauto(); startHuisautoAutoRefresh(); } else { stopHuisautoAutoRefresh(); }
   // Zachte reveal van de panel-blokken bij het wisselen van tab
   if (typeof revealPanel === 'function') revealPanel('panel-' + tab);
@@ -6706,6 +6741,8 @@ function applyTabZichtbaarheid() {
     if (t.id === 'nestor' && !(jaar !== null && jaar >= NESTOR_MIN_JAAR && jaar <= NESTOR_MAX_JAAR)) zicht = false;
     if (t.id === 'zomerplanning' && !(jaar !== null && jaar >= ZOMER_MIN_JAAR && jaar <= ZOMER_MAX_JAAR)) zicht = false;
     if (t.id === 'huisauto' && !(jaar !== null && jaar >= HUISAUTO_MIN_JAAR && jaar <= new Date().getFullYear())) zicht = false;
+    // Huisrekening: alleen wie van de hoofdadmin toegang kreeg (de server beslist, zie lib/huisrekening.js).
+    if (t.id === 'huisrekening') zicht = !!(HR_STATUS && HR_STATUS.toegang);
     // Veiligheid: de superadmin houdt altijd toegang tot het tabbladen-beheer.
     if (t.id === 'tabbeheer' && isHoofdadmin()) zicht = true;
     btn.style.display = zicht ? '' : 'none';
@@ -7347,6 +7384,67 @@ function haWisselMaand(stap) {
   if (haFormOpen) haSluitForm();
   loadHuisauto();
 }
+
+// ==================== HUISREKENING ====================
+// De app zelf staat in /huisrekening/huisrekening.html (eigen CSS en scripts) en draait in een iframe.
+// Toegang: hoofdadmin altijd; anderen via tabel huisrekening_toegang (lezer/beheerder), los van site-admins.
+var HR_STATUS = null; // var: applyTabZichtbaarheid kan al eerder draaien
+async function hrFetch(pad, opties) {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) throw new Error('Niet ingelogd');
+  const o = Object.assign({ cache: 'no-store' }, opties || {});
+  o.headers = Object.assign({ Authorization: 'Bearer ' + session.access_token }, o.body ? { 'Content-Type': 'application/json' } : {});
+  const r = await fetch('/api/huisrekening' + pad, o);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ('Fout ' + r.status));
+  return j;
+}
+async function laadHuisrekeningStatus() {
+  try { HR_STATUS = await hrFetch('?actie=status'); } catch (_) { HR_STATUS = null; }
+  if (typeof applyTabZichtbaarheid === 'function') applyTabZichtbaarheid();
+  if (typeof appRenderBalken === 'function' && document.getElementById('app-tabbar')) appRenderBalken();
+}
+function openHuisrekening() {
+  const frame = document.getElementById('hr-frame');
+  if (frame && !frame.getAttribute('src')) frame.src = '/huisrekening/huisrekening.html';
+  const blok = document.getElementById('hr-toegang');
+  if (blok) blok.style.display = HR_STATUS && HR_STATUS.hoofdadmin ? '' : 'none';
+  if (HR_STATUS && HR_STATUS.hoofdadmin) laadHrToegang();
+}
+async function laadHrToegang() {
+  const ul = document.getElementById('hr-toegang-lijst');
+  const melding = document.getElementById('hr-toegang-melding');
+  try {
+    const { lijst } = await hrFetch('?actie=toegang');
+    ul.innerHTML = lijst.length ? lijst.map(r => `<li><span>${escapeHtml(r.email)}</span>
+      <select data-hr-rol="${escapeHtml(r.email)}"><option value="lezer"${r.rol === 'lezer' ? ' selected' : ''}>Lezer</option><option value="beheerder"${r.rol === 'beheerder' ? ' selected' : ''}>Beheerder</option></select>
+      <button type="button" data-hr-weg="${escapeHtml(r.email)}">Verwijderen</button></li>`).join('')
+      : '<li><span>Nog niemand. Alleen jij kunt de huisrekening zien.</span></li>';
+  } catch (e) { melding.textContent = e.message; }
+}
+async function zetHrToegang(email, rol) {
+  const melding = document.getElementById('hr-toegang-melding');
+  try {
+    await hrFetch('?actie=toegang', { method: 'POST', body: JSON.stringify({ email, rol }) });
+    melding.textContent = rol ? `${email} is nu ${rol}.` : `${email} heeft geen toegang meer.`;
+    laadHrToegang();
+  } catch (e) { melding.textContent = e.message; }
+}
+document.addEventListener('submit', e => {
+  if (e.target.id !== 'hr-toegang-form') return;
+  e.preventDefault();
+  const inp = document.getElementById('hr-toegang-email');
+  zetHrToegang(inp.value.trim().toLowerCase(), document.getElementById('hr-toegang-rol').value);
+  inp.value = '';
+});
+document.addEventListener('change', e => {
+  const em = e.target.dataset && e.target.dataset.hrRol;
+  if (em) zetHrToegang(em, e.target.value);
+});
+document.addEventListener('click', e => {
+  const knop = e.target.closest && e.target.closest('[data-hr-weg]');
+  if (knop && confirm(`Toegang van ${knop.dataset.hrWeg} tot de huisrekening intrekken?`)) zetHrToegang(knop.dataset.hrWeg, null);
+});
 
 let _huisautoBound = false;
 function bindHuisauto() {
@@ -11246,6 +11344,8 @@ async function init() {
   if (typeof updateNestorTabVisibility === 'function') updateNestorTabVisibility();
   // Tabbladen per jaargang aan/uit (door de hoofdadmin ingesteld)
   if (typeof loadTabConfig === 'function') { await loadTabConfig(); applyTabZichtbaarheid(); }
+  // Huisrekening-tab tonen als de hoofdadmin deze gebruiker toegang gaf
+  laadHuisrekeningStatus();
   // Nu de gebruiker bekend is: thema herberekenen (WK alleen voor bewoners 2011–2026)
   if (typeof window.refreshTheme === 'function') window.refreshTheme();
   // Onthul de eerste (Personen) panel-blokken zacht

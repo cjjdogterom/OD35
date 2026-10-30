@@ -1,0 +1,60 @@
+// Koppeling tussen de huisrekening-app en de OD35-site.
+// Wordt in huisrekening.html geladen vóór de app. De app roept alleen deze functies aan.
+// Alles loopt via /api/huisrekening op dezelfde site. De site logt in met Supabase en bewaart
+// de sessie in localStorage (zelfde domein), dus we sturen dat token als Bearer mee.
+(function () {
+  const API = '/api/huisrekening';
+  const SESSIE_SLEUTEL = 'sb-mxbtmbcgycjqapjzulrp-auth-token';
+  let canEdit = false;
+
+  function token() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SESSIE_SLEUTEL) || 'null');
+      return (s && (s.access_token || (s.currentSession && s.currentSession.access_token))) || null;
+    } catch (e) { return null; }
+  }
+  function kop(extra) {
+    const h = Object.assign({}, extra || {});
+    const t = token();
+    if (t) h.Authorization = 'Bearer ' + t;
+    return h;
+  }
+  async function fout(res) {
+    let msg = 'serverfout ' + res.status;
+    try { const j = await res.json(); if (j && j.error) msg = j.error; } catch (e) {}
+    return msg;
+  }
+
+  window.HUIS_BACKEND = {
+    // → { data: <huisrekening-JSON>, rev: <nummer> }
+    async load() {
+      if (!token()) throw new Error('je bent niet ingelogd');
+      const res = await fetch(API, { headers: kop(), cache: 'no-store' });
+      if (res.status === 401) throw new Error('je bent niet ingelogd');
+      if (!res.ok) throw new Error(await fout(res));
+      const j = await res.json();
+      canEdit = !!j.canEdit;
+      return { data: j.data, rev: j.rev };
+    },
+
+    // → true als de ingelogde gebruiker beheerder is
+    async canEdit() {
+      return canEdit;
+    },
+
+    // Slaat de hele huisrekening op. rev = de versie waarop de beheerder verder werkte.
+    // Gooit { code: 'conflict' } als iemand anders intussen opsloeg, { code: 'not_writer' } zonder rechten.
+    async save(data, rev) {
+      const res = await fetch(API, {
+        method: 'PUT',
+        cache: 'no-store',
+        headers: kop({ 'content-type': 'application/json' }),
+        body: JSON.stringify({ data, rev }),
+      });
+      if (res.status === 409) throw { code: 'conflict' };
+      if (res.status === 401 || res.status === 403) throw { code: 'not_writer' };
+      if (!res.ok) throw new Error(await fout(res));
+      return await res.json(); // { rev: <nieuwe versie> }
+    },
+  };
+})();
