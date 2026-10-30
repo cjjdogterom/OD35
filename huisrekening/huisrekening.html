@@ -233,7 +233,9 @@ function defaultShared(prev,ps){
   if(+o.extraVerlies)list.push({id:'extra',kind:'amount',label:'Overig verlies',amount:+o.extraVerlies});
   return list;
 }
+function dubbeleKamers(d){const gezien=new Set();for(const r of d.rooms||[]){if(!r.personId)continue;if(gezien.has(r.personId))r.personId=null;else gezien.add(r.personId)}return d}
 function migrate(d){
+  dubbeleKamers(d);
   d.house=d.house||{};if(!d.house.beheerders)d.house.beheerders=['chris'];
   d.pilsSettings=d.pilsSettings||{barName:'Bar',nestorName:'Nestor',fust20Price:58.58,fust50Price:103.5,turfPerFust20:100,turfPerFust50:250,kratPrice:16.4,flesPerKrat:24,plexPrice:41.4,gasPrice:48.88,barPrice:null,flesPrice:null};
   for(const m of d.months){if(m.pils&&!m.pils.bar){const o=m.pils,n=emptyPils(null);
@@ -300,7 +302,9 @@ function serviceShares(){
   const get=id=>parts[id]=parts[id]||{diff:0,kale:0,mu:0,diffHow:''};
   for(const r of S.rooms){if(r.personId&&P(r.personId)){const x=get(r.personId),k=r.servicekosten!=null&&r.servicekosten!=='';
     x.diff+=k?avg-r.servicekosten:0;x.diffHow=k?`gemiddeld ${eur(avg)} − kamer ${r.name} ${eur(r.servicekosten)}`:`kamer ${r.name}: servicekosten onbekend, telt als gemiddeld`}}
-  for(const p of S.people){if(+p.kaleHuurCorr)get(p.id).kale=+p.kaleHuurCorr;if(+p.moneyUnderdogs)get(p.id).mu=+p.moneyUnderdogs}
+  // Alleen wie op een kamer staat betaalt servicekosten; wie van zijn kamer af is, betaalt niets meer.
+  const opKamer=new Set(S.rooms.map(r=>r.personId).filter(Boolean));
+  for(const p of S.people){if(!opKamer.has(p.id))continue;if(+p.kaleHuurCorr)get(p.id).kale=+p.kaleHuurCorr;if(+p.moneyUnderdogs)get(p.id).mu=+p.moneyUnderdogs}
   for(const id in parts){const x=parts[id];out[id]=x.diff+x.kale+x.mu}
   return {avg,out,parts};
 }
@@ -1471,7 +1475,11 @@ const changes={
   hlpayer:el=>{const h=H(el.dataset.id);mutate(()=>{const s2=new Set(toggleIn(h.payers,el.dataset.pid,el.checked));h.payers=S.people.map(p=>p.id).filter(id=>s2.has(id))})},
   hlfill:el=>{const h=H(el.dataset.id),f=el.value;if(!f)return;mutate(()=>{h.payers=f==='none'?[]:S.people.filter(p=>f==='bewoner'?p.status==='bewoner':['bewoner','huisgenoot'].includes(p.status)).map(p=>p.id)})},
   roomtoeslag:el=>{const r=S.rooms.find(y=>y.id===el.dataset.id);mutate(()=>{r.huurtoeslag=el.checked})},
-  room:el=>{const r=S.rooms.find(y=>y.id===el.dataset.id),f=el.dataset.f;mutate(()=>{r[f]=f==='servicekosten'?num(el.value):(f==='personId'?(el.value||null):el.value)})},
+  room:el=>{const r=S.rooms.find(y=>y.id===el.dataset.id),f=el.dataset.f;
+    // Eén persoon staat nooit op twee kamers: bij toewijzen gaat hij van zijn oude kamer af.
+    const oud=f==='personId'&&el.value?S.rooms.find(y=>y!==r&&y.personId===el.value):null;
+    mutate(()=>{r[f]=f==='servicekosten'?num(el.value):(f==='personId'?(el.value||null):el.value);if(oud)oud.personId=null});
+    if(oud)toast(`${P(el.value).name} is verhuisd van ${oud.name} naar ${r.name}; ${oud.name} staat nu leeg.`)},
   rule:el=>{const r=S.bankRules.find(y=>y.id===el.dataset.id),f=el.dataset.f;mutate(()=>{r[f]=f==='match'?el.value.toUpperCase().trim():el.value})},
   sanc:el=>{const s=S.sanctions[+el.dataset.i],f=el.dataset.f;mutate(()=>{s[f]=f==='min'?(num(el.value)||0):el.value})},
   house:el=>mutate(()=>{S.house[el.dataset.f]=el.value}),
