@@ -2630,7 +2630,12 @@
   .hr-lijst li span { flex: 1 1 12rem; overflow-wrap: anywhere; }
   .hr-lijst button, .hr-form button { cursor: pointer; }
   .hr-form { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
-  .hr-form input { flex: 1 1 14rem; min-width: 0; padding: 0.45rem 0.6rem; }
+  .hr-zoek { position: relative; flex: 1 1 14rem; min-width: 0; }
+  .hr-zoek input { width: 100%; box-sizing: border-box; padding: 0.45rem 0.6rem; }
+  .hr-suggesties { position: absolute; z-index: 50; left: 0; right: 0; top: 100%; margin: 2px 0 0; padding: 0; list-style: none;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.12); max-height: 16rem; overflow-y: auto; }
+  .hr-suggesties li { padding: 0.5rem 0.7rem; cursor: pointer; }
+  .hr-suggesties li:hover, .hr-suggesties li.actief { background: var(--highlight); }
   .hr-melding { font-size: 0.85rem; color: var(--gray); margin: 0.4rem 0 0; min-height: 1em; }
 
   /* ============ HUISAUTO — maandkalender + boeken ============ */
@@ -3958,8 +3963,10 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
       de huisrekening, niet voor de rest van de site. Een losse <strong>lezer</strong> is iemand buiten de aangevinkte jaargangen.</p>
       <ul id="hr-toegang-lijst" class="hr-lijst"></ul>
       <form id="hr-toegang-form" class="hr-form">
-        <input type="text" id="hr-toegang-email" list="hr-namen" placeholder="Typ een naam…" required autocomplete="off">
-        <datalist id="hr-namen"></datalist>
+        <div class="hr-zoek">
+          <input type="text" id="hr-toegang-email" placeholder="Typ een naam…" required autocomplete="off">
+          <ul id="hr-suggesties" class="hr-suggesties" hidden></ul>
+        </div>
         <select id="hr-toegang-rol"><option value="beheerder">Beheerder</option><option value="lezer">Lezer</option></select>
         <button type="submit">Toevoegen</button>
       </form>
@@ -7458,9 +7465,6 @@ async function laadHrToegang() {
     const jaren = [...new Set(PEOPLE.map(p => Number(p['Aankomstjaar'])).filter(Boolean))].sort((a, b) => b - a);
     document.getElementById('hr-jaren').innerHTML = jaren.map(j =>
       `<label><input type="checkbox" data-hr-jaar="${j}"${aan.has(j) ? ' checked' : ''}> ${j}</label>`).join('');
-    // Zoekbox: alle leden met een e-mailadres.
-    document.getElementById('hr-namen').innerHTML = PEOPLE.filter(hrEmailVan)
-      .map(p => `<option value="${escapeHtml(hrNaam(p))}"></option>`).join('');
     ul.innerHTML = lijst.length ? lijst.map(r => {
       const p = personByEmail(r.email);
       return `<li><span>${escapeHtml(p ? hrNaam(p) : r.email)}</span>
@@ -7490,13 +7494,33 @@ function bewaarHrJaren() {
     } catch (e) { melding.textContent = e.message; }
   }, 600);
 }
+// Eigen zoeklijst onder het naamveld (datalist werkt niet overal).
+document.addEventListener('input', e => {
+  if (e.target.id !== 'hr-toegang-email') return;
+  const ul = document.getElementById('hr-suggesties');
+  const q = e.target.value.trim().toLowerCase();
+  const hits = q.length < 2 ? [] : PEOPLE.filter(p => hrEmailVan(p) && hrNaam(p).toLowerCase().includes(q)).slice(0, 12);
+  ul.innerHTML = hits.map(p => `<li data-hr-kies="${escapeHtml(hrEmailVan(p))}">${escapeHtml(hrNaam(p))}</li>`).join('');
+  ul.hidden = !hits.length;
+});
+document.addEventListener('mousedown', e => {
+  const li = e.target.closest && e.target.closest('[data-hr-kies]');
+  const ul = document.getElementById('hr-suggesties');
+  if (li) {
+    e.preventDefault();
+    const inp = document.getElementById('hr-toegang-email');
+    inp.value = li.textContent; inp.dataset.email = li.dataset.hrKies;
+    ul.hidden = true;
+  } else if (ul && !(e.target.closest && e.target.closest('.hr-zoek'))) ul.hidden = true;
+});
 document.addEventListener('submit', e => {
   if (e.target.id !== 'hr-toegang-form') return;
   e.preventDefault();
   const inp = document.getElementById('hr-toegang-email');
   const tekst = inp.value.trim();
   const p = PEOPLE.find(x => hrEmailVan(x) && hrNaam(x) === tekst);
-  const email = p ? hrEmailVan(p) : tekst.toLowerCase();
+  const email = (p ? hrEmailVan(p) : '') || (inp.dataset.email && tekst ? inp.dataset.email : tekst.toLowerCase());
+  delete inp.dataset.email;
   if (!email.includes('@')) {
     document.getElementById('hr-toegang-melding').textContent = 'Kies een naam uit de lijst (of typ een e-mailadres).';
     return;
