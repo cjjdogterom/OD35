@@ -31,6 +31,8 @@ h3{font-size:1rem}
 .credit{color:var(--ok)}
 header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;padding-block:22px 14px}
 header.top .brand{display:flex;flex-direction:column;gap:3px}
+.maandkeuze{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.maandkeuze select{min-width:11rem;font-weight:500}
 .months{display:flex;gap:0;flex-wrap:wrap;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface)}
 .months button{border:0;border-radius:0;border-left:1px solid var(--line);font-weight:500;padding:7px 12px;background:none}
 .months button:first-child{border-left:0}
@@ -581,7 +583,7 @@ async function importPDF(buf){
 function addMonthId(id,n){let [y,m]=id.split('-').map(Number);m+=n;while(m>12){m-=12;y++}return `${y}-${String(m).padStart(2,'0')}`}
 function addDays(d,n){const x=new Date(d+'T12:00:00');x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)}
 function addMonthDate(d){const x=new Date(d+'T12:00:00');x.setMonth(x.getMonth()+1);return x.toISOString().slice(0,10)}
-function closeMonth(){
+function closeMonth(naarNieuw){
   const m=openMonth();const B=bill(m.id);
   const snap={};for(const id in B){const b=B[id];snap[id]={start:r2(b.start),paid:r2(b.paid),end:r2(b.end),lines:b.lines.map(l=>({cat:l.cat,label:l.label,amount:Math.round(l.amount*10000)/10000,how:l.how||'',ref:l.ref||null})),payments:b.payments}}
   UI.month=m.id;zetMaandCfg();
@@ -594,9 +596,9 @@ function closeMonth(){
     const nid=addMonthId(m.id,1),[y,mm]=nid.split('-').map(Number);
     S.months.push({id:nid,label:MONTHS[mm-1][0].toUpperCase()+MONTHS[mm-1].slice(1)+' '+y,from:addDays(m.to,1),to:addMonthDate(m.to),closed:false,includeService:m.includeService!==false,pils:emptyPils(m.pils)});
     for(const t of S.transactions)if(t.monthId===m.id&&t.kind==='todo')t.monthId=nid;
-    UI.month=m.id;
+    UI.month=naarNieuw?nid:m.id;
   });
-  toast(`${m.label} is afgesloten. Klik op Opslaan en delen om de rekening te publiceren.`);
+  toast(naarNieuw?`${openMonth().label} is aangemaakt. ${m.label} is afgesloten en de eindsaldo's zijn doorgerekend als beginsaldo.`:`${m.label} is afgesloten.`+(BE?'':' Klik op Opslaan en delen om de rekening te publiceren.'));
 }
 function reopenMonth(){
   const om=openMonth(),i=S.months.indexOf(om),last=S.months[i-1];
@@ -712,7 +714,7 @@ function render(){
   ${UI.beheerder?`<div class="alslid${UI.alsLid?' aan':''}">${UI.alsLid?`<span>Je bekijkt de huisrekening zoals een gewoon lid hem ziet.</span><button class="primary" data-act="alsbeheer">Terug naar beheer</button>`:`<button class="ghost" data-act="alslid">Bekijk als lid</button>`}</div>`:''}
   <header class="top"><div class="brand"><span class="eyebrow">${esc(S.house.name)} · Huisrekening</span><h1>${esc(m.label)}</h1>
     <span class="small muted">Periode ${fmtDate(m.from)} t/m ${fmtDate(m.to)} · ${m.closed?'afgesloten':'lopende maand'}${S.savedAt?` · bijgewerkt ${new Date(S.savedAt).toLocaleDateString('nl-NL',{day:'numeric',month:'long'})}`:''}</span></div>
-    <div class="months" role="group" aria-label="Maand">${S.months.slice(-6).map(x=>`<button data-act="month" data-id="${x.id}" aria-pressed="${x.id===m.id}">${esc(x.label)}${x.closed?'':' (lopend)'}</button>`).join('')}</div></header>
+    <div class="maandkeuze"><label class="small muted" for="kiesmaand">Maand</label><select id="kiesmaand" data-ch="kiesmaand">${S.months.slice().reverse().map(x=>`<option value="${x.id}" ${x.id===m.id?'selected':''}>${esc(x.label)}${x.closed?'':' (lopend)'}</option>`).join('')}</select>${UI.editor?`<button class="primary" data-act="nieuwemaand">+ Nieuwe maand</button>`:''}</div></header>
   <nav class="tabs" aria-label="Onderdelen">${tabs.map(t=>typeof t==='string'?`<span class="tabsep" aria-hidden="true"></span><span class="tabgrp">${t.slice(1)}</span>`:`<button data-act="tab" data-id="${t[0]}" ${UI.tab===t[0]?'aria-current="page"':''}>${t[1]}${t[0]==='transacties'&&todo&&UI.editor?`<span class="badge warn">${todo}</span>`:''}</button>`).join('')}</nav>
   ${body}
   <footer class="foot"><span>Beheerder${(behLijst||S.house.beheerders||[]).length>1?'s':''}: ${esc(beh||'nog niet ingesteld')} · vragen naar ${esc(S.house.email||'')}</span>
@@ -1426,6 +1428,8 @@ const acts={
   afknone:el=>mutate(()=>{curPils().afkoop.find(a=>a.id===el.dataset.id).participants=[]}),
   closemonth:()=>{const m=openMonth(),todo=S.transactions.filter(t=>t.monthId===m.id&&t.kind==='todo').length;
     ask(`${m.label} afsluiten? De bedragen worden vastgezet en ${MONTHS[(+addMonthId(m.id,1).split('-')[1])-1]} begint.`+(todo?` Er staan nog ${todo} transacties bij Te verwerken; die schuiven door naar de volgende maand.`:'')+(m.pils&&(!pilsCalc(m.pils).fustKnown||!pilsCalc(m.pils).kratKnown)?' Let op: de eindvoorraad fusten of kratten is nog niet ingevuld, dus er wordt geen verlies berekend.':''),'Maand afsluiten',closeMonth)},
+  nieuwemaand:()=>{const m=openMonth(),nid=addMonthId(m.id,1),[y,mm]=nid.split('-').map(Number),nl=MONTHS[mm-1]+' '+y,todo=S.transactions.filter(t=>t.monthId===m.id&&t.kind==='todo').length,corr=correcties().length;
+    ask(`Nieuwe maand ${nl} aanmaken? Eerst wordt ${m.label.toLowerCase()} afgesloten en alles doorgerekend: de eindsaldo's van ${m.label.toLowerCase()} worden de beginsaldo's van ${nl}`+(corr?`, inclusief ${corr} correctie(s) van eerder afgesloten maanden`:'')+'.'+(todo?` Er staan nog ${todo} transacties bij Te verwerken; die schuiven door naar ${nl}.`:'')+(m.pils&&(!pilsCalc(m.pils).fustKnown||!pilsCalc(m.pils).kratKnown)?' Let op: de eindvoorraad fusten of kratten van '+m.label.toLowerCase()+' is nog niet ingevuld, dus er wordt geen verlies berekend.':''),'Nieuwe maand aanmaken',()=>closeMonth(true))},
   mbewerkt:el=>{const m=M(el.dataset.id);
     if(m.bewerkt){const n=correcties().filter(c=>c.m===m).length;m.bewerkt=false;if(!n)delete m.basis;if(n){m.bewerkt=true;toast(`Er staan nog ${n} correctie(s) open; die worden verrekend als je ${openMonth().label.toLowerCase()} afsluit. De maand blijft daarom bewerkbaar.`);return render()}render();return}
     mutate(()=>{if(!m.cfg)m.cfg=JSON.parse(JSON.stringify(Object.fromEntries(CFG_KEYS.map(k=>[k,S[k]]))));
@@ -1462,6 +1466,7 @@ const acts={
 const list=v=>String(v||'').split(',').map(x=>x.trim()).filter(Boolean);
 const toggleIn=(arr,id,on)=>{const s=new Set(arr||[]);on?s.add(id):s.delete(id);return [...s]};
 const changes={
+  kiesmaand:el=>{UI.month=el.value;UI.open=null;UI.lineOpen=null;render()},
   me:el=>{UI.me=el.value;UI.lineOpen=null;store.set('huis.me',el.value);render()},
   mfrom:el=>mutate(()=>{M(UI.month).from=el.value}),
   mto:el=>mutate(()=>{M(UI.month).to=el.value}),
