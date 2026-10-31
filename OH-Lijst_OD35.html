@@ -7442,6 +7442,12 @@ async function laadHuisrekeningStatus() {
   if (typeof applyTabZichtbaarheid === 'function') applyTabZichtbaarheid();
   if (typeof appRenderBalken === 'function' && document.getElementById('app-tabbar')) appRenderBalken();
 }
+// Toegang kan intussen door de hoofdadmin zijn aangepast: opnieuw controleren als je terugkomt
+// naar de site of app, en elke 5 minuten. Anders zie je het tabblad pas na herladen.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && currentUserEmail) laadHuisrekeningStatus();
+});
+setInterval(() => { if (currentUserEmail && document.visibilityState === 'visible') laadHuisrekeningStatus(); }, 5 * 60 * 1000);
 function openHuisrekening() {
   // Alleen de hoofdadmin blijft op dit tabblad (voor het toegangsbeheer); de rest gaat meteen fullscreen.
   if (!(HR_STATUS && HR_STATUS.hoofdadmin)) { location.href = '/huisrekening/huisrekening.html'; return; }
