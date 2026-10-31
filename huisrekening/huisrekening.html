@@ -1600,10 +1600,11 @@ function numInput(id,val,ch,f,ok,w,extra){return `<input type="number" id="${id}
 // verdeel je hem opnieuw, naar verhouding van wat ieder betaalde (nieuwe betalers krijgen het gebruikelijke bedrag).
 // Servicekosten (m.scAanp) en pils (m.pilsAanp) pas je per persoon aan. Het verschil komt als correctie in de lopende maand.
 const impMaand=m=>!!(m&&m.snapshot&&/oude Excel/i.test(m.note||''));
-const IMP_CATS=['Huislasten','Extra correctie'];
+const IMP_CATS=['Huislasten','Extra correctie','Pils'];
 function impPosten(m,cat){
   const posts={};
-  for(const [id,b] of Object.entries(m.snapshot||{}))for(const l of b.lines||[])if(l.cat===cat&&!/^Aanpassing /.test(l.label)){
+  // Bij pils zijn de flesjes persoonlijk verbruik (aantal per persoon); de overige pilsposten worden gedeeld.
+  for(const [id,b] of Object.entries(m.snapshot||{}))for(const l of b.lines||[])if(l.cat===cat&&!/^Aanpassing /.test(l.label)&&!(cat==='Pils'&&l.label===FLES)){
     const x=posts[l.label]=posts[l.label]||{label:l.label,per:{},how:l.how};x.per[id]=(x.per[id]||0)+l.amount}
   return Object.values(posts);
 }
@@ -1689,19 +1690,30 @@ function pilsImpNieuw(m,id,imp){
 }
 function pilsImpVerschil(m,id){const n=pilsImpNieuw(m,id);return sum(Object.values(n.cells))-sum(Object.values(n.oud.cells))}
 function pilsImportEdit(m){
-  const imp=pilsImport(m),ids=[...new Set([...Object.keys(imp.per),...housePeople().map(p=>p.id),...Object.keys(m.pilsAanp||{})])].filter(id=>P(id));
-  const rows=ids.map(id=>({p:P(id),...pilsImpNieuw(m,id,imp)})).sort((a,b)=>byName(a.p,b.p));
-  const inp=(id,f,v,stap)=>`<input type="number" step="${stap}" value="${v==null?'':Math.round(v*100)/100}" data-ch="pilsimp" data-pid="${id}" data-f="${esc(f)}" aria-label="${esc(f)} ${esc(P(id).name)}" style="width:6.5rem">`;
-  const tot=sum(rows.map(r=>sum(Object.values(r.cells)))),verschil=sum(rows.map(r=>sum(Object.values(r.cells))-sum(Object.values(r.oud.cells))));
+  const imp=pilsImport(m),info=impPosten(m,'Pils').map(x=>({x,...impNieuw(m,'Pils',x)}));
+  const ids=[...new Set([...Object.keys(imp.per),...housePeople().map(p=>p.id),...Object.keys(m.pilsAanp||{})])].filter(id=>P(id));
+  const rows=ids.map(id=>{const f=pilsImpNieuw(m,id,imp),deel=sum(info.map(i=>i.nieuw[id]||0)),deelOud=sum(info.map(i=>i.x.per[id]||0));
+    return {p:P(id),cnt:f.cnt,fles:f.cells[FLES]||0,flesOud:f.oud.cells[FLES]||0,deel,deelOud}})
+    .filter(r=>UI.matrixAll||HOUSE.includes(r.p.status)||r.cnt||r.deel||r.deelOud||r.flesOud).sort((a,b)=>byName(a.p,b.p));
+  const cel=(p,i)=>{const aan=i.wie.includes(p.id),v=i.nieuw[p.id]||0,oud=i.x.per[p.id]||0,anders=Math.abs(v-oud)>0.004;
+    return `<td class="r num"><label class="hl-cel"><input type="checkbox" data-ch="impzet" data-cat="Pils" data-label="${esc(i.x.label)}" data-pid="${p.id}" ${aan?'checked':''} aria-label="${esc(p.name)} betaalt mee aan ${esc(i.x.label)}"> ${aan||anders?(anders?`<b title="was ${eur(oud)}">${eur(v)}</b>`:eur(v)):'<span class="muted">—</span>'}</label></td>`};
+  const heeft=(m.pilsAanp&&Object.keys(m.pilsAanp).length)||(m.impAanp&&m.impAanp.Pils);
   return `<section class="block"><h2>Pilsrekening ${esc(m.label.toLowerCase())}</h2>
-    <p class="note">Deze maand komt uit de oude Excel, dus er is geen turflijst; je past hier per persoon het aantal flesjes en elk bedrag aan. Flesjes rekenen met ${eur3(imp.prijs)} per flesje. Het verschil met de afgesloten rekening wordt als correctie verrekend in ${esc(openMonth().label.toLowerCase())}.</p>
-    <div class="scroll tbl"><table class="matrix"><thead><tr><th class="n">Naam</th><th class="r">Flesjes</th>${imp.cols.map(c=>`<th class="r wrap">${esc(c)}</th>`).join('')}<th class="r">Totaal</th><th class="r">Verschil</th></tr></thead><tbody>
-    ${rows.map(r=>{const d=sum(Object.values(r.cells))-sum(Object.values(r.oud.cells));return `<tr><td class="n">${esc(r.p.name)}</td><td class="r">${inp(r.p.id,'fles',r.cnt,1)}</td>
-      ${imp.cols.map(c=>c===FLES?`<td class="r num">${r.cells[c]?eur(r.cells[c]):'<span class="muted">—</span>'}</td>`:`<td class="r">${inp(r.p.id,c,r.cells[c]??0,0.01)}</td>`).join('')}
-      <td class="r num"><b>${eur(sum(Object.values(r.cells)))}</b></td><td class="r num">${Math.abs(d)>0.004?`<b>${d>0?'+':''}${eur(d)}</b>`:'<span class="muted">—</span>'}</td></tr>`}).join('')}
-    <tr class="total"><td class="n">Totaal</td><td class="r num">${sum(rows.map(r=>r.cnt||0))}</td>${imp.cols.map(c=>`<td class="r num">${eur(sum(rows.map(r=>r.cells[c]||0)))}</td>`).join('')}<td class="r num">${eur(tot)}</td><td class="r num">${Math.abs(verschil)>0.004?(verschil>0?'+':'')+eur(verschil):'—'}</td></tr>
+    <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is leidend. Pas per persoon het aantal <b>flesjes</b> aan (${eur3(imp.prijs)} per flesje). Bij de gedeelde posten zet je met het vinkje aan wie meebetaalt: haal je iemand eruit, dan wordt die post verdeeld over de overige meebetalers van ${esc(m.label.toLowerCase())}. Het verschil komt als correctie in ${esc(openMonth().label.toLowerCase())}. Vetgedrukte bedragen zijn aangepast.</p>
+    <div class="row" style="margin-bottom:8px"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div>
+      ${heeft?'<button class="ghost" data-act="pilsimpreset">Alle aanpassingen ongedaan maken</button>':''}</div>
+    <div class="scroll tbl"><table class="hl-tabel"><thead>
+      <tr><th class="n">Naam</th><th class="r">Flesjes</th><th class="r">${esc(FLES)}</th>${info.map(i=>`<th class="r">${esc(i.x.label)}</th>`).join('')}<th class="r">Totaal</th><th class="r">Verschil</th></tr>
+      <tr class="hl-info"><td class="n">Totaalprijs</td><td class="r num">${sum(rows.map(r=>r.cnt||0))}</td><td class="r num"><b>${eur(sum(rows.map(r=>r.fles)))}</b></td>${info.map(i=>`<td class="r num"><b>${eur(i.tot)}</b></td>`).join('')}<td></td><td></td></tr>
+    </thead><tbody>
+    ${rows.map(r=>{const alle=info.length&&info.every(i=>i.wie.includes(r.p.id)),tot=r.fles+r.deel,d=tot-(r.flesOud+r.deelOud);
+      return `<tr><td class="n">${info.length?`<label class="hl-cel" title="${alle?'Uit alle':'In alle'} gedeelde pilsposten"><input type="checkbox" data-ch="imprij" data-cat="Pils" data-pid="${r.p.id}" ${alle?'checked':''} aria-label="${esc(r.p.name)} in alle gedeelde pilsposten"> ${esc(r.p.name)}</label>`:esc(r.p.name)}</td>
+      <td class="r"><input type="number" step="1" min="0" value="${r.cnt||0}" data-ch="pilsimp" data-pid="${r.p.id}" data-f="fles" aria-label="Flesjes ${esc(r.p.name)}" style="width:5rem"></td>
+      <td class="r num">${r.fles?(Math.abs(r.fles-r.flesOud)>0.004?`<b title="was ${eur(r.flesOud)}">${eur(r.fles)}</b>`:eur(r.fles)):'<span class="muted">—</span>'}</td>
+      ${info.map(i=>cel(r.p,i)).join('')}
+      <td class="r num"><b>${eur(tot)}</b></td><td class="r num">${Math.abs(d)>0.004?`<b>${d>0?'+':''}${eur(d)}</b>`:'<span class="muted">—</span>'}</td></tr>`}).join('')}
+    <tr class="total"><td class="n">Meebetalers</td><td></td><td></td>${info.map(i=>`<td class="r num">${i.wie.length}</td>`).join('')}<td class="r num">${eur(sum(rows.map(r=>r.fles+r.deel)))}</td><td></td></tr>
     </tbody></table></div>
-    ${m.pilsAanp&&Object.keys(m.pilsAanp).length?'<div class="row"><button class="ghost" data-act="pilsimpreset">Alle aanpassingen ongedaan maken</button></div>':''}
   </section>`+afkoopHistHTML(m);
 }
 function vPils(m){
@@ -2012,7 +2024,7 @@ const acts={
   mailopen:()=>mailOpen(),
   impreset:el=>{const cat=el.dataset.cat;ask(`Alle aanpassingen aan ${cat.toLowerCase()} van deze maand ongedaan maken?`,'Ongedaan maken',()=>mutate(()=>{const m=M(UI.month);if(m.impAanp){delete m.impAanp[cat];if(!Object.keys(m.impAanp).length)delete m.impAanp}}))},
   scimpreset:()=>ask('Alle aanpassingen aan de servicekosten van deze maand ongedaan maken?','Ongedaan maken',()=>mutate(()=>{delete M(UI.month).scAanp})),
-  pilsimpreset:()=>ask('Alle aanpassingen aan deze pilsrekening ongedaan maken?','Ongedaan maken',()=>mutate(()=>{delete M(UI.month).pilsAanp})),
+  pilsimpreset:()=>ask('Alle aanpassingen aan deze pilsrekening ongedaan maken?','Ongedaan maken',()=>mutate(()=>{const m=M(UI.month);delete m.pilsAanp;if(m.impAanp){delete m.impAanp.Pils;if(!Object.keys(m.impAanp).length)delete m.impAanp}})),
   meld:el=>{UI.meld={onderwerp:el.dataset.ond||'',tekst:'',bezig:false};render();setTimeout(()=>{const t=document.getElementById('meld-tekst');if(t)t.focus()},0)},
   meldclose:()=>{UI.meld=null;render()},
   meldsend:()=>meldVersturen(),
