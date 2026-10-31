@@ -7464,8 +7464,13 @@ function hrEmailVan(p) { return String(p['E-mail 1'] || p['E-mail 2'] || p['E-ma
 async function laadHrToegang() {
   const ul = document.getElementById('hr-toegang-lijst');
   const melding = document.getElementById('hr-toegang-melding');
+  // Ook als het laden mislukt, tonen we de jaargangen en de vaste regel voor de hoofdadmin.
+  let lijst = [], jaargangen = [];
   try {
-    const { lijst, jaargangen } = await hrFetch('?actie=toegang');
+    ({ lijst, jaargangen } = await hrFetch('?actie=toegang'));
+    melding.textContent = '';
+  } catch (e) { melding.textContent = e.message; }
+  try {
     // Jaargangen: alle jaren uit de ledenlijst, nieuwste eerst.
     const aan = new Set((jaargangen || []).map(Number));
     const jaren = [...new Set(PEOPLE.map(p => Number(p['Aankomstjaar'])).filter(Boolean))].sort((a, b) => b - a);
@@ -7478,7 +7483,7 @@ async function laadHrToegang() {
       <select data-hr-rol="${escapeHtml(r.email)}"><option value="lezer"${r.rol === 'lezer' ? ' selected' : ''}>Lezer</option><option value="beheerder"${r.rol === 'beheerder' ? ' selected' : ''}>Beheerder</option></select>
       <button type="button" data-hr-weg="${escapeHtml(r.email)}">Verwijderen</button></li>`;
     }).join('') : '<li><span>Verder nog niemand. Kies hieronder wie beheerder of lezer wordt.</span></li>');
-  } catch (e) { melding.textContent = e.message; }
+  } catch (e) { melding.textContent = melding.textContent || e.message; }
 }
 async function zetHrToegang(email, rol) {
   const melding = document.getElementById('hr-toegang-melding');
