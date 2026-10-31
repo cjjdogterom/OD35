@@ -503,11 +503,15 @@ function bill(mid){
   if(impMaand(m)){
     for(const cat of IMP_CATS)if(m.impAanp&&m.impAanp[cat])for(const [label,d] of Object.entries(impVerschillen(m,cat)))for(const id in d)
       if(Math.abs(d[id])>0.004)add(id,{cat,label:`Aanpassing ${label}`,amount:d[id],how:'wie meebetaalt is na afsluiten aangepast door de beheerder',ref:{type:'imp',cat,label}});
+    if(m.afkoopAanp){const d=afkoopImpVerschil(m),lb=(Object.values(m.snapshot||{}).flatMap(b=>b.lines||[]).find(l=>l.cat==='Pils'&&isAfkoop(l.label))||{label:'Fust afkoop'}).label;
+      for(const id in d)if(Math.abs(d[id])>0.004)add(id,{cat:'Pils',label:`Aanpassing ${lb}`,amount:d[id],how:'wie bij het afkoopmoment was is na afsluiten aangepast',ref:{type:'imp',cat:'Pils'}})}
     if(m.scAanp){const oud=scImport(m);for(const id in m.scAanp){const d=(+m.scAanp[id]||0)-(oud[id]||0);
       if(Math.abs(d)>0.004)add(id,{cat:'Servicekosten',label:'Aanpassing servicekosten',amount:d,how:'na afsluiten aangepast door de beheerder',ref:{type:'imp',cat:'Servicekosten'}})}}
   }
-  if(!m.pils&&m.pilsAanp&&m.snapshot)for(const id in m.pilsAanp){const d=pilsImpVerschil(m,id);
-    if(Math.abs(d)>0.004)add(id,{cat:'Pils',label:'Aanpassing pilsrekening',amount:d,how:'pilsrekening na afsluiten aangepast door de beheerder',ref:{type:'pils',kind:'aanp'}})}
+  // Per pilspost een eigen aanpassingsregel (turven bar, flesjes Nestor, …), zodat het overzicht ze bij de juiste post toont.
+  if(!m.pils&&m.pilsAanp&&m.snapshot){const imp=pilsImport(m);for(const id in m.pilsAanp){const n=pilsImpNieuw(m,id,imp);
+    for(const lb of new Set([...Object.keys(n.cells),...Object.keys(n.oud.cells)])){const d=(n.cells[lb]||0)-(n.oud.cells[lb]||0);
+      if(Math.abs(d)>0.004)add(id,{cat:'Pils',label:`Aanpassing ${lb}`,amount:d,how:lb===TAP?`${n.tap} tapturven × ${eur3(imp.tapPrijs)}`:lb===FLES?`${n.cnt} flesjes × ${eur3(imp.prijs)}`:'pilsrekening na afsluiten aangepast door de beheerder',ref:{type:'pils',kind:'aanp'}})}}}
   if(!_herberekenen&&m===openMonth())for(const c of correcties())
     add(c.id,{cat:'Correctie',label:`Correctie ${c.m.label.toLowerCase()}`,amount:c.d,how:`${c.m.label} is na het afsluiten aangepast: eindsaldo was ${eur(c.oud)}, wordt ${eur(c.nieuw)}`,ref:{type:'corr',id:c.m.id}});
   for(const id in B){const b=B[id];b.charges=sum(b.lines.map(l=>l.amount));b.end=b.start-b.paid+b.charges}
@@ -1604,7 +1608,7 @@ const IMP_CATS=['Huislasten','Extra correctie','Pils'];
 function impPosten(m,cat){
   const posts={};
   // Bij pils zijn de flesjes persoonlijk verbruik (aantal per persoon); de overige pilsposten worden gedeeld.
-  for(const [id,b] of Object.entries(m.snapshot||{}))for(const l of b.lines||[])if(l.cat===cat&&!/^Aanpassing /.test(l.label)&&!(cat==='Pils'&&l.label===FLES)){
+  for(const [id,b] of Object.entries(m.snapshot||{}))for(const l of b.lines||[])if(l.cat===cat&&!/^Aanpassing /.test(l.label)&&!(cat==='Pils'&&(l.label===FLES||l.label===TAP||(isAfkoop(l.label)&&(m.afkoopHist||[]).length)))){
     const x=posts[l.label]=posts[l.label]||{label:l.label,per:{},how:l.how};x.per[id]=(x.per[id]||0)+l.amount}
   return Object.values(posts);
 }
@@ -1673,48 +1677,78 @@ function scImportEdit(m){
 }
 // Pilsrekening uit de oude Excel (geen turflijst, alleen bedragen per persoon in de vastgezette rekening).
 // De beheerder past per persoon het aantal flesjes en elk bedrag aan; het verschil wordt als correctie verrekend.
-const FLES='Pils fles';
+const FLES='Pils fles',TAP='Pils fust';
+const isAfkoop=l=>/afkoop/i.test(l||'');
+// Prijs per tapturf afleiden uit de bedragen (die zijn een veelvoud van de turfprijs); anders de huidige barprijs.
+function eenheid(bedragen,terug){
+  const a=bedragen.filter(x=>x>0.0001);if(!a.length)return terug;const min=Math.min(...a);
+  for(let k=1;k<=80;k++){const p=min/k;if(p<0.25)break;if(p<=2&&a.every(x=>Math.abs(x/p-Math.round(x/p))<0.03))return p}
+  return terug;
+}
 function pilsImport(m){
-  const per={},cols=[];let tc=0,ta=0;
-  for(const [id,b] of Object.entries(m.snapshot||{}))for(const l of b.lines||[])if(l.cat==='Pils'){
-    if(!cols.includes(l.label))cols.push(l.label);const x=per[id]=per[id]||{cells:{},cnt:0};x.cells[l.label]=(x.cells[l.label]||0)+l.amount;
-    if(l.label===FLES){const mm=(l.how||'').match(/^(\d+) flesjes/);if(mm){x.cnt+=+mm[1];tc+=+mm[1];ta+=l.amount}}}
-  if(!cols.includes(FLES))cols.unshift(FLES);
-  return {per,cols,prijs:tc?ta/tc:(+PS().flesPrice||0)};
+  const per={},cols=[];let tc=0,ta=0;const tapB=[];
+  for(const [id,b] of Object.entries(m.snapshot||{}))for(const l of b.lines||[])if(l.cat==='Pils'&&!/^Aanpassing /.test(l.label)){
+    if(!cols.includes(l.label))cols.push(l.label);const x=per[id]=per[id]||{cells:{},cnt:0,tap:0};x.cells[l.label]=(x.cells[l.label]||0)+l.amount;
+    if(l.label===FLES){const mm=(l.how||'').match(/^(\d+) flesjes/);if(mm){x.cnt+=+mm[1];tc+=+mm[1];ta+=l.amount}}
+    if(l.label===TAP)tapB.push(l.amount)}
+  const prijs=tc?ta/tc:(+PS().flesPrice||flesPrice()||0),tapPrijs=eenheid(tapB,barPrice()||0.54);
+  for(const x of Object.values(per)){if(!x.cnt&&x.cells[FLES])x.cnt=Math.round(x.cells[FLES]/prijs);if(x.cells[TAP])x.tap=Math.round(x.cells[TAP]/tapPrijs)}
+  return {per,cols,prijs,tapPrijs};
 }
 function pilsImpNieuw(m,id,imp){
-  imp=imp||pilsImport(m);const oud=imp.per[id]||{cells:{},cnt:0},a=(m.pilsAanp||{})[id]||{};
-  const cells={...oud.cells,...(a.cells||{})},cnt=a.fles!=null?+a.fles:oud.cnt;
+  imp=imp||pilsImport(m);const oud=imp.per[id]||{cells:{},cnt:0,tap:0},a=(m.pilsAanp||{})[id]||{};
+  const cells={...oud.cells,...(a.cells||{})},cnt=a.fles!=null?+a.fles:oud.cnt,tap=a.tap!=null?+a.tap:oud.tap;
   if(a.fles!=null)cells[FLES]=cnt*imp.prijs;
-  return {cells,cnt,oud};
+  if(a.tap!=null)cells[TAP]=tap*imp.tapPrijs;
+  return {cells,cnt,tap,oud};
+}
+// Afkoopmomenten van een maand uit de Excel: per moment aanvinken wie erbij was (m.afkoopAanp[index] = [personen]).
+function afkoopImp(m){
+  return (m.afkoopHist||[]).map((a,i)=>{const oud=(a.participants||[]).filter(id=>P(id)),wie=((m.afkoopAanp||{})[i]||oud).filter(id=>P(id)),cost=(+a.count||0)*(+a.price||0);
+    return {a,i,oud,wie,cost,perOud:oud.length?cost/oud.length:0,perNu:wie.length?cost/wie.length:0}});
+}
+function afkoopImpVerschil(m){
+  const d={};for(const x of afkoopImp(m)){if(!(m.afkoopAanp||{})[x.i])continue;
+    for(const id of x.oud)d[id]=(d[id]||0)-x.perOud;for(const id of x.wie)d[id]=(d[id]||0)+x.perNu}
+  return d;
+}
+function afkoopImpEdit(m){
+  const rows=afkoopImp(m);if(!rows.length)return afkoopHistHTML(m);
+  const ppl=[...S.people].sort(byName).filter(p=>HOUSE.includes(p.status)||rows.some(x=>x.oud.includes(p.id)||x.wie.includes(p.id)));
+  return `<section class="block"><h2>Afkoopmomenten ${esc(m.label.toLowerCase())}</h2>
+    <p class="note">Vink per afkoopmoment aan wie erbij was. De kosten worden verdeeld over wie aangevinkt staat; het verschil komt als correctie in ${esc(openMonth().label.toLowerCase())}.</p>
+    <div class="stack">${rows.map(x=>`<div class="panel stack"><div class="spread"><b>${esc(x.a.label||'Afkoop')}</b><span class="small muted">${afkoopName(x.a.type)} · ${x.a.count} × ${eur(x.a.price)} = ${eur(x.cost)} · ${x.wie.length} ${x.wie.length===1?'persoon':'personen'} · ${eur(x.perNu)} p.p.${Math.abs(x.perNu-x.perOud)>0.004?` (was ${eur(x.perOud)})`:''}</span></div>
+      <div class="people-grid">${ppl.map(p=>`<label for="aki-${x.i}-${p.id}"><input type="checkbox" id="aki-${x.i}-${p.id}" data-ch="afkimp" data-i="${x.i}" data-pid="${p.id}" ${x.wie.includes(p.id)?'checked':''}><span>${esc(p.name)}</span></label>`).join('')}</div></div>`).join('')}</div>
+  </section>`;
 }
 function pilsImpVerschil(m,id){const n=pilsImpNieuw(m,id);return sum(Object.values(n.cells))-sum(Object.values(n.oud.cells))}
 function pilsImportEdit(m){
   const imp=pilsImport(m),info=impPosten(m,'Pils').map(x=>({x,...impNieuw(m,'Pils',x)}));
   const ids=[...new Set([...Object.keys(imp.per),...housePeople().map(p=>p.id),...Object.keys(m.pilsAanp||{})])].filter(id=>P(id));
   const rows=ids.map(id=>{const f=pilsImpNieuw(m,id,imp),deel=sum(info.map(i=>i.nieuw[id]||0)),deelOud=sum(info.map(i=>i.x.per[id]||0));
-    return {p:P(id),cnt:f.cnt,fles:f.cells[FLES]||0,flesOud:f.oud.cells[FLES]||0,deel,deelOud}})
-    .filter(r=>UI.matrixAll||HOUSE.includes(r.p.status)||r.cnt||r.deel||r.deelOud||r.flesOud).sort((a,b)=>byName(a.p,b.p));
+    return {p:P(id),cnt:f.cnt,tap:f.tap,fles:(f.cells[FLES]||0)+(f.cells[TAP]||0),flesOud:(f.oud.cells[FLES]||0)+(f.oud.cells[TAP]||0),deel,deelOud}})
+    .filter(r=>UI.matrixAll||HOUSE.includes(r.p.status)||r.cnt||r.tap||r.deel||r.deelOud||r.flesOud).sort((a,b)=>byName(a.p,b.p));
   const cel=(p,i)=>{const aan=i.wie.includes(p.id),v=i.nieuw[p.id]||0,oud=i.x.per[p.id]||0,anders=Math.abs(v-oud)>0.004;
     return `<td class="r num"><label class="hl-cel"><input type="checkbox" data-ch="impzet" data-cat="Pils" data-label="${esc(i.x.label)}" data-pid="${p.id}" ${aan?'checked':''} aria-label="${esc(p.name)} betaalt mee aan ${esc(i.x.label)}"> ${aan||anders?(anders?`<b title="was ${eur(oud)}">${eur(v)}</b>`:eur(v)):'<span class="muted">—</span>'}</label></td>`};
-  const heeft=(m.pilsAanp&&Object.keys(m.pilsAanp).length)||(m.impAanp&&m.impAanp.Pils);
+  const heeft=(m.pilsAanp&&Object.keys(m.pilsAanp).length)||(m.impAanp&&m.impAanp.Pils)||m.afkoopAanp;
   return `<section class="block"><h2>Pilsrekening ${esc(m.label.toLowerCase())}</h2>
-    <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is leidend. Pas per persoon het aantal <b>flesjes</b> aan (${eur3(imp.prijs)} per flesje). Bij de gedeelde posten zet je met het vinkje aan wie meebetaalt: haal je iemand eruit, dan wordt die post verdeeld over de overige meebetalers van ${esc(m.label.toLowerCase())}. Het verschil komt als correctie in ${esc(openMonth().label.toLowerCase())}. Vetgedrukte bedragen zijn aangepast.</p>
+    <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is leidend. Vul per persoon de <b>turven van de bar</b> (tap, ${eur3(imp.tapPrijs)} per turf) en <b>van de Nestor</b> (flesjes, ${eur3(imp.prijs)} per flesje) in. Bij de gedeelde posten zet je met het vinkje aan wie meebetaalt: haal je iemand eruit, dan wordt die post verdeeld over de overige meebetalers van ${esc(m.label.toLowerCase())}. Het verschil komt als correctie in ${esc(openMonth().label.toLowerCase())}. Vetgedrukte bedragen zijn aangepast.</p>
     <div class="row" style="margin-bottom:8px"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div>
       ${heeft?'<button class="ghost" data-act="pilsimpreset">Alle aanpassingen ongedaan maken</button>':''}</div>
     <div class="scroll tbl"><table class="hl-tabel"><thead>
-      <tr><th class="n">Naam</th><th class="r">Flesjes</th><th class="r">${esc(FLES)}</th>${info.map(i=>`<th class="r">${esc(i.x.label)}</th>`).join('')}<th class="r">Totaal</th><th class="r">Verschil</th></tr>
-      <tr class="hl-info"><td class="n">Totaalprijs</td><td class="r num">${sum(rows.map(r=>r.cnt||0))}</td><td class="r num"><b>${eur(sum(rows.map(r=>r.fles)))}</b></td>${info.map(i=>`<td class="r num"><b>${eur(i.tot)}</b></td>`).join('')}<td></td><td></td></tr>
+      <tr><th class="n">Naam</th><th class="r">Turven bar (tap)</th><th class="r">Turven Nestor (flesjes)</th><th class="r">Turven samen</th>${info.map(i=>`<th class="r">${esc(i.x.label)}</th>`).join('')}<th class="r">Totaal</th><th class="r">Verschil</th></tr>
+      <tr class="hl-info"><td class="n">Totaal / prijs</td><td class="r num">${sum(rows.map(r=>r.tap||0))} × ${eur3(imp.tapPrijs)}</td><td class="r num">${sum(rows.map(r=>r.cnt||0))} × ${eur3(imp.prijs)}</td><td class="r num"><b>${eur(sum(rows.map(r=>r.fles)))}</b></td>${info.map(i=>`<td class="r num"><b>${eur(i.tot)}</b></td>`).join('')}<td></td><td></td></tr>
     </thead><tbody>
     ${rows.map(r=>{const alle=info.length&&info.every(i=>i.wie.includes(r.p.id)),tot=r.fles+r.deel,d=tot-(r.flesOud+r.deelOud);
       return `<tr><td class="n">${info.length?`<label class="hl-cel" title="${alle?'Uit alle':'In alle'} gedeelde pilsposten"><input type="checkbox" data-ch="imprij" data-cat="Pils" data-pid="${r.p.id}" ${alle?'checked':''} aria-label="${esc(r.p.name)} in alle gedeelde pilsposten"> ${esc(r.p.name)}</label>`:esc(r.p.name)}</td>
-      <td class="r"><input type="number" step="1" min="0" value="${r.cnt||0}" data-ch="pilsimp" data-pid="${r.p.id}" data-f="fles" aria-label="Flesjes ${esc(r.p.name)}" style="width:5rem"></td>
+      <td class="r"><input type="number" step="1" min="0" value="${r.tap||0}" data-ch="pilsimp" data-pid="${r.p.id}" data-f="tap" aria-label="Tapturven bar ${esc(r.p.name)}" style="width:5rem"></td>
+      <td class="r"><input type="number" step="1" min="0" value="${r.cnt||0}" data-ch="pilsimp" data-pid="${r.p.id}" data-f="fles" aria-label="Flesjes Nestor ${esc(r.p.name)}" style="width:5rem"></td>
       <td class="r num">${r.fles?(Math.abs(r.fles-r.flesOud)>0.004?`<b title="was ${eur(r.flesOud)}">${eur(r.fles)}</b>`:eur(r.fles)):'<span class="muted">—</span>'}</td>
       ${info.map(i=>cel(r.p,i)).join('')}
       <td class="r num"><b>${eur(tot)}</b></td><td class="r num">${Math.abs(d)>0.004?`<b>${d>0?'+':''}${eur(d)}</b>`:'<span class="muted">—</span>'}</td></tr>`}).join('')}
-    <tr class="total"><td class="n">Meebetalers</td><td></td><td></td>${info.map(i=>`<td class="r num">${i.wie.length}</td>`).join('')}<td class="r num">${eur(sum(rows.map(r=>r.fles+r.deel)))}</td><td></td></tr>
+    <tr class="total"><td class="n">Meebetalers</td><td></td><td></td><td></td>${info.map(i=>`<td class="r num">${i.wie.length}</td>`).join('')}<td class="r num">${eur(sum(rows.map(r=>r.fles+r.deel)))}</td><td></td></tr>
     </tbody></table></div>
-  </section>`+afkoopHistHTML(m);
+  </section>`+afkoopImpEdit(m);
 }
 function vPils(m){
   const ok=canEdit(m);
@@ -2024,7 +2058,7 @@ const acts={
   mailopen:()=>mailOpen(),
   impreset:el=>{const cat=el.dataset.cat;ask(`Alle aanpassingen aan ${cat.toLowerCase()} van deze maand ongedaan maken?`,'Ongedaan maken',()=>mutate(()=>{const m=M(UI.month);if(m.impAanp){delete m.impAanp[cat];if(!Object.keys(m.impAanp).length)delete m.impAanp}}))},
   scimpreset:()=>ask('Alle aanpassingen aan de servicekosten van deze maand ongedaan maken?','Ongedaan maken',()=>mutate(()=>{delete M(UI.month).scAanp})),
-  pilsimpreset:()=>ask('Alle aanpassingen aan deze pilsrekening ongedaan maken?','Ongedaan maken',()=>mutate(()=>{const m=M(UI.month);delete m.pilsAanp;if(m.impAanp){delete m.impAanp.Pils;if(!Object.keys(m.impAanp).length)delete m.impAanp}})),
+  pilsimpreset:()=>ask('Alle aanpassingen aan deze pilsrekening ongedaan maken?','Ongedaan maken',()=>mutate(()=>{const m=M(UI.month);delete m.pilsAanp;delete m.afkoopAanp;if(m.impAanp){delete m.impAanp.Pils;if(!Object.keys(m.impAanp).length)delete m.impAanp}})),
   meld:el=>{UI.meld={onderwerp:el.dataset.ond||'',tekst:'',bezig:false};render();setTimeout(()=>{const t=document.getElementById('meld-tekst');if(t)t.focus()},0)},
   meldclose:()=>{UI.meld=null;render()},
   meldsend:()=>meldVersturen(),
@@ -2068,9 +2102,13 @@ const changes={
     if(el.value&&S.people.some(x=>x!==p&&String(x.siteId)===el.value)){toast('Dat lid is al aan iemand anders gekoppeld.',true);return}
     if(el.value)p.siteId=(lid(el.value)||{}).id??el.value;else delete p.siteId}),
   mailveld:el=>{UI.mail[el.dataset.f]=el.value},
+  afkimp:el=>mutate(()=>{const m=M(UI.month),i=+el.dataset.i,x=afkoopImp(m)[i];if(!x)return;
+    const s2=new Set(toggleIn(x.wie,el.dataset.pid,el.checked)),nw=S.people.map(p=>p.id).filter(id=>s2.has(id));
+    m.afkoopAanp=m.afkoopAanp||{};if(nw.length===x.oud.length&&nw.every(id=>x.oud.includes(id)))delete m.afkoopAanp[i];else m.afkoopAanp[i]=nw;
+    if(!Object.keys(m.afkoopAanp).length)delete m.afkoopAanp}),
   pilsimp:el=>mutate(()=>{const m=M(UI.month),id=el.dataset.pid,f=el.dataset.f,imp=pilsImport(m),oud=imp.per[id]||{cells:{},cnt:0};
     const A=m.pilsAanp=m.pilsAanp||{},a=A[id]=A[id]||{},v=el.value===''?0:+el.value;
-    if(f==='fles'){if(v===oud.cnt)delete a.fles;else a.fles=Math.max(0,Math.round(v))}
+    if(f==='fles'||f==='tap'){const was=f==='fles'?oud.cnt:(oud.tap||0);if(v===was)delete a[f];else a[f]=Math.max(0,Math.round(v))}
     else{a.cells=a.cells||{};if(Math.abs(v-(oud.cells[f]||0))<0.005)delete a.cells[f];else a.cells[f]=v;if(!Object.keys(a.cells).length)delete a.cells}
     if(!Object.keys(a).length)delete A[id];if(!Object.keys(A).length)delete m.pilsAanp}),
   meldveld:el=>{if(UI.meld)UI.meld[el.dataset.f]=el.value},
