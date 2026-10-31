@@ -583,59 +583,106 @@ async function importPDF(buf){
 const JSPDF='https://cdnjs.cloudflare.com/ajax/libs/';
 async function pdfMaker(){
   if(!window.jspdf)await loadScript(JSPDF+'jspdf/2.5.1/jspdf.umd.min.js');
-  if(!window.jspdf.jsPDF.API.autoTable)await loadScript(JSPDF+'jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
   return window.jspdf.jsPDF;
 }
+// Opmaak als een officieel financieel overzicht: genummerde rubrieken, inspringende regels,
+// stippellijnen naar drie bedragkolommen (regel, subtotaal, totaal) en een sluitende saldoberekening.
 async function exportPDF(pid,m){
   const p=P(pid),b=bill(m.id)[pid];if(!p||!b)return;
   let jsPDF;try{jsPDF=await pdfMaker()}catch(e){return toast('De PDF-maker kon niet laden. Controleer je internetverbinding en probeer het opnieuw.',true)}
   // De standaardletters van een PDF kennen het lange minteken niet.
-  const E=n=>eur(n).replace('−','-'),T=x=>String(x==null?'':x).replace(/−/g,'-');
+  const E=n=>eur(n).replace('−','- '),T=x=>String(x==null?'':x).replace(/−/g,'-');
   const i=S.months.indexOf(m),prevTo=i>0?S.months[i-1].to:addDays(m.from,-1);
-  const doc=new jsPDF({unit:'mm',format:'a4'}),W=doc.internal.pageSize.getWidth(),L=16;
-  const navy=[42,77,130],grijs=[110,110,110];
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...grijs);
-  doc.text(T((S.house.name||'Huis')+' · Huisrekening'),L,16);
-  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(...navy);doc.text(T('Rekeningoverzicht '+m.label.toLowerCase()),L,26);
-  doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(30,30,30);
-  doc.text(T(p.name),L,33);
-  doc.setFontSize(9);doc.setTextColor(...grijs);
-  doc.text(T(`Periode ${fmtDate(m.from)} t/m ${fmtDate(m.to)} · ${m.closed?'afgesloten':'lopende maand, bedragen kunnen nog veranderen'}`),L,38);
-  const sc=HOUSE.includes(p.status)?sanctionFor(b.end):null;
-  doc.autoTable({startY:44,theme:'plain',margin:{left:L,right:L},styles:{fontSize:10,cellPadding:1.6},columnStyles:{1:{halign:'right',font:'courier'}},
-    body:[[`Saldo per ${fmtDate(prevTo)}`,E(b.start)],['+ nieuwe kosten',E(b.end-b.start+b.paid)],['- betaald',E(-b.paid)],
-      [{content:`= saldo per ${fmtDate(m.to)}${b.end>0.005?' (te betalen)':b.end<-0.005?' (tegoed)':''}`,styles:{fontStyle:'bold'}},{content:E(b.end),styles:{fontStyle:'bold'}}]]
-      .concat(sc?[[{content:'Status: '+T(sc.label),colSpan:2,styles:{textColor:[160,40,40]}}]]:[])});
-  const kop={fillColor:navy,textColor:255,fontStyle:'bold'};
+  const doc=new jsPDF({unit:'mm',format:'a4'}),W=doc.internal.pageSize.getWidth(),L=18,R=W-18;
+  const NAVY=[42,77,130],INK=[33,30,26],GRIJS=[120,112,100],LIJN=[200,192,175],PAPIER=[246,243,235];
+  const K1=R-50,K2=R-25,K3=R; // rechterkanten: regel, subtotaal, totaal
+  const kleur=c=>doc.setTextColor(...c),font=(st,sz)=>{doc.setFont('helvetica',st);doc.setFontSize(sz)};
+  let y=0,pagina=1;
+  const kop=()=>{font('normal',8);kleur(GRIJS);doc.text(T(`${S.house.name||'Huis'} · Huisrekening ${m.label.toLowerCase()} · ${p.name}`),L,12);
+    doc.setDrawColor(...LIJN);doc.setLineWidth(0.2);doc.line(L,14,R,14);y=22};
+  const ruimte=h=>{if(y+h>272){doc.addPage();pagina++;kop()}};
+  const stippel=(x1,x2,yy)=>{if(x2-x1<4)return;doc.setDrawColor(...LIJN);doc.setLineWidth(0.25);doc.setLineDashPattern([0.4,1.1],0);doc.line(x1,yy,x2,yy);doc.setLineDashPattern([],0)};
+  // Eén regel: tekst op inspringniveau, stippellijn naar het bedrag in kolom k.
+  const regel=(tekst,bedrag,{in:ins=0,k=K3,vet=false,sz=9.5,c=INK,toel=null,nr=null}={})=>{
+    const x=L+8+ins*7,breed=(bedrag!=null?k-28:R)-x;
+    font('italic',7.5);const toelStukken=toel?doc.splitTextToSize(T(toel),breed-2):[];
+    font(vet?'bold':'normal',sz);const stukken=doc.splitTextToSize(T(tekst),breed);
+    ruimte(stukken.length*4.6+toelStukken.length*3.6+1.5);
+    if(nr!=null){font('bold',sz);kleur(NAVY);doc.text(String(nr),L,y)}
+    font(vet?'bold':'normal',sz);kleur(c);doc.text(stukken,x,y);
+    const laatste=y+(stukken.length-1)*4.6;
+    if(bedrag!=null){const tb=E(bedrag),bw=doc.getTextWidth(tb);
+      stippel(x+doc.getTextWidth(stukken[stukken.length-1])+2,k-bw-2,laatste);doc.text(tb,k,laatste,{align:'right'})}
+    y=laatste+4.6;
+    if(toelStukken.length){font('italic',7.5);kleur(GRIJS);doc.text(toelStukken,x+2,y-1.2);y+=toelStukken.length*3.6}
+  };
+  const streep=(k,dubbel)=>{doc.setDrawColor(...INK);doc.setLineWidth(0.25);doc.line(k-24,y-3.2,k,y-3.2);if(dubbel)doc.line(k-24,y-2.4,k,y-2.4)};
+  const rubriek=(nr,titel)=>{ruimte(16);y+=3;doc.setFillColor(...PAPIER);doc.rect(L-2,y-5,R-L+4,7.5,'F');
+    font('bold',10.5);kleur(NAVY);doc.text(String(nr),L,y);doc.text(T(titel),L+8,y);y+=8};
+
+  // Voorblad-kop
+  doc.setFillColor(...NAVY);doc.rect(0,0,W,4,'F');
+  font('normal',8.5);kleur(GRIJS);doc.text(T((S.house.name||'Huis').toUpperCase()+'  ·  HUISREKENING'),L,16);
+  font('bold',21);kleur(NAVY);doc.text('Rekeningoverzicht',L,26);
+  font('normal',13);kleur(INK);doc.text(T(m.label),L,33);
+  // Gegevensblok
+  const vak=[['Naam',p.name],['Periode',`${fmtDate(m.from)} t/m ${fmtDate(m.to)}`],['Status',m.closed?'Afgesloten':'Lopende maand (voorlopig)'],['Aangemaakt op',new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'})]];
+  doc.setDrawColor(...LIJN);doc.setLineWidth(0.3);doc.rect(L,40,R-L,24);
+  vak.forEach(([k,v],ix)=>{const x=L+4+(ix%2)*((R-L)/2),yy=46+Math.floor(ix/2)*10;font('normal',7.5);kleur(GRIJS);doc.text(k.toUpperCase(),x,yy);font('bold',10);kleur(INK);doc.text(T(v),x,yy+4.6)});
+  y=74;
+  // Kolomkoppen
+  font('bold',7);kleur(GRIJS);[[K1,'REGEL'],[K2,'SUBTOTAAL'],[K3,'TOTAAL']].forEach(([k,t])=>doc.text(t,k,y,{align:'right'}));y+=3;
+
+  // 1 Beginsaldo
+  rubriek(1,'Beginsaldo');
+  regel(`Saldo per ${fmtDate(prevTo)} (overgenomen uit vorige maand)`,b.start,{k:K3});
+
+  // 2 Kosten
+  rubriek(2,'Kosten in deze periode');
   const groups={};for(const l of b.lines)(groups[l.cat]=groups[l.cat]||[]).push(l);
-  const kosten=[];
+  const letters='abcdefghijklmnopqrstuvwxyz';let gi=0;
   for(const [cat,ls] of Object.entries(groups)){
-    kosten.push([{content:T(cat),styles:{fontStyle:'bold',fillColor:[240,236,226]}},{content:E(sum(ls.map(l=>l.amount))),styles:{fontStyle:'bold',fillColor:[240,236,226]}}]);
-    for(const l of ls)kosten.push([T(l.label)+(l.how?'\n'+T(l.how):''),E(l.amount)]);
+    const lt=letters[gi++]||'';
+    if(ls.length===1&&ls[0].label===cat){regel(`${lt}  ${cat}`,ls[0].amount,{in:0,k:K2,toel:ls[0].how||null});continue}
+    regel(`${lt}  ${cat}`,null,{vet:true});
+    for(const l of ls)regel(l.label,l.amount,{in:1,k:K1,toel:l.how||null});
+    streep(K1);y+=0.6;regel(`Subtotaal ${cat.toLowerCase()}`,sum(ls.map(l=>l.amount)),{in:1,k:K2,c:GRIJS});y+=1;
   }
-  if(!kosten.length)kosten.push(['Geen nieuwe kosten deze maand',E(0)]);
-  kosten.push([{content:'Totaal nieuwe kosten',styles:{fontStyle:'bold'}},{content:E(sum(b.lines.map(l=>l.amount))),styles:{fontStyle:'bold'}}]);
-  doc.setFontSize(12);doc.setTextColor(...navy);doc.setFont('helvetica','bold');
-  let y=doc.lastAutoTable.finalY+9;doc.text('Kosten',L,y);
-  doc.autoTable({startY:y+2,margin:{left:L,right:L},head:[['Omschrijving','Bedrag']],body:kosten,headStyles:kop,styles:{fontSize:9,cellPadding:1.8,textColor:[30,30,30]},
-    columnStyles:{1:{halign:'right',cellWidth:30,font:'courier'}},theme:'grid',tableLineColor:[221,214,196]});
-  const bet=(b.payments&&b.payments.length)?b.payments.map(x=>[fmtDate(x.date),T(x.note||''),E(-x.amount)]):b.paid?[['','Betalingen deze periode',E(-b.paid)]]:[['','Geen betalingen ontvangen','']];
-  y=doc.lastAutoTable.finalY+9;if(y>270){doc.addPage();y=20}
-  doc.setFontSize(12);doc.setTextColor(...navy);doc.setFont('helvetica','bold');doc.text('Betalingen',L,y);
-  doc.autoTable({startY:y+2,margin:{left:L,right:L},head:[['Datum','Omschrijving','Bedrag']],body:bet,headStyles:kop,theme:'grid',styles:{fontSize:9,cellPadding:1.8,textColor:[30,30,30]},
-    columnStyles:{0:{cellWidth:24},2:{halign:'right',cellWidth:30,font:'courier'}}});
-  y=doc.lastAutoTable.finalY+10;if(y>255){doc.addPage();y=20}
-  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(30,30,30);
-  if(b.end>0.005&&S.house.iban){
-    doc.setFont('helvetica','bold');doc.text(T(`Graag ${E(b.end)} overmaken`),L,y);doc.setFont('helvetica','normal');
-    doc.text(T(`IBAN ${S.house.iban}${S.house.tav?' t.a.v. '+S.house.tav:''}`),L,y+5.5);
-    doc.text(T(`Omschrijving: Huisrekening ${p.name}`),L,y+11);
-  }else if(b.end<-0.005)doc.text(T(`Je hebt een tegoed van ${E(-b.end)}; dat wordt verrekend met de volgende maand.`),L,y);
-  else doc.text('Je saldo staat op nul. Er hoeft niets betaald te worden.',L,y);
+  if(!b.lines.length)regel('Geen kosten in deze periode',0,{k:K2});
+  streep(K2);y+=0.6;regel('Totaal kosten',sum(b.lines.map(l=>l.amount)),{vet:true,k:K3});
+
+  // 3 Betalingen
+  rubriek(3,'Ontvangen betalingen');
+  if(b.payments&&b.payments.length){for(const x of b.payments)regel(`${fmtDate(x.date)}   ${x.note||'Betaling'}`,x.amount,{in:0,k:K2});streep(K2);y+=0.6}
+  else if(b.paid){regel('Betalingen in deze periode',b.paid,{k:K2});streep(K2);y+=0.6}
+  else regel('Geen betalingen ontvangen in deze periode',null,{c:GRIJS});
+  regel('Totaal ontvangen',b.paid,{vet:true,k:K3});
+
+  // 4 Saldoberekening
+  rubriek(4,'Berekening eindsaldo');
+  regel('Beginsaldo (rubriek 1)',b.start,{k:K3});
+  regel('Bij: kosten (rubriek 2)',sum(b.lines.map(l=>l.amount)),{k:K3});
+  regel('Af: ontvangen betalingen (rubriek 3)',-b.paid,{k:K3});
+  streep(K3);y+=1;
+  regel(`Eindsaldo per ${fmtDate(m.to)}`,b.end,{vet:true,sz:11,k:K3,c:NAVY});
+  streep(K3,true);y+=1;
+  const sc=HOUSE.includes(p.status)?sanctionFor(b.end):null;
+
+  // 5 Betaalinstructie
+  rubriek(5,b.end>0.005?'Te betalen':b.end<-0.005?'Tegoed':'Afrekening');
+  ruimte(30);
+  const tekst=b.end>0.005?[`Maak ${E(b.end)} over naar de huisrekening:`,`IBAN  ${S.house.iban||'-'}`,S.house.tav?`t.a.v.  ${S.house.tav}`:'',`Omschrijving  Huisrekening ${p.name}`].filter(Boolean)
+    :b.end<-0.005?[`Je hebt een tegoed van ${E(-b.end)}.`,'Dit wordt automatisch verrekend met de volgende maand.']:['Je saldo staat op nul. Er hoeft niets betaald te worden.'];
+  if(sc)tekst.push(`Let op: je saldo valt in de categorie "${sc.label}".`);
+  const h=tekst.length*5.4+1;doc.setDrawColor(...NAVY);doc.setLineWidth(0.5);doc.line(L,y-3,L,y-3+h);
+  tekst.forEach((t,ix)=>{font(ix===0?'bold':'normal',ix===0?10.5:9.5);kleur(ix===0?INK:ix===tekst.length-1&&sc?[160,40,40]:INK);doc.text(T(t),L+5,y+1.5+ix*5.4)});
+  y+=h+2;
+
+  // Voettekst op elke pagina
   const n=doc.getNumberOfPages();
-  for(let k=1;k<=n;k++){doc.setPage(k);doc.setFontSize(8);doc.setTextColor(...grijs);
-    doc.text(T(`Gemaakt op ${new Date().toLocaleDateString('nl-NL')} · vragen? Neem contact op met de beheerder van de huisrekening`),L,290);
-    doc.text(`${k}/${n}`,W-L,290,{align:'right'})}
+  for(let k=1;k<=n;k++){doc.setPage(k);doc.setDrawColor(...LIJN);doc.setLineWidth(0.2);doc.line(L,284,R,284);font('normal',7.5);kleur(GRIJS);
+    doc.text(T('Dit overzicht is automatisch gemaakt uit de huisrekening. Vragen of een fout gezien? Neem contact op met de beheerder.'),L,288.5);
+    doc.text(`Pagina ${k} van ${n}`,R,288.5,{align:'right'})}
   const naam=`Huisrekening ${m.label} ${p.name}`.replace(/[\\/:*?"<>|]+/g,'').replace(/\s+/g,'-');
   // Op een telefoon via het deelmenu (bewaren in Bestanden, doorsturen); anders gewoon downloaden.
   const file=new File([doc.output('blob')],naam+'.pdf',{type:'application/pdf'});
