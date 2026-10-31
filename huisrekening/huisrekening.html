@@ -173,6 +173,16 @@ tr.grp-row td{background:var(--sunk);border-bottom:1px solid var(--strong)}
 .block.breed .hl-tabel th{white-space:normal;min-width:4.5rem;max-width:8rem;vertical-align:bottom;line-height:1.2}
 .block.breed .hl-tabel td,.block.breed .hl-tabel th{padding:4px 5px}
 .block.breed .hl-tabel td.n,.block.breed .hl-tabel th.n{position:sticky;left:0;background:var(--surface,#fff);z-index:1;white-space:nowrap}
+.block.breed.middel{width:min(calc(100vw - 32px),1380px)}
+/* Totaalkolom blijft altijd zichtbaar rechts */
+.block.breed table tr>:last-child{position:sticky;right:0;z-index:1;background:var(--surface,#fff);box-shadow:-6px 0 6px -6px rgb(0 0 0 / .18)}
+.block.breed table tr.hl-info>:last-child{background:var(--sunk,var(--surface,#fff))}
+/* Kopregels blijven bovenaan staan: de tabel scrolt binnen zijn eigen vak */
+.block.breed .scroll{max-height:calc(100vh - 140px);overflow:auto}
+.block.breed table thead{position:sticky;top:0;z-index:3}
+.block.breed table thead th{background:var(--surface,#fff)}
+.block.breed table thead tr.hl-info td{background:var(--sunk,var(--surface,#fff))}
+.block.breed table thead tr>:first-child,.block.breed table thead tr>:last-child{z-index:4}
 .block.breed .imp-cel .imp-bedrag{width:4.6rem;font-size:13px;padding:2px 4px}
 .block.breed .imp-bedrag{width:5.2rem;font-size:13px;padding:2px 4px}
 .meldknop{padding:0 4px!important;margin-left:6px;font-size:13px;line-height:1;opacity:.55;border:0!important;background:none!important;vertical-align:middle}
@@ -1526,7 +1536,7 @@ function vHuislasten(m){
         return `<tr><td class="n">${ed?`<label class="hl-cel" title="${alle?'Voor geen enkele':'Voor alle'} huislasten aanslaan"><input type="checkbox" id="hr-alle-${p.id}" data-ch="hlrij" data-pid="${p.id}" ${alle?'checked':''} aria-label="${esc(p.name)} voor alle huislasten aanslaan"> ${esc(p.name)}</label>`:esc(p.name)}</td>${hl.map(h=>cel(p,h)).join('')}<td class="r num"><b>${eur(sum(hl.map(h=>bedrag(p.id,h))))}</b></td></tr>`}).join('')}
       <tr class="total"><td class="n">Betalers</td>${hl.map(h=>`<td class="r num">${ppl.filter(p=>Math.abs(bedrag(p.id,h))>0.004).length}</td>`).join('')}<td></td></tr>
     </tbody></table></div>`;
-  return `<section class="block breed"><div class="spread"><h2>Huislasten ${esc(m.label.toLowerCase())}</h2>${ed?'<button class="primary" data-act="addhl">+ Huislast</button>':''}</div>
+  return `<section class="block breed middel"><div class="spread"><h2>Huislasten ${esc(m.label.toLowerCase())}</h2>${ed?'<button class="primary" data-act="addhl">+ Huislast</button>':''}</div>
     <p class="note">${ed?'Bovenaan per huislast de totaalprijs en hoe hij berekend wordt: een vast bedrag per persoon, of herkend in het bankafschrift (meerdere teksten scheid je met een komma). Daaronder per huisgenoot wat hij betaalt; met het vinkje zet je iemand aan of uit. Het vinkje vóór een naam zet iemand in één keer voor álle huislasten aan of uit.'
       :`Per huislast de totaalprijs en per huisgenoot wat hij in ${esc(m.label.toLowerCase())} betaalt.`}</p>
     ${ed&&m.closed?`<p class="note">Je past <b>${esc(m.label.toLowerCase())}</b> aan. Wijzigingen hier gelden alleen voor die maand; de saldo's van de maanden erna lopen vanzelf mee.</p>`:''}
@@ -1723,7 +1733,7 @@ function impEdit(m,cat,titel){
       :(anders?`<b title="was ${eur(oud)}">${eur(v)}</b>`:'<span class="muted">—</span>'))+'</td>'};
   const verschil=sum(info.map(i=>sum(Object.values(i.nieuw))-sum(i.oud.map(id=>i.x.per[id]))));
   const heeft=m.impAanp&&m.impAanp[cat]&&Object.keys(m.impAanp[cat]).length;
-  return `<section class="block breed"><h2>${esc(titel)} ${esc(m.label.toLowerCase())}</h2>
+  return `<section class="block breed${cat==='Huislasten'?' middel':''}"><h2>${esc(titel)} ${esc(m.label.toLowerCase())}</h2>
     <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is de basis. Met het vinkje zet je iemand aan of uit. Typ je bij iemand een ander bedrag, dan wordt dat een vast bedrag (blauw) en wordt het restant verdeeld over de overige aangevinkten; met ↺ gaat het weer automatisch. Ook het totaalbedrag van een post kun je aanpassen. De saldo's van de maanden erna lopen vanzelf mee.</p>
     <div class="row" style="margin-bottom:8px"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div>
       ${heeft?`<button class="ghost" data-act="impreset" data-cat="${esc(cat)}">Alle aanpassingen ongedaan maken</button>`:''}</div>
@@ -1816,7 +1826,7 @@ function pilsImportEdit(m){
     <div class="row" style="margin-bottom:8px"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div>
       ${heeft?'<button class="ghost" data-act="pilsimpreset">Alle aanpassingen ongedaan maken</button>':''}</div>
     <div class="scroll tbl"><table class="hl-tabel"><thead>
-      <tr><th class="n">Naam</th><th class="r">Turven bar (tap)</th><th class="r">Turven Nestor (flesjes)</th><th class="r">Turven samen</th>${info.map(i=>`<th class="r">${esc(i.x.label)}</th>`).join('')}<th class="r">Totaal</th><th class="r">Verschil</th></tr>
+      <tr><th class="n">Naam</th><th class="r">Turven bar (tap)</th><th class="r">Turven Nestor (flesjes)</th><th class="r">Turven samen</th>${info.map(i=>`<th class="r">${esc(i.x.label)}</th>`).join('')}<th class="r">Verschil</th><th class="r">Totaal</th></tr>
       <tr class="hl-info"><td class="n">Totaal / prijs</td><td class="r num">${sum(rows.map(r=>r.tap||0))} × ${eur3(imp.tapPrijs)}</td><td class="r num">${sum(rows.map(r=>r.cnt||0))} × ${eur3(imp.prijs)}</td><td class="r num"><b>${eur(sum(rows.map(r=>r.fles)))}</b></td>${info.map(i=>`<td class="r num"><b>${eur(i.tot)}</b></td>`).join('')}<td></td><td></td></tr>
     </thead><tbody>
     ${rows.map(r=>{const alle=info.length&&info.every(i=>i.wie.includes(r.p.id)),tot=r.fles+r.deel,d=tot-(r.flesOud+r.deelOud);
@@ -1825,8 +1835,8 @@ function pilsImportEdit(m){
       <td class="r"><input type="number" step="1" min="0" value="${r.cnt||0}" data-ch="pilsimp" data-pid="${r.p.id}" data-f="fles" aria-label="Flesjes Nestor ${esc(r.p.name)}" style="width:5rem"></td>
       <td class="r num">${r.fles?(Math.abs(r.fles-r.flesOud)>0.004?`<b title="was ${eur(r.flesOud)}">${eur(r.fles)}</b>`:eur(r.fles)):'<span class="muted">—</span>'}</td>
       ${info.map(i=>cel(r.p,i)).join('')}
-      <td class="r num"><b>${eur(tot)}</b></td><td class="r num">${Math.abs(d)>0.004?`<b>${d>0?'+':''}${eur(d)}</b>`:'<span class="muted">—</span>'}</td></tr>`}).join('')}
-    <tr class="total"><td class="n">Meebetalers</td><td></td><td></td><td></td>${info.map(i=>`<td class="r num">${i.wie.length}</td>`).join('')}<td class="r num">${eur(sum(rows.map(r=>r.fles+r.deel)))}</td><td></td></tr>
+      <td class="r num">${Math.abs(d)>0.004?`<b>${d>0?'+':''}${eur(d)}</b>`:'<span class="muted">—</span>'}</td><td class="r num"><b>${eur(tot)}</b></td></tr>`}).join('')}
+    <tr class="total"><td class="n">Meebetalers</td><td></td><td></td><td></td>${info.map(i=>`<td class="r num">${i.wie.length}</td>`).join('')}<td></td><td class="r num">${eur(sum(rows.map(r=>r.fles+r.deel)))}</td></tr>
     </tbody></table></div>
   </section>`+afkoopImpEdit(m);
 }
