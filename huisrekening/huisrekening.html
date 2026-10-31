@@ -145,6 +145,12 @@ tr.grp-row td{background:var(--sunk);border-bottom:1px solid var(--strong)}
 .savebar button.ghost{color:var(--paper)}
 .toast{position:fixed;z-index:30;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 12px);background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);padding:10px 16px;border-radius:var(--r);box-shadow:0 6px 24px rgb(0 0 0 / .15);max-width:min(92vw,520px);font-size:.9rem}
 .toast.err{border-left-color:var(--crit)}
+.dialog.breed{max-width:640px;max-height:90vh;overflow:auto}
+.dialog .chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:13px}
+.mailpers{display:flex;flex-direction:column;margin-top:4px;border:1px solid var(--line);border-radius:var(--r);max-height:40vh;overflow:auto}
+.mailpers label{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;align-items:center;padding:6px 10px;border-top:1px solid var(--line)}
+.mailpers label:first-child{border-top:0}
+.mailpers .waarsch{grid-column:2/4;color:var(--muted,#888)}
 .overlay{position:fixed;inset:0;z-index:40;background:rgb(0 0 0 / .45);display:flex;align-items:center;justify-content:center;padding:16px}
 .dialog{background:var(--surface);color:var(--ink);border-radius:var(--r);padding:20px;max-width:440px;width:100%;display:flex;flex-direction:column;gap:14px}
 .note{font-size:.84rem;color:var(--muted);max-width:72ch;margin:0}
@@ -587,9 +593,9 @@ async function pdfMaker(){
 }
 // Opmaak als een officieel financieel overzicht: genummerde rubrieken, inspringende regels,
 // stippellijnen naar drie bedragkolommen (regel, subtotaal, totaal) en een sluitende saldoberekening.
-async function exportPDF(pid,m){
-  const p=P(pid),b=bill(m.id)[pid];if(!p||!b)return;
-  let jsPDF;try{jsPDF=await pdfMaker()}catch(e){return toast('De PDF-maker kon niet laden. Controleer je internetverbinding en probeer het opnieuw.',true)}
+async function maakPDF(pid,m){
+  const p=P(pid),b=bill(m.id)[pid];if(!p||!b)return null;
+  const jsPDF=await pdfMaker();
   // De standaardletters van een PDF kennen het lange minteken niet.
   const E=n=>eur(n).replace('−','- '),T=x=>String(x==null?'':x).replace(/−/g,'-');
   const i=S.months.indexOf(m),prevTo=i>0?S.months[i-1].to:addDays(m.from,-1);
@@ -684,12 +690,103 @@ async function exportPDF(pid,m){
     doc.text(T('Dit overzicht is automatisch gemaakt uit de huisrekening. Vragen of een fout gezien? Neem contact op met de beheerder.'),L,288.5);
     doc.text(`Pagina ${k} van ${n}`,R,288.5,{align:'right'})}
   const naam=`Huisrekening ${m.label} ${p.name}`.replace(/[\\/:*?"<>|]+/g,'').replace(/\s+/g,'-');
+  return {doc,naam};
+}
+async function exportPDF(pid,m){
+  let r;try{r=await maakPDF(pid,m)}catch(e){return toast('De PDF-maker kon niet laden. Controleer je internetverbinding en probeer het opnieuw.',true)}
+  if(!r)return;const {doc,naam}=r;
   // Op een telefoon via het deelmenu (bewaren in Bestanden, doorsturen); anders gewoon downloaden.
   const file=new File([doc.output('blob')],naam+'.pdf',{type:'application/pdf'});
   if(matchMedia('(pointer:coarse)').matches&&navigator.canShare&&navigator.canShare({files:[file]})){
     try{await navigator.share({files:[file],title:naam});return}catch(e){if(e&&e.name==='AbortError')return}
   }
   doc.save(naam+'.pdf');
+}
+
+/* ---------- koppeling met de site en overzichten mailen ---------- */
+// Leden van de site (naam, aankomstjaar, e-mail) om huisrekening-personen aan te koppelen via p.siteId.
+async function laadLeden(){
+  if(UI.leden||UI.ledenBezig||!BE||!BE.leden)return;UI.ledenBezig=true;
+  try{UI.leden=await BE.leden();UI.ledenFout=null}catch(e){UI.ledenFout=e.message||String(e)}
+  UI.ledenBezig=false;render();
+}
+const lid=id=>id!=null&&UI.leden?UI.leden.find(l=>String(l.id)===String(id)):null;
+const normNaam=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim();
+function autoKoppel(){
+  if(!UI.leden)return;
+  const recent=UI.leden.filter(l=>!l.jaar||l.jaar>=new Date().getFullYear()-15);
+  const bezet=new Set(S.people.map(p=>p.siteId).filter(Boolean).map(String));let n=0;
+  mutate(()=>{for(const p of S.people){if(p.siteId)continue;
+    const nm=normNaam(p.name),w=nm.split(' ');
+    let kand=recent.filter(l=>normNaam(l.naam)===nm);
+    if(!kand.length)kand=recent.filter(l=>{const lw=normNaam(l.naam).split(' ');return lw[0]===w[0]&&(w.length===1||lw[lw.length-1]===w[w.length-1])});
+    kand=kand.filter(l=>!bezet.has(String(l.id)));
+    if(kand.length===1){p.siteId=kand[0].id;bezet.add(String(kand[0].id));n++}}});
+  toast(n?`${n} ${n===1?'persoon':'personen'} automatisch gekoppeld. Controleer de lijst even.`:'Geen nieuwe koppelingen gevonden op naam. Kies de overige personen met de hand.');
+}
+function vKoppeling(){
+  if(!BE||!BE.leden)return '';
+  laadLeden();
+  const jaarGrens=new Date().getFullYear()-15;
+  const opties=cur=>(UI.leden||[]).filter(l=>!l.jaar||l.jaar>=jaarGrens||String(l.id)===String(cur)).sort((a,b)=>(b.jaar||0)-(a.jaar||0)||a.naam.localeCompare(b.naam,'nl'));
+  const ppl=[...S.people].filter(p=>UI.koppelAll||HOUSE.includes(p.status)||p.siteId).sort(byName);
+  return `<section class="block"><h2>Koppeling met de site</h2>
+    <p class="note">Koppel iedere persoon aan het profiel op de site. Dan kun je de maandoverzichten met <b>Mail overzichten</b> per mail versturen, naar het e-mailadres dat op de site staat.</p>
+    ${UI.ledenFout?`<p class="note" style="color:var(--neg,#a33)">De leden van de site konden niet geladen worden: ${esc(UI.ledenFout)}</p>`:!UI.leden?'<p class="note">Leden van de site laden…</p>':`
+    <div class="row"><button data-act="autokoppel">Koppel automatisch op naam</button><div class="seg"><button data-act="koppelall" aria-pressed="${!UI.koppelAll}">Huisgenoten</button><button data-act="koppelall" aria-pressed="${!!UI.koppelAll}">Iedereen</button></div></div>
+    <div class="scroll tbl"><table class="ledger"><thead><tr><th>Naam in de huisrekening</th><th>Lid op de site</th><th class="hide-sm">E-mail</th></tr></thead><tbody>
+    ${ppl.map(p=>{const l=lid(p.siteId);return `<tr><td><b>${esc(p.name)}</b> <span class="muted small">${esc(statusLabel(p.status))}</span></td>
+      <td><select data-ch="koppel" data-pid="${p.id}" aria-label="Lid op de site voor ${esc(p.name)}"><option value="">— niet gekoppeld —</option>${opties(p.siteId).map(o=>`<option value="${o.id}" ${String(o.id)===String(p.siteId)?'selected':''}>${esc(o.naam)}${o.jaar?` (${o.jaar})`:''}</option>`).join('')}</select></td>
+      <td class="hide-sm small">${l?(l.email?esc(l.email):'<span class="muted">geen e-mail op de site</span>'):''}</td></tr>`}).join('')}
+    </tbody></table></div>`}
+  </section>`;
+}
+function mailOpen(){
+  const m=M(UI.month);
+  UI.mail={onderwerp:`Huisrekening ${m.label.toLowerCase()}`,tekst:`Hierbij je overzicht van de huisrekening van ${m.label.toLowerCase()}.`,sel:new Set(),bezig:false,klaar:null};
+  laadLeden();render();
+}
+function mailKandidaten(m){
+  const B=bill(m.id);
+  return [...S.people].filter(p=>B[p.id]&&(HOUSE.includes(p.status)||Math.abs(B[p.id].end)>0.005||p.siteId)).sort(byName)
+    .map(p=>{const l=lid(p.siteId);return {p,b:B[p.id],l,ok:!!(l&&l.email)}});
+}
+function vMail(){
+  const ml=UI.mail,m=M(UI.month);if(!ml)return '';
+  const kand=mailKandidaten(m),jaren=[...new Set(kand.filter(k=>k.ok&&k.l.jaar).map(k=>k.l.jaar))].sort((a,b)=>b-a);
+  const nSel=kand.filter(k=>k.ok&&ml.sel.has(k.p.id)).length;
+  const inhoud=!UI.leden?(UI.ledenFout?`<p class="note">De leden van de site konden niet geladen worden: ${esc(UI.ledenFout)}</p>`:'<p class="note">Leden van de site laden…</p>'):`
+    <label class="field" for="mail-ond">Onderwerp<input id="mail-ond" value="${esc(ml.onderwerp)}" data-ch="mailveld" data-f="onderwerp" ${ml.bezig?'disabled':''}></label>
+    <label class="field" for="mail-tekst">Je bericht<textarea id="mail-tekst" rows="5" data-ch="mailveld" data-f="tekst" ${ml.bezig?'disabled':''}>${esc(ml.tekst)}</textarea></label>
+    <p class="note small" style="margin:0">Iedereen krijgt een eigen mail: "Beste [naam]", jouw bericht, het eigen saldo met betaalgegevens, en het eigen overzicht van ${esc(m.label.toLowerCase())} als PDF in de bijlage. Antwoorden komen bij jou terecht.</p>
+    ${jaren.length?`<div><span class="eyebrow">Jaargangen</span><div class="row" style="margin-top:4px">${jaren.map(j=>{const leden=kand.filter(k=>k.ok&&k.l.jaar===j),aan=leden.every(k=>ml.sel.has(k.p.id));return `<label for="mj-${j}" class="chip"><input type="checkbox" id="mj-${j}" data-ch="mailjaar" data-jaar="${j}" ${aan?'checked':''} ${ml.bezig?'disabled':''}> ${j} <span class="muted small">(${leden.length})</span></label>`}).join('')}</div></div>`:''}
+    <div><div class="spread"><span class="eyebrow">Ontvangers (${nSel})</span><div class="row"><button class="ghost" data-act="mailalle" ${ml.bezig?'disabled':''}>Iedereen</button><button class="ghost" data-act="mailniemand" ${ml.bezig?'disabled':''}>Niemand</button></div></div>
+    <div class="mailpers">${kand.map(k=>`<label for="mp-${k.p.id}" class="${k.ok?'':'muted'}"><input type="checkbox" id="mp-${k.p.id}" data-ch="mailpers" data-pid="${k.p.id}" ${k.ok&&ml.sel.has(k.p.id)?'checked':''} ${k.ok&&!ml.bezig?'':'disabled'}>
+      <span>${esc(k.p.name)}${k.l&&k.l.jaar?` <span class="muted small">(${k.l.jaar})</span>`:''}</span><span class="num small">${eur(k.b.end)}</span>
+      ${k.ok?'':`<span class="small waarsch">${k.l?'geen e-mail op de site':'niet gekoppeld'}</span>`}</label>`).join('')}</div>
+    ${kand.some(k=>!k.ok)?'<p class="note small" style="margin:4px 0 0">Grijze namen kun je koppelen in Instellingen → Koppeling met de site.</p>':''}</div>
+    ${ml.bezig?`<p class="note"><b>Bezig met versturen… ${ml.bezig}</b></p>`:''}
+    ${ml.klaar?`<div class="panel"><b>${ml.klaar.verstuurd} mail${ml.klaar.verstuurd===1?'':'s'} verstuurd.</b>${ml.klaar.mislukt.length?`<br>Niet gelukt: ${ml.klaar.mislukt.map(x=>esc(x.naam+' ('+x.fout+')')).join(', ')}`:''}</div>`:''}`;
+  return `<div class="overlay"><div class="dialog breed" role="dialog" aria-modal="true" aria-label="Overzichten mailen">
+    <h2 style="margin:0">Overzichten van ${esc(m.label.toLowerCase())} mailen</h2>${inhoud}
+    <div class="row end"><button data-act="mailclose" ${ml.bezig?'disabled':''}>${ml.klaar?'Sluiten':'Annuleren'}</button>${UI.leden?`<button class="primary" data-act="mailsend" ${nSel&&!ml.bezig?'':'disabled'}>Verstuur ${nSel} mail${nSel===1?'':'s'}</button>`:''}</div></div></div>`;
+}
+async function mailVersturen(){
+  const ml=UI.mail,m=M(UI.month);if(!ml||ml.bezig)return;
+  const doel=mailKandidaten(m).filter(k=>k.ok&&ml.sel.has(k.p.id));if(!doel.length)return;
+  const res={verstuurd:0,mislukt:[]};ml.klaar=null;
+  for(let i=0;i<doel.length;i+=5){
+    const stuk=doel.slice(i,i+5);ml.bezig=`${Math.min(i+5,doel.length)} van ${doel.length}`;render();
+    try{
+      const items=[];
+      for(const k of stuk){const r=await maakPDF(k.p.id,m),b=k.b;
+        const sam=`Je saldo per ${fmtDate(m.to)}: ${eur(b.end)}${b.end>0.005?` (te betalen)\nGraag overmaken naar ${S.house.iban||''}${S.house.tav?' t.a.v. '+S.house.tav:''}, o.v.v. Huisrekening ${k.p.name}`:b.end<-0.005?' (tegoed, wordt verrekend met de volgende maand)':''}`;
+        items.push({siteId:k.p.siteId,naam:k.p.name,samenvatting:sam,bestandsnaam:r.naam+'.pdf',pdf:r.doc.output('datauristring').split(',')[1]})}
+      const r=await BE.mail(ml.onderwerp,ml.tekst,items);res.verstuurd+=r.verstuurd||0;res.mislukt.push(...(r.mislukt||[]));
+    }catch(e){res.mislukt.push(...stuk.map(k=>({naam:k.p.name,fout:e.message||String(e)})))}
+  }
+  ml.bezig=false;ml.klaar=res;render();
+  toast(res.mislukt.length?`${res.verstuurd} verstuurd, ${res.mislukt.length} niet gelukt.`:`${res.verstuurd} mail${res.verstuurd===1?'':'s'} verstuurd.`,!!res.mislukt.length);
 }
 
 /* ---------- maand afsluiten ---------- */
@@ -812,6 +909,7 @@ function markeerMij(){
 }
 function render(){
   if(!S){$('#app').innerHTML=`<div class="wrap"><p class="boot">${esc(UI.loadMsg||'Huisrekening laden…')}</p></div>`;return}
+  const dlgScroll=(document.querySelector('.dialog.breed')||{}).scrollTop||0;
   const ae=document.activeElement,focusId=ae&&ae.id,sel=ae&&ae.selectionStart!=null&&ae.type!=='number'?[ae.selectionStart,ae.selectionEnd]:null;
   const m=M(UI.month)||openMonth();UI.month=m.id;
   zetMaandCfg();
@@ -829,7 +927,7 @@ function render(){
   ${UI.beheerder?`<div class="alslid${UI.alsLid?' aan':''}">${UI.alsLid?`<span>Je bekijkt de huisrekening zoals een gewoon lid hem ziet.</span><button class="primary" data-act="alsbeheer">Terug naar beheer</button>`:`<button class="ghost" data-act="alslid">Bekijk als lid</button>`}</div>`:''}
   <header class="top"><div class="brand"><span class="eyebrow">${esc(S.house.name)} · Huisrekening</span><h1>${esc(m.label)}</h1>
     <span class="small muted">Periode ${fmtDate(m.from)} t/m ${fmtDate(m.to)} · ${m.closed?'afgesloten':'lopende maand'}${S.savedAt?` · bijgewerkt ${new Date(S.savedAt).toLocaleDateString('nl-NL',{day:'numeric',month:'long'})}`:''}</span></div>
-    <div class="maandkeuze"><label class="small muted" for="kiesmaand">Maand</label><select id="kiesmaand" data-ch="kiesmaand">${S.months.slice().reverse().map(x=>`<option value="${x.id}" ${x.id===m.id?'selected':''}>${esc(x.label)}${x.closed?'':' (lopend)'}</option>`).join('')}</select>${UI.editor?`<button class="primary" data-act="nieuwemaand">+ Nieuwe maand</button>`:''}</div></header>
+    <div class="maandkeuze"><label class="small muted" for="kiesmaand">Maand</label><select id="kiesmaand" data-ch="kiesmaand">${S.months.slice().reverse().map(x=>`<option value="${x.id}" ${x.id===m.id?'selected':''}>${esc(x.label)}${x.closed?'':' (lopend)'}</option>`).join('')}</select>${UI.editor&&BE&&BE.mail?`<button data-act="mailopen">✉ Mail overzichten</button>`:''}${UI.editor?`<button class="primary" data-act="nieuwemaand">+ Nieuwe maand</button>`:''}</div></header>
   <nav class="tabs" aria-label="Onderdelen">${tabs.map(t=>typeof t==='string'?`<span class="tabsep" aria-hidden="true"></span><span class="tabgrp">${t.slice(1)}</span>`:`<button data-act="tab" data-id="${t[0]}" ${UI.tab===t[0]?'aria-current="page"':''}>${t[1]}${t[0]==='transacties'&&todo&&UI.editor?`<span class="badge warn">${todo}</span>`:''}</button>`).join('')}</nav>
   ${body}
   <footer class="foot"><span>Beheerder${(behLijst||S.house.beheerders||[]).length>1?'s':''}: ${esc(beh||'nog niet ingesteld')} · vragen naar ${esc(S.house.email||'')}</span>
@@ -837,7 +935,9 @@ function render(){
   </div>
   ${UI.dirty&&UI.editor?`<div class="savebar"><div class="in"><span>${UI.saving?'Opslaan…':BE&&!UI.autoStop?'Wordt automatisch opgeslagen…':'Je hebt wijzigingen die nog niet gedeeld zijn.'}</span><div class="row"><button class="ghost" data-act="discard" ${UI.saving?'disabled':''}>Wijzigingen weggooien</button><button class="primary" data-act="save" ${UI.saving?'disabled':''}>Opslaan en delen</button></div></div></div>`:''}
   ${UI.toast?`<div class="toast ${UI.toast.err?'err':''}" role="status">${esc(UI.toast.text)}</div>`:''}
+  ${UI.mail?vMail():''}
   ${UI.confirm?`<div class="overlay"><div class="dialog" role="dialog" aria-modal="true"><p style="margin:0">${esc(UI.confirm.text)}</p><div class="row end"><button data-act="confirm-no">Annuleren</button><button class="primary" data-act="confirm-yes">${esc(UI.confirm.yesLabel)}</button></div></div></div>`:''}`;
+  if(dlgScroll){const d=document.querySelector('.dialog.breed');if(d)d.scrollTop=dlgScroll}
   if(focusId){const el=document.getElementById(focusId);if(el){el.focus({preventScroll:true});if(sel&&el.setSelectionRange)try{el.setSelectionRange(sel[0],sel[1])}catch(e){}}}
   markeerMij();
 }
@@ -1426,6 +1526,7 @@ function vInstellingen(){
     <div class="panel"><b>Nu beheerder:</b> ${esc((window.HUIS_BEHEERDERS||[]).join(', ')||'—')}</div></section>`:`<section class="block"><h2>Beheerders</h2>
     <p class="note">Beheerders staan onderaan de pagina vermeld. Wie echt mag opslaan, bepaal je op claude.ai: open het Delen-menu van deze pagina en geef die persoon bewerkrechten.</p>
     <div class="panel"><div class="people-grid">${[...S.people].filter(p=>HOUSE.includes(p.status)||(S.house.beheerders||[]).includes(p.id)).sort(byName).map(p=>`<label for="bh-${p.id}"><input type="checkbox" id="bh-${p.id}" data-ch="beheer" data-pid="${p.id}" ${(S.house.beheerders||[]).includes(p.id)?'checked':''}><span>${esc(p.name)}</span></label>`).join('')}</div></div></section>`}
+  ${vKoppeling()}
   <section class="block"><h2>Kostenposten voor extra correcties en overige kosten</h2>
     <p class="note">Huislasten zoals Ziggo en Makro beheer je op het tabblad Huislasten. Kostenposten hieronder gebruik je voor extra correcties (wie standaard meedoet en het minimum voor niet-deelnemers) en voor losse kosten die je over een groep wilt verdelen.</p>
     <div class="row"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div><button data-act="addcat">+ Kostenpost</button></div>
@@ -1556,6 +1657,13 @@ const acts={
   'confirm-no':()=>{UI.confirm=null;render()},
   copy:async el=>{try{await navigator.clipboard.writeText(el.dataset.text);toast('Gekopieerd.')}catch(e){toast('Kopiëren lukt hier niet; selecteer het IBAN en kopieer het zelf.',true)}},
   excel:()=>exportExcel(),
+  mailopen:()=>mailOpen(),
+  mailclose:()=>{UI.mail=null;render()},
+  mailalle:()=>{const m=M(UI.month);for(const k of mailKandidaten(m))if(k.ok)UI.mail.sel.add(k.p.id);render()},
+  mailniemand:()=>{UI.mail.sel.clear();render()},
+  mailsend:()=>mailVersturen(),
+  autokoppel:()=>autoKoppel(),
+  koppelall:()=>{UI.koppelAll=!UI.koppelAll;render()},
   pdf:el=>exportPDF(el.dataset.id,M(UI.month)),
   downloadhtml:()=>download('Huisrekening Omega Ksi.html',buildDocument()),
   backup:()=>download(`huisrekening-backup-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(S,null,1)),
@@ -1582,6 +1690,12 @@ const acts={
 const list=v=>String(v||'').split(',').map(x=>x.trim()).filter(Boolean);
 const toggleIn=(arr,id,on)=>{const s=new Set(arr||[]);on?s.add(id):s.delete(id);return [...s]};
 const changes={
+  koppel:el=>mutate(()=>{const p=P(el.dataset.pid);if(!p)return;
+    if(el.value&&S.people.some(x=>x!==p&&String(x.siteId)===el.value)){toast('Dat lid is al aan iemand anders gekoppeld.',true);return}
+    if(el.value)p.siteId=(lid(el.value)||{}).id??el.value;else delete p.siteId}),
+  mailveld:el=>{UI.mail[el.dataset.f]=el.value},
+  mailpers:el=>{const s=UI.mail.sel;el.checked?s.add(el.dataset.pid):s.delete(el.dataset.pid);render()},
+  mailjaar:el=>{const m=M(UI.month),j=+el.dataset.jaar;for(const k of mailKandidaten(m))if(k.ok&&k.l.jaar===j){el.checked?UI.mail.sel.add(k.p.id):UI.mail.sel.delete(k.p.id)}render()},
   kiesmaand:el=>{UI.month=el.value;UI.open=null;UI.lineOpen=null;render()},
   me:el=>{UI.me=el.value;UI.lineOpen=null;store.set('huis.me',el.value);render()},
   mfrom:el=>mutate(()=>{M(UI.month).from=el.value}),
@@ -1657,6 +1771,8 @@ document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');
   if(el.dataset.act==='line'&&ev.target.closest('tr.det'))return;
   acts[el.dataset.act]&&acts[el.dataset.act](el,ev)});
 document.addEventListener('change',ev=>{const el=ev.target.closest('[data-ch]');if(el&&changes[el.dataset.ch])changes[el.dataset.ch](el,ev)});
+// Mailtekst direct bijhouden, zodat een tussentijdse render niets wist.
+document.addEventListener('input',ev=>{const el=ev.target.closest('[data-ch="mailveld"]');if(el&&UI.mail)UI.mail[el.dataset.f]=el.value});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&UI.confirm){UI.confirm=null;render()}
   if((ev.key==='Enter'||ev.key===' ')&&ev.target.matches('tr[data-act]')){ev.preventDefault();acts[ev.target.dataset.act](ev.target)}});
 

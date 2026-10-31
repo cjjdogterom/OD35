@@ -57,5 +57,24 @@
       if (!res.ok) throw new Error(await fout(res));
       return await res.json(); // { rev: <nieuwe versie> }
     },
+
+    // → [{ id, naam, jaar, email }] — leden van de site, om huisrekening-personen aan te koppelen
+    async leden() {
+      const res = await fetch(API + '?actie=leden', { headers: kop(), cache: 'no-store' });
+      if (!res.ok) throw new Error(await fout(res));
+      return (await res.json()).leden || [];
+    },
+
+    // Verstuurt maximaal 5 mails met PDF. items: [{ siteId, naam, samenvatting, bestandsnaam, pdf (base64) }]
+    async mail(onderwerp, tekst, items) {
+      const res = await fetch(API + '?actie=mail', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: kop({ 'content-type': 'application/json' }),
+        body: JSON.stringify({ onderwerp, tekst, items }),
+      });
+      if (!res.ok) throw new Error(await fout(res));
+      return await res.json(); // { verstuurd, mislukt: [{ naam, fout }] }
+    },
   };
 })();

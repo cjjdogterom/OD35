@@ -14,6 +14,9 @@
     }
   ],
   "functions": {
+    "api/reserveer-plek.js": {
+      "maxDuration": 60
+    },
     "api/heic-to-jpeg.js": {
       "maxDuration": 60
     },
