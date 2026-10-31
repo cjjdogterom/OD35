@@ -145,6 +145,9 @@ tr.grp-row td{background:var(--sunk);border-bottom:1px solid var(--strong)}
 .savebar button.ghost{color:var(--paper)}
 .toast{position:fixed;z-index:30;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 12px);background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);padding:10px 16px;border-radius:var(--r);box-shadow:0 6px 24px rgb(0 0 0 / .15);max-width:min(92vw,520px);font-size:.9rem}
 .toast.err{border-left-color:var(--crit)}
+.meldknop{padding:0 4px!important;margin-left:6px;font-size:13px;line-height:1;opacity:.55;border:0!important;background:none!important;vertical-align:middle}
+.meldknop:hover,.meldknop:focus-visible{opacity:1}
+.meldkaart.open{border-left:3px solid var(--warn,#c80)}
 .dialog.breed{max-width:640px;max-height:90vh;overflow:auto}
 .dialog .chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:13px}
 .mailpers{display:flex;flex-direction:column;margin-top:4px;border:1px solid var(--line);border-radius:var(--r);max-height:40vh;overflow:auto}
@@ -454,6 +457,8 @@ function bill(mid){
     for(const a of pc.afkoop)for(const id of a.parts)add(id,{cat:'Pils',label:`Afkoop ${afkoopName(a.type)}: ${a.label||'zonder naam'}`,amount:a.per,how:`${a.count} × ${eur(afkoopPrice(a.type))} = ${eur(a.cost)} ÷ ${a.parts.length}`,ref:{type:'pils',kind:'afkoop',id:a.id}});
     for(const x of pc.posts)if(Math.abs(x.value)>0.004&&pc.n)for(const id of pc.payers)add(id,{cat:'Pils',label:x.label,amount:x.value/pc.n,how:`${eur(x.value)} ÷ ${pc.n} meebetalers`,ref:{type:'pils',kind:'post',id:x.id}});
   }
+  if(!m.pils&&m.pilsAanp&&m.snapshot)for(const id in m.pilsAanp){const d=pilsImpVerschil(m,id);
+    if(Math.abs(d)>0.004)add(id,{cat:'Pils',label:'Aanpassing pilsrekening',amount:d,how:'pilsrekening na afsluiten aangepast door de beheerder',ref:{type:'pils',kind:'aanp'}})}
   if(!_herberekenen&&m===openMonth())for(const c of correcties())
     add(c.id,{cat:'Correctie',label:`Correctie ${c.m.label.toLowerCase()}`,amount:c.d,how:`${c.m.label} is na het afsluiten aangepast: eindsaldo was ${eur(c.oud)}, wordt ${eur(c.nieuw)}`,ref:{type:'corr',id:c.m.id}});
   for(const id in B){const b=B[id];b.charges=sum(b.lines.map(l=>l.amount));b.end=b.start-b.paid+b.charges}
@@ -789,6 +794,64 @@ async function mailVersturen(){
   toast(res.mislukt.length?`${res.verstuurd} verstuurd, ${res.mislukt.length} niet gelukt.`:`${res.verstuurd} mail${res.verstuurd===1?'':'s'} verstuurd.`,!!res.mislukt.length);
 }
 
+/* ---------- opmerkingen en wijzigingsverzoeken ---------- */
+// Leden melden iets over een post of transactie; het komt in een aparte tabel en de beheerder handelt het af.
+async function laadMeldingen(){
+  if(!BE||!BE.meldingen||UI.meldBezig)return;UI.meldBezig=true;
+  try{UI.meldingen=await BE.meldingen();UI.meldFout=null}catch(e){UI.meldFout=e.message||String(e)}
+  UI.meldBezig=false;render();
+}
+const meldOpen=()=>(UI.meldingen||[]).filter(x=>x.status==='open').length;
+const meldKnop=(onderwerp,m)=>BE&&BE.meld&&!UI.editor?`<button class="ghost meldknop" data-act="meld" data-ond="${esc(m.label+' · '+onderwerp)}" title="Opmerking of wijziging aanvragen" aria-label="Opmerking of wijziging aanvragen">💬</button>`:'';
+function vMeldDialoog(){
+  const d=UI.meld;
+  return `<div class="overlay"><div class="dialog" role="dialog" aria-modal="true" aria-label="Opmerking of wijziging aanvragen">
+    <h2 style="margin:0">Opmerking of wijziging aanvragen</h2>
+    <label class="field" for="meld-ond">Over<input id="meld-ond" value="${esc(d.onderwerp)}" data-ch="meldveld" data-f="onderwerp" ${d.bezig?'disabled':''}></label>
+    <label class="field" for="meld-tekst">Wat klopt er niet, of wat moet er anders?<textarea id="meld-tekst" rows="5" data-ch="meldveld" data-f="tekst" placeholder="Bijv. ik was er niet bij, dus ik hoef hier niet aan mee te betalen." ${d.bezig?'disabled':''}>${esc(d.tekst)}</textarea></label>
+    <p class="note small" style="margin:0">Je opmerking gaat naar de beheerder van de huisrekening. Het antwoord zie je terug onder het tabblad Opmerkingen.</p>
+    <div class="row end"><button data-act="meldclose" ${d.bezig?'disabled':''}>Annuleren</button><button class="primary" data-act="meldsend" ${d.bezig?'disabled':''}>${d.bezig?'Versturen…':'Versturen'}</button></div></div></div>`;
+}
+async function meldVersturen(){
+  const d=UI.meld;if(!d||d.bezig)return;
+  if(!String(d.tekst||'').trim())return toast('Schrijf eerst je opmerking.',true);
+  d.bezig=true;render();
+  try{await BE.meld({maand:UI.month,onderwerp:d.onderwerp,tekst:d.tekst});UI.meld=null;toast('Verstuurd naar de beheerder. Het antwoord zie je onder Opmerkingen.');laadMeldingen()}
+  catch(e){d.bezig=false;toast('Versturen lukte niet: '+(e.message||e),true)}
+  render();
+}
+async function meldAfhandelen(id,status){
+  const x=(UI.meldingen||[]).find(y=>String(y.id)===String(id));if(!x)return;
+  const antwoord=(UI.antw&&UI.antw[id]!=null)?UI.antw[id]:(x.antwoord||'');
+  try{await BE.meld({id:x.id,status,antwoord});x.status=status;x.antwoord=antwoord;if(status==='afgehandeld'){x.afgehandeld_op=new Date().toISOString()}
+    toast(status==='afgehandeld'?'Afgehandeld.':'Weer open gezet.');laadMeldingen()}
+  catch(e){toast('Opslaan lukte niet: '+(e.message||e),true)}
+  render();
+}
+function vMeldingen(m){
+  if(!UI.meldingen&&!UI.meldFout)laadMeldingen();
+  const lijst=UI.meldingen||[],f=UI.meldFilter||'open';
+  const zicht=UI.editor?lijst.filter(x=>f==='alles'||x.status===f):lijst;
+  const wanneer=d=>d?new Date(d).toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'}):'';
+  const maandNaam=id=>(M(id)||{}).label||id||'';
+  const kaart=x=>`<div class="panel stack meldkaart ${x.status==='open'?'open':''}">
+    <div class="spread"><div><b>${esc(x.onderwerp||'Algemeen')}</b><div class="small muted">${UI.editor?esc(x.naam||x.email)+' · ':''}${wanneer(x.gemaakt)}${x.maand?' · '+esc(maandNaam(x.maand)):''}</div></div>
+      <span class="badge ${x.status==='open'?'warn':''}">${x.status==='open'?'Open':'Afgehandeld'}</span></div>
+    <p style="margin:0;white-space:pre-wrap">${esc(x.tekst)}</p>
+    ${UI.editor?(x.status==='open'?`<label class="field" for="ma-${x.id}">Antwoord (optioneel, de indiener ziet dit)<textarea id="ma-${x.id}" rows="2" data-ch="meldant" data-id="${x.id}">${esc((UI.antw&&UI.antw[x.id])??x.antwoord??'')}</textarea></label>
+      <div class="row"><button class="primary" data-act="meldklaar" data-id="${x.id}">Afgehandeld</button>${x.maand&&M(x.maand)&&x.maand!==UI.month?`<button class="ghost" data-act="month" data-id="${x.maand}">Naar ${esc(maandNaam(x.maand).toLowerCase())}</button>`:''}</div>`
+      :`${x.antwoord?`<div class="note"><b>Antwoord:</b> ${esc(x.antwoord)}</div>`:''}<div class="row small muted">Afgehandeld ${wanneer(x.afgehandeld_op)}${x.afgehandeld_door?' door '+esc(x.afgehandeld_door):''}<button class="ghost" data-act="meldheropen" data-id="${x.id}">Heropenen</button></div>`)
+      :(x.antwoord?`<div class="note"><b>Antwoord van de beheerder:</b> ${esc(x.antwoord)}</div>`:x.status==='open'?'<div class="small muted">Nog niet bekeken door de beheerder.</div>':'')}
+  </div>`;
+  return `<section class="block">
+    <div class="spread"><h2>${UI.editor?'Opmerkingen van leden':'Jouw opmerkingen'}</h2><div class="row">
+      ${UI.editor?`<div class="seg">${[['open','Open'],['afgehandeld','Afgehandeld'],['alles','Alles']].map(([id,l])=>`<button data-act="meldfilter" data-id="${id}" aria-pressed="${f===id}">${l} (${id==='alles'?lijst.length:lijst.filter(x=>x.status===id).length})</button>`).join('')}</div>`:`<button class="primary" data-act="meld" data-ond="${esc(m.label+' · algemeen')}">+ Nieuwe opmerking</button>`}
+      <button class="ghost" data-act="meldvernieuw">Vernieuwen</button></div></div>
+    ${UI.editor?'':'<p class="note">Klopt er iets niet op je rekening? Klik op 💬 naast een regel in je overzicht of bij een transactie, of plaats hier een algemene opmerking. De beheerder ziet het in een lijst en zet het op afgehandeld zodra het is opgelost.</p>'}
+    ${UI.meldFout?`<p class="note" style="color:var(--neg,#a33)">${esc(UI.meldFout)}</p>`:!UI.meldingen?'<p class="note">Laden…</p>':zicht.length?`<div class="stack">${zicht.map(kaart).join('')}</div>`:`<div class="empty">${UI.editor?(f==='open'?'Geen open opmerkingen. Alles is afgehandeld.':'Niets in deze selectie.'):'Je hebt nog geen opmerkingen geplaatst.'}</div>`}
+  </section>`;
+}
+
 /* ---------- maand afsluiten ---------- */
 function addMonthId(id,n){let [y,m]=id.split('-').map(Number);m+=n;while(m>12){m-=12;y++}return `${y}-${String(m).padStart(2,'0')}`}
 function addDays(d,n){const x=new Date(d+'T12:00:00');x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)}
@@ -914,10 +977,11 @@ function render(){
   const m=M(UI.month)||openMonth();UI.month=m.id;
   zetMaandCfg();
   const tabs=[['overzicht','Overzicht'],'|Opbouw huisrekening',['huislasten','Huislasten'],['evenementen','Extra correctie'],['service','Servicekosten'],['pils','Pilsrekening'],'|Administratie',['transacties','Transacties'],['kas','Huiskas']];
+  if(BE&&BE.meldingen)tabs.push(['meldingen','Opmerkingen']);
   if(UI.editor)tabs.push(['instellingen','Instellingen']);
   if(!tabs.some(t=>Array.isArray(t)&&t[0]===UI.tab))UI.tab='overzicht';
   const todo=S.transactions.filter(t=>t.kind==='todo').length;
-  const views={overzicht:vOverzicht,huislasten:vHuislasten,service:vService,transacties:vTransacties,evenementen:vEvenementen,pils:vPils,kas:vKas,instellingen:vInstellingen};
+  const views={overzicht:vOverzicht,huislasten:vHuislasten,service:vService,transacties:vTransacties,evenementen:vEvenementen,pils:vPils,kas:vKas,meldingen:vMeldingen,instellingen:vInstellingen};
   // Gaat een tabblad mis, val dan terug op het overzicht zodat de huisrekening altijd opent.
   let body;try{body=views[UI.tab](m)}catch(e){console.error(e);const fout=UI.tab;UI.tab='overzicht';store.set('huis.tab','overzicht');body=`<div class="panel"><p class="note">Het tabblad ${esc(fout)} kon niet getoond worden (${esc(e.message)}). Je ziet daarom het overzicht.</p></div>`+vOverzicht(m)}
   // Met de site-koppeling komen de echte beheerders van de server (ingesteld op de site); anders de eigen lijst.
@@ -928,7 +992,7 @@ function render(){
   <header class="top"><div class="brand"><span class="eyebrow">${esc(S.house.name)} · Huisrekening</span><h1>${esc(m.label)}</h1>
     <span class="small muted">Periode ${fmtDate(m.from)} t/m ${fmtDate(m.to)} · ${m.closed?'afgesloten':'lopende maand'}${S.savedAt?` · bijgewerkt ${new Date(S.savedAt).toLocaleDateString('nl-NL',{day:'numeric',month:'long'})}`:''}</span></div>
     <div class="maandkeuze"><label class="small muted" for="kiesmaand">Maand</label><select id="kiesmaand" data-ch="kiesmaand">${S.months.slice().reverse().map(x=>`<option value="${x.id}" ${x.id===m.id?'selected':''}>${esc(x.label)}${x.closed?'':' (lopend)'}</option>`).join('')}</select>${UI.editor&&BE&&BE.mail?`<button data-act="mailopen">✉ Mail overzichten</button>`:''}${UI.editor?`<button class="primary" data-act="nieuwemaand">+ Nieuwe maand</button>`:''}</div></header>
-  <nav class="tabs" aria-label="Onderdelen">${tabs.map(t=>typeof t==='string'?`<span class="tabsep" aria-hidden="true"></span><span class="tabgrp">${t.slice(1)}</span>`:`<button data-act="tab" data-id="${t[0]}" ${UI.tab===t[0]?'aria-current="page"':''}>${t[1]}${t[0]==='transacties'&&todo&&UI.editor?`<span class="badge warn">${todo}</span>`:''}</button>`).join('')}</nav>
+  <nav class="tabs" aria-label="Onderdelen">${tabs.map(t=>typeof t==='string'?`<span class="tabsep" aria-hidden="true"></span><span class="tabgrp">${t.slice(1)}</span>`:`<button data-act="tab" data-id="${t[0]}" ${UI.tab===t[0]?'aria-current="page"':''}>${t[1]}${t[0]==='transacties'&&todo&&UI.editor?`<span class="badge warn">${todo}</span>`:''}${t[0]==='meldingen'&&UI.editor&&meldOpen()?`<span class="badge warn">${meldOpen()}</span>`:''}</button>`).join('')}</nav>
   ${body}
   <footer class="foot"><span>Beheerder${(behLijst||S.house.beheerders||[]).length>1?'s':''}: ${esc(beh||'nog niet ingesteld')} · vragen naar ${esc(S.house.email||'')}</span>
     <span>${BE?(UI.editor?'Je bent beheerder.':''):UI.editor?(UI.forced?'Bewerken staat aan op dit apparaat. <button class="ghost" data-act="editoff">Uitzetten</button>':'Je bent beheerder.'):'<button class="ghost" data-act="editon">Beheerder? Bewerken inschakelen</button>'}</span></footer>
@@ -936,6 +1000,7 @@ function render(){
   ${UI.dirty&&UI.editor?`<div class="savebar"><div class="in"><span>${UI.saving?'Opslaan…':BE&&!UI.autoStop?'Wordt automatisch opgeslagen…':'Je hebt wijzigingen die nog niet gedeeld zijn.'}</span><div class="row"><button class="ghost" data-act="discard" ${UI.saving?'disabled':''}>Wijzigingen weggooien</button><button class="primary" data-act="save" ${UI.saving?'disabled':''}>Opslaan en delen</button></div></div></div>`:''}
   ${UI.toast?`<div class="toast ${UI.toast.err?'err':''}" role="status">${esc(UI.toast.text)}</div>`:''}
   ${UI.mail?vMail():''}
+  ${UI.meld?vMeldDialoog():''}
   ${UI.confirm?`<div class="overlay"><div class="dialog" role="dialog" aria-modal="true"><p style="margin:0">${esc(UI.confirm.text)}</p><div class="row end"><button data-act="confirm-no">Annuleren</button><button class="primary" data-act="confirm-yes">${esc(UI.confirm.yesLabel)}</button></div></div></div>`:''}`;
   if(dlgScroll){const d=document.querySelector('.dialog.breed');if(d)d.scrollTop=dlgScroll}
   if(focusId){const el=document.getElementById(focusId);if(el){el.focus({preventScroll:true});if(sel&&el.setSelectionRange)try{el.setSelectionRange(sel[0],sel[1])}catch(e){}}}
@@ -1011,18 +1076,18 @@ function statementHTML(pid,m){
   const groups={};for(const [ix,l] of b.lines.entries()){(groups[l.cat]=groups[l.cat]||[]).push([ix,l])}
   const rows=[`<tr class="bal"><td>Saldo per ${fmtDate(prevTo)}</td><td class="r num">${eur(b.start)}</td></tr>`];
   const gOpen=c=>UI.grpAll||UI.grpOpen.has(pid+'|'+c);
-  const gRow=(c,label,amt,n)=>`<tr class="grp tog" data-act="grp" data-key="${esc(pid+'|'+c)}" tabindex="0" aria-expanded="${gOpen(c)}"><td><span class="chev" aria-hidden="true">${gOpen(c)?'▾':'▸'}</span>${esc(label)} <span class="muted small">(${n})</span></td><td class="r num">${amt}</td></tr>`;
+  const gRow=(c,label,amt,n)=>`<tr class="grp tog" data-act="grp" data-key="${esc(pid+'|'+c)}" tabindex="0" aria-expanded="${gOpen(c)}"><td><span class="chev" aria-hidden="true">${gOpen(c)?'▾':'▸'}</span>${esc(label)} <span class="muted small">(${n})</span>${meldKnop(`${P(pid).name} · ${label} (${amt})`,m)}</td><td class="r num">${amt}</td></tr>`;
   for(const [cat,ls] of Object.entries(groups)){
     rows.push(gRow(cat,cat,eur(sum(ls.map(x=>x[1].amount))),ls.length));
     if(!gOpen(cat))continue;
     for(const [ix,l] of ls){const key=pid+':'+ix,open=UI.lineOpen===key,d=hasDetail(l);
-      rows.push(`<tr class="ln ${d?'has':''}" ${d?`data-act="line" data-key="${key}" tabindex="0" aria-expanded="${open}"`:''}><td>${d?`<span class="chev" aria-hidden="true">${open?'▾':'▸'}</span>`:''}${esc(l.label)}${l.how?`<span class="how">${esc(l.how)}</span>`:''}</td><td class="r num">${eur(l.amount)}</td></tr>`);
+      rows.push(`<tr class="ln ${d?'has':''}" ${d?`data-act="line" data-key="${key}" tabindex="0" aria-expanded="${open}"`:''}><td>${d?`<span class="chev" aria-hidden="true">${open?'▾':'▸'}</span>`:''}${esc(l.label)}${l.how?`<span class="how">${esc(l.how)}</span>`:''}${meldKnop(`${P(pid).name} · ${l.cat}: ${l.label} (${eur(l.amount)})`,m)}</td><td class="r num">${eur(l.amount)}</td></tr>`);
       if(open)rows.push(`<tr class="det"><td colspan="2">${lineDetail(l,pid,m)}</td></tr>`)}
   }
   if(!b.lines.length)rows.push(`<tr class="grp"><td>Nieuwe kosten</td><td class="r num">${eur(0)}</td></tr>`);
   rows.push(gRow('__pay','Betalingen',eur(-b.paid),(b.payments||[]).length||(b.paid?1:0)));
   if(!gOpen('__pay')){}
-  else if(b.payments&&b.payments.length)for(const x of b.payments)rows.push(`<tr class="ln"><td>${fmtDate(x.date)}${x.note?` · ${esc(x.note)}`:''}</td><td class="r num credit">${eur(-x.amount)}</td></tr>`);
+  else if(b.payments&&b.payments.length)for(const x of b.payments)rows.push(`<tr class="ln"><td>${fmtDate(x.date)}${x.note?` · ${esc(x.note)}`:''}${meldKnop(`${P(pid).name} · betaling ${fmtDate(x.date)} (${eur(x.amount)})`,m)}</td><td class="r num credit">${eur(-x.amount)}</td></tr>`);
   else if(b.paid)rows.push(`<tr class="ln"><td>Betalingen deze periode</td><td class="r num credit">${eur(-b.paid)}</td></tr>`);
   else rows.push(`<tr class="ln"><td class="muted">Geen betalingen ontvangen</td><td></td></tr>`);
   rows.push(`<tr class="bal end"><td>Saldo per ${fmtDate(m.to)}${b.end>0.005?' · te betalen':b.end<-0.005?' · tegoed':''}</td><td class="r num ${b.end<0?'credit':''}">${eur(b.end)}</td></tr>`);
@@ -1156,7 +1221,7 @@ function vTransacties(m){
       <div class="who"><b>${esc(t.label&&t.kind!=='payment'?t.label:t.name)}</b><span>${esc(t.label&&t.kind!=='payment'?t.name:'')}${t.desc?(t.label&&t.kind!=='payment'?' · ':'')+esc(t.desc.slice(0,140)):''}</span></div>
       <span class="num" style="text-align:right;font-weight:600;color:${t.amount>0?'var(--ok)':'var(--ink)'}">${t.amount>0?'+':''}${eur(t.amount)}</span>
       <div class="k">${txSelect(t,ok)}</div>
-      <div class="x">${ok?`<button class="ghost" data-act="txopen" data-id="${t.id}" aria-expanded="${open}">${open?'Sluiten':'Details'}</button>`:''}</div>
+      <div class="x">${ok?`<button class="ghost" data-act="txopen" data-id="${t.id}" aria-expanded="${open}">${open?'Sluiten':'Details'}</button>`:meldKnop(`Transactie ${fmtDate(t.date)} · ${t.label||t.name} (${eur(t.amount)})`,m)}</div>
       ${txSub(t)?`<div class="sub">${txSub(t)}</div>`:''}
       ${open&&ok?txEdit(t):''}</div>`}).join('')}</div>`:`<div class="empty">${f==='todo'?(counts.all?'Alles is verwerkt.':'Nog geen transacties in '+esc(m.label.toLowerCase())+'. Importeer een ING-afschrift of voeg een uitgave toe.'):'Geen transacties in deze selectie.'}</div>`}
   </section>`;
@@ -1357,8 +1422,43 @@ function voorschotHTML(e,k,ok){
 }
 /* --- pilsrekening --- */
 function numInput(id,val,ch,f,ok,w,extra){return `<input type="number" id="${id}" value="${val??''}" data-ch="${ch}" ${f?`data-f="${f}"`:''} ${extra||''} ${dis(ok)} style="width:${w||'5.5rem'}">`}
+// Pilsrekening uit de oude Excel (geen turflijst, alleen bedragen per persoon in de vastgezette rekening).
+// De beheerder past per persoon het aantal flesjes en elk bedrag aan; het verschil wordt als correctie verrekend.
+const FLES='Pils fles';
+function pilsImport(m){
+  const per={},cols=[];let tc=0,ta=0;
+  for(const [id,b] of Object.entries(m.snapshot||{}))for(const l of b.lines||[])if(l.cat==='Pils'){
+    if(!cols.includes(l.label))cols.push(l.label);const x=per[id]=per[id]||{cells:{},cnt:0};x.cells[l.label]=(x.cells[l.label]||0)+l.amount;
+    if(l.label===FLES){const mm=(l.how||'').match(/^(\d+) flesjes/);if(mm){x.cnt+=+mm[1];tc+=+mm[1];ta+=l.amount}}}
+  if(!cols.includes(FLES))cols.unshift(FLES);
+  return {per,cols,prijs:tc?ta/tc:(+PS().flesPrice||0)};
+}
+function pilsImpNieuw(m,id,imp){
+  imp=imp||pilsImport(m);const oud=imp.per[id]||{cells:{},cnt:0},a=(m.pilsAanp||{})[id]||{};
+  const cells={...oud.cells,...(a.cells||{})},cnt=a.fles!=null?+a.fles:oud.cnt;
+  if(a.fles!=null)cells[FLES]=cnt*imp.prijs;
+  return {cells,cnt,oud};
+}
+function pilsImpVerschil(m,id){const n=pilsImpNieuw(m,id);return sum(Object.values(n.cells))-sum(Object.values(n.oud.cells))}
+function pilsImportEdit(m){
+  const imp=pilsImport(m),ids=[...new Set([...Object.keys(imp.per),...housePeople().map(p=>p.id),...Object.keys(m.pilsAanp||{})])].filter(id=>P(id));
+  const rows=ids.map(id=>({p:P(id),...pilsImpNieuw(m,id,imp)})).sort((a,b)=>byName(a.p,b.p));
+  const inp=(id,f,v,stap)=>`<input type="number" step="${stap}" value="${v==null?'':Math.round(v*100)/100}" data-ch="pilsimp" data-pid="${id}" data-f="${esc(f)}" aria-label="${esc(f)} ${esc(P(id).name)}" style="width:6.5rem">`;
+  const tot=sum(rows.map(r=>sum(Object.values(r.cells)))),verschil=sum(rows.map(r=>sum(Object.values(r.cells))-sum(Object.values(r.oud.cells))));
+  return `<section class="block"><h2>Pilsrekening ${esc(m.label.toLowerCase())}</h2>
+    <p class="note">Deze maand komt uit de oude Excel, dus er is geen turflijst; je past hier per persoon het aantal flesjes en elk bedrag aan. Flesjes rekenen met ${eur3(imp.prijs)} per flesje. Het verschil met de afgesloten rekening wordt als correctie verrekend in ${esc(openMonth().label.toLowerCase())}.</p>
+    <div class="scroll tbl"><table class="matrix"><thead><tr><th class="n">Naam</th><th class="r">Flesjes</th>${imp.cols.map(c=>`<th class="r wrap">${esc(c)}</th>`).join('')}<th class="r">Totaal</th><th class="r">Verschil</th></tr></thead><tbody>
+    ${rows.map(r=>{const d=sum(Object.values(r.cells))-sum(Object.values(r.oud.cells));return `<tr><td class="n">${esc(r.p.name)}</td><td class="r">${inp(r.p.id,'fles',r.cnt,1)}</td>
+      ${imp.cols.map(c=>c===FLES?`<td class="r num">${r.cells[c]?eur(r.cells[c]):'<span class="muted">—</span>'}</td>`:`<td class="r">${inp(r.p.id,c,r.cells[c]??0,0.01)}</td>`).join('')}
+      <td class="r num"><b>${eur(sum(Object.values(r.cells)))}</b></td><td class="r num">${Math.abs(d)>0.004?`<b>${d>0?'+':''}${eur(d)}</b>`:'<span class="muted">—</span>'}</td></tr>`}).join('')}
+    <tr class="total"><td class="n">Totaal</td><td class="r num">${sum(rows.map(r=>r.cnt||0))}</td>${imp.cols.map(c=>`<td class="r num">${eur(sum(rows.map(r=>r.cells[c]||0)))}</td>`).join('')}<td class="r num">${eur(tot)}</td><td class="r num">${Math.abs(verschil)>0.004?(verschil>0?'+':'')+eur(verschil):'—'}</td></tr>
+    </tbody></table></div>
+    ${m.pilsAanp&&Object.keys(m.pilsAanp).length?'<div class="row"><button class="ghost" data-act="pilsimpreset">Alle aanpassingen ongedaan maken</button></div>':''}
+  </section>`+afkoopHistHTML(m);
+}
 function vPils(m){
   const ok=canEdit(m);
+  if(!m.pils&&ok&&m.closed)return pilsImportEdit(m);
   if(!m.pils)return `<section class="block"><h2>Pilsrekening ${esc(m.label.toLowerCase())}</h2><p class="note">Deze maand komt uit de oude Excel. Per persoon zie je hoeveel flesjes er geturfd zijn en wat elke post kostte.</p></section>`+
     lineMatrix(m,l=>l.cat==='Pils',{title:'Per persoon',count:{label:'Pils fles',re:/^(\d+) flesjes/,title:'Flesjes geturfd'},empty:'Geen pilskosten in deze maand.'})+afkoopHistHTML(m);
   const pl=m.pils,pc=pilsCalc(pl),ps=PS(),f=pl.fust,k=pl.krat;
@@ -1658,6 +1758,14 @@ const acts={
   copy:async el=>{try{await navigator.clipboard.writeText(el.dataset.text);toast('Gekopieerd.')}catch(e){toast('Kopiëren lukt hier niet; selecteer het IBAN en kopieer het zelf.',true)}},
   excel:()=>exportExcel(),
   mailopen:()=>mailOpen(),
+  pilsimpreset:()=>ask('Alle aanpassingen aan deze pilsrekening ongedaan maken?','Ongedaan maken',()=>mutate(()=>{delete M(UI.month).pilsAanp})),
+  meld:el=>{UI.meld={onderwerp:el.dataset.ond||'',tekst:'',bezig:false};render();setTimeout(()=>{const t=document.getElementById('meld-tekst');if(t)t.focus()},0)},
+  meldclose:()=>{UI.meld=null;render()},
+  meldsend:()=>meldVersturen(),
+  meldklaar:el=>meldAfhandelen(el.dataset.id,'afgehandeld'),
+  meldheropen:el=>meldAfhandelen(el.dataset.id,'open'),
+  meldfilter:el=>{UI.meldFilter=el.dataset.id;render()},
+  meldvernieuw:()=>{UI.meldingen=null;UI.meldFout=null;render()},
   mailclose:()=>{UI.mail=null;render()},
   mailalle:()=>{const m=M(UI.month);for(const k of mailKandidaten(m))if(k.ok)UI.mail.sel.add(k.p.id);render()},
   mailniemand:()=>{UI.mail.sel.clear();render()},
@@ -1694,6 +1802,13 @@ const changes={
     if(el.value&&S.people.some(x=>x!==p&&String(x.siteId)===el.value)){toast('Dat lid is al aan iemand anders gekoppeld.',true);return}
     if(el.value)p.siteId=(lid(el.value)||{}).id??el.value;else delete p.siteId}),
   mailveld:el=>{UI.mail[el.dataset.f]=el.value},
+  pilsimp:el=>mutate(()=>{const m=M(UI.month),id=el.dataset.pid,f=el.dataset.f,imp=pilsImport(m),oud=imp.per[id]||{cells:{},cnt:0};
+    const A=m.pilsAanp=m.pilsAanp||{},a=A[id]=A[id]||{},v=el.value===''?0:+el.value;
+    if(f==='fles'){if(v===oud.cnt)delete a.fles;else a.fles=Math.max(0,Math.round(v))}
+    else{a.cells=a.cells||{};if(Math.abs(v-(oud.cells[f]||0))<0.005)delete a.cells[f];else a.cells[f]=v;if(!Object.keys(a.cells).length)delete a.cells}
+    if(!Object.keys(a).length)delete A[id];if(!Object.keys(A).length)delete m.pilsAanp}),
+  meldveld:el=>{if(UI.meld)UI.meld[el.dataset.f]=el.value},
+  meldant:el=>{(UI.antw=UI.antw||{})[el.dataset.id]=el.value},
   mailpers:el=>{const s=UI.mail.sel;el.checked?s.add(el.dataset.pid):s.delete(el.dataset.pid);render()},
   mailjaar:el=>{const m=M(UI.month),j=+el.dataset.jaar;for(const k of mailKandidaten(m))if(k.ok&&k.l.jaar===j){el.checked?UI.mail.sel.add(k.p.id):UI.mail.sel.delete(k.p.id)}render()},
   kiesmaand:el=>{UI.month=el.value;UI.open=null;UI.lineOpen=null;render()},
@@ -1772,8 +1887,11 @@ document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');
   acts[el.dataset.act]&&acts[el.dataset.act](el,ev)});
 document.addEventListener('change',ev=>{const el=ev.target.closest('[data-ch]');if(el&&changes[el.dataset.ch])changes[el.dataset.ch](el,ev)});
 // Mailtekst direct bijhouden, zodat een tussentijdse render niets wist.
-document.addEventListener('input',ev=>{const el=ev.target.closest('[data-ch="mailveld"]');if(el&&UI.mail)UI.mail[el.dataset.f]=el.value});
+document.addEventListener('input',ev=>{const el=ev.target.closest('[data-ch="mailveld"]');if(el&&UI.mail)UI.mail[el.dataset.f]=el.value;
+  const md=ev.target.closest('[data-ch="meldveld"]');if(md&&UI.meld)UI.meld[md.dataset.f]=md.value;
+  const ma=ev.target.closest('[data-ch="meldant"]');if(ma)(UI.antw=UI.antw||{})[ma.dataset.id]=ma.value});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&UI.confirm){UI.confirm=null;render()}
+  else if(ev.key==='Escape'&&UI.meld&&!UI.meld.bezig){UI.meld=null;render()}
   if((ev.key==='Enter'||ev.key===' ')&&ev.target.matches('tr[data-act]')){ev.preventDefault();acts[ev.target.dataset.act](ev.target)}});
 
 /* ---------- start ---------- */
@@ -1789,7 +1907,7 @@ async function boot(){
     UI.month=(UI.editor?openMonth():(S.months.filter(m=>m.closed).slice(-1)[0]||openMonth())).id;
     if(store.get('huis.tab'))UI.tab=store.get('huis.tab');
     const d2=loadDraft();if(UI.editor&&d2){S=d2;UI.dirty=true;toast('Je niet-opgeslagen wijzigingen zijn teruggezet.')}
-    billCache.clear();render();return;
+    billCache.clear();render();laadMeldingen();return;
   }
   if(UI.local){UI.editor=true;UI.month=openMonth().id;if(draft){S=draft;UI.dirty=true}render();return}
   const [user,art,dl]=await Promise.all([claude.use('user').catch(()=>null),claude.use('artifact').catch(()=>null),claude.use('downloads').catch(()=>null)]);

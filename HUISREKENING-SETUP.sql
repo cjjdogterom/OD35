@@ -49,3 +49,22 @@ end;
 $$;
 
 revoke all on function public.huisrekening_opslaan(jsonb, integer, text) from public, anon, authenticated;
+
+-- Opmerkingen en wijzigingsverzoeken van leden over een post of transactie.
+-- Leden maken ze aan via /api/huisrekening?actie=meldingen; beheerders handelen ze af.
+create table if not exists public.huisrekening_meldingen (
+  id bigserial primary key,
+  gemaakt timestamptz not null default now(),
+  email text not null,
+  naam text,
+  maand text,
+  onderwerp text,
+  tekst text not null,
+  status text not null default 'open' check (status in ('open', 'afgehandeld')),
+  antwoord text,
+  afgehandeld_door text,
+  afgehandeld_op timestamptz
+);
+alter table public.huisrekening_meldingen enable row level security;
+
+notify pgrst, 'reload schema';

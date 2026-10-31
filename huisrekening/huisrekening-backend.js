@@ -65,6 +65,24 @@
       return (await res.json()).leden || [];
     },
 
+    // Opmerkingen: beheerders krijgen ze allemaal, leden alleen hun eigen.
+    async meldingen() {
+      const res = await fetch(API + '?actie=meldingen', { headers: kop(), cache: 'no-store' });
+      if (!res.ok) throw new Error(await fout(res));
+      return (await res.json()).meldingen || [];
+    },
+    // Nieuw: { maand, onderwerp, tekst }. Afhandelen (beheerder): { id, status, antwoord }.
+    async meld(body) {
+      const res = await fetch(API + '?actie=meldingen', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: kop({ 'content-type': 'application/json' }),
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(await fout(res));
+      return await res.json();
+    },
+
     // Verstuurt maximaal 5 mails met PDF. items: [{ siteId, naam, samenvatting, bestandsnaam, pdf (base64) }]
     async mail(onderwerp, tekst, items) {
       const res = await fetch(API + '?actie=mail', {
