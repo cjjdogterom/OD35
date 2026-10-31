@@ -31,6 +31,10 @@ h3{font-size:1rem}
 .credit{color:var(--ok)}
 header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;padding-block:22px 14px}
 header.top .brand{display:flex;flex-direction:column;gap:3px}
+.opslag{font-size:12px;color:var(--muted,#888);margin-right:6px;white-space:nowrap}
+.opslag.ok{color:var(--ok,#2e7d32)}
+.opslag.fout{color:var(--neg,#b3261e);font-weight:600}
+.opslag button{padding:2px 6px!important;font-size:12px}
 .maandkeuze{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .maandkeuze select{min-width:11rem;font-weight:500}
 .months{display:flex;gap:0;flex-wrap:wrap;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface)}
@@ -395,14 +399,21 @@ function openzetten(m){
 function zetMaandCfg(){
   const m=M(UI.month),doel=UI.editor&&m&&m.closed?m:null;
   if((UI.cfgMaand||null)===(doel?doel.id:null))return;
-  if(UI.cfgMaand&&UI.globCfg){for(const k of CFG_KEYS)S[k]=UI.globCfg[k]}
+  if(UI.cfgMaand&&UI.globCfg){bewaarMaandCfg();for(const k of CFG_KEYS)S[k]=UI.globCfg[k]}
   UI.cfgMaand=null;UI.globCfg=null;
   if(doel){openzetten(doel);UI.globCfg=Object.fromEntries(CFG_KEYS.map(k=>[k,S[k]]));for(const k of CFG_KEYS)if(doel.cfg[k]!==undefined)S[k]=doel.cfg[k];UI.cfgMaand=doel.id}
   billCache.clear();
 }
 // Iets doen met de algemene instellingen actief (opslaan, concept bewaren).
+// Wat je in een afgesloten maand aanpast staat in S; schrijf het terug naar die maand (m.cfg),
+// ook als een lijst vervangen is in plaats van aangepast (bijv. na verwijderen).
+function bewaarMaandCfg(){
+  const m=UI.cfgMaand&&M(UI.cfgMaand);if(!m||!UI.globCfg||!m.cfg)return;
+  for(const k of CFG_KEYS)if(S[k]!==UI.globCfg[k])m.cfg[k]=S[k];
+}
 function metGlobaal(fn){
   const m=UI.cfgMaand&&M(UI.cfgMaand);if(!m||!UI.globCfg)return fn();
+  bewaarMaandCfg();
   for(const k of CFG_KEYS)S[k]=UI.globCfg[k];
   try{return fn()}finally{for(const k of CFG_KEYS)if(m.cfg[k]!==undefined)S[k]=m.cfg[k]}
 }
@@ -468,13 +479,30 @@ function sanctionFor(saldo){let s=null;for(const x of [...S.sanctions].sort((a,b
 function sanctionClass(s){if(!s)return'';const max=Math.max(...S.sanctions.map(x=>x.min));return s.min===max?'crit':'warn'}
 
 /* ---------- mutaties ---------- */
-function mutate(fn){fn();billCache.clear();UI.dirty=true;UI.wijzigingen=(UI.wijzigingen||0)+1;saveDraft();render();autoSave()}
+function mutate(fn){fn();bewaarMaandCfg();billCache.clear();UI.dirty=true;UI.wijzigingen=(UI.wijzigingen||0)+1;saveDraft();render();autoSave()}
 // Elke wijziging van een beheerder wordt na een korte pauze vanzelf opgeslagen (alleen met de site-koppeling).
 let _autoTimer=null;
-function autoSave(){
+function autoSave(wacht){
   if(!BE||!UI.editor||UI.autoStop)return;
   clearTimeout(_autoTimer);
-  _autoTimer=setTimeout(()=>{if(UI.saving)return autoSave();if(UI.dirty)save(true)},1500);
+  _autoTimer=setTimeout(()=>{if(UI.saving)return autoSave();if(UI.dirty)save(true)},wacht??1200);
+}
+// Direct opslaan, bijv. als je de pagina verlaat of naar een andere app gaat.
+function nuOpslaan(){
+  const ae=document.activeElement;if(ae&&ae.matches&&ae.matches('input,textarea,select'))ae.blur(); // laatste invoer vastleggen
+  if(BE&&UI.editor&&UI.dirty&&!UI.saving){clearTimeout(_autoTimer);save(true)}
+}
+// Nieuwste stand van de server ophalen als je niets openstaands hebt (bijv. na terugkomen in de app).
+async function verversVanServer(){
+  if(!BE||UI.dirty||UI.saving||UI.confirm||UI.mail||UI.meld)return;
+  try{const r=await BE.load();if(!r||!r.data||r.rev===S.rev||UI.dirty||UI.saving)return;
+    UI.cfgMaand=null;UI.globCfg=null;S=migrate(r.data);S.rev=r.rev;billCache.clear();
+    if(!M(UI.month))UI.month=openMonth().id;render()}catch(e){}
+}
+function opslagStatus(){
+  if(UI.opslagFout)return `<span class="opslag fout" role="status">Niet opgeslagen <button class="ghost" data-act="save">Opnieuw</button></span>`;
+  if(UI.saving||UI.dirty)return `<span class="opslag" role="status">Opslaan…</span>`;
+  return UI.opgeslagenOp?`<span class="opslag ok" role="status">✓ Opgeslagen</span>`:'';
 }
 function toast(text,err){UI.toast={text,err};render();clearTimeout(toast.t);toast.t=setTimeout(()=>{UI.toast=null;render()},err?7000:3800)}
 function ask(text,yesLabel,yes){UI.confirm={text,yesLabel,yes};render()}
@@ -1001,11 +1029,21 @@ async function save(auto){
     const n=UI.wijzigingen||0,prev=S.rev||0;
     UI.saving=true;if(!auto){render();herstelFocus()}
     S.savedAt=new Date().toISOString();
-    try{let pr;metGlobaal(()=>{pr=BE.save(S,prev)});const r=await pr;S.rev=(r&&r.rev)||prev+1;UI.saving=false;
+    try{let kopie;metGlobaal(()=>{kopie=JSON.parse(JSON.stringify(S))});const r=await BE.save(kopie,prev);S.rev=(r&&r.rev)||prev+1;UI.saving=false;
       // Tijdens het opslaan opnieuw gewijzigd? Dan blijft het concept staan en volgt er nog een opslag.
       if((UI.wijzigingen||0)===n){UI.dirty=false;store.del(DRAFT)}else{saveDraft();autoSave()}
       if(!auto)toast('Opgeslagen. Iedereen ziet nu de nieuwe stand.')}
-    catch(e){UI.saving=false;UI.autoStop=true;if(e&&e.code==='conflict')toast('Iemand anders heeft intussen opgeslagen. Herlaad de pagina; je wijzigingen staan als concept klaar.',true);else if(e&&e.code==='not_writer'){UI.editor=false;toast('Je hebt geen beheerdersrechten voor de huisrekening.',true)}else toast('Automatisch opslaan is mislukt: '+((e&&e.message)||e)+'. Klik op Opslaan om het opnieuw te proberen.',true)}
+    catch(e){UI.saving=false;
+      if(e&&e.code==='conflict'){
+        // Elders (ander tabblad of apparaat) is intussen opgeslagen. Jouw versie is de meest recente bewerking:
+        // haal het nieuwe versienummer op en sla daarop opnieuw op.
+        UI.conflicten=(UI.conflicten||0)+1;
+        if(UI.conflicten<=3)try{const r=await BE.load();S.rev=r.rev;UI.opslagFout=null;return save(auto)}catch(e2){}
+        UI.opslagFout='conflict';UI.conflicten=0}
+      else if(e&&e.code==='not_writer'){UI.autoStop=true;UI.editor=false;toast('Je hebt geen beheerdersrechten voor de huisrekening.',true)}
+      else{UI.opslagFout=(e&&e.message)||String(e);UI.pogingen=(UI.pogingen||0)+1;autoSave(Math.min(30000,3000*UI.pogingen))}
+      saveDraft();render();herstelFocus();return}
+    UI.opslagFout=null;UI.pogingen=0;UI.conflicten=0;UI.opgeslagenOp=Date.now();
     render();herstelFocus();return}
   if(!ART){toast(UI.local?'Dit is een lokale kopie. Opslaan werkt alleen in de versie op claude.ai.':'Opslaan is in deze weergave niet beschikbaar. Open de huisrekening op claude.ai.',true);return}
   UI.saving=true;render();
@@ -1085,13 +1123,13 @@ function render(){
   ${UI.beheerder?`<div class="alslid${UI.alsLid?' aan':''}">${UI.alsLid?`<span>Je bekijkt de huisrekening zoals een gewoon lid hem ziet.</span><button class="primary" data-act="alsbeheer">Terug naar beheer</button>`:`<button class="ghost" data-act="alslid">Bekijk als lid</button>`}</div>`:''}
   <header class="top"><div class="brand"><span class="eyebrow">${esc(S.house.name)} · Huisrekening</span><h1>${esc(m.label)}</h1>
     <span class="small muted">Periode ${fmtDate(m.from)} t/m ${fmtDate(m.to)} · ${m.closed?'afgesloten':'lopende maand'}${S.savedAt?` · bijgewerkt ${new Date(S.savedAt).toLocaleDateString('nl-NL',{day:'numeric',month:'long'})}`:''}</span></div>
-    <div class="maandkeuze"><label class="small muted" for="kiesmaand">Maand</label><select id="kiesmaand" data-ch="kiesmaand">${S.months.slice().reverse().map(x=>`<option value="${x.id}" ${x.id===m.id?'selected':''}>${esc(x.label)}${x.closed?'':' (lopend)'}</option>`).join('')}</select>${UI.editor&&BE&&BE.mail?`<button data-act="mailopen">✉ Mail overzichten</button>`:''}${UI.editor?`<button class="primary" data-act="nieuwemaand">+ Nieuwe maand</button>`:''}</div></header>
+    <div class="maandkeuze">${BE&&UI.editor?opslagStatus():''}<label class="small muted" for="kiesmaand">Maand</label><select id="kiesmaand" data-ch="kiesmaand">${S.months.slice().reverse().map(x=>`<option value="${x.id}" ${x.id===m.id?'selected':''}>${esc(x.label)}${x.closed?'':' (lopend)'}</option>`).join('')}</select>${UI.editor&&BE&&BE.mail?`<button data-act="mailopen">✉ Mail overzichten</button>`:''}${UI.editor?`<button class="primary" data-act="nieuwemaand">+ Nieuwe maand</button>`:''}</div></header>
   <nav class="tabs" aria-label="Onderdelen">${tabs.map(t=>typeof t==='string'?`<span class="tabsep" aria-hidden="true"></span><span class="tabgrp">${t.slice(1)}</span>`:`<button data-act="tab" data-id="${t[0]}" ${UI.tab===t[0]?'aria-current="page"':''}>${t[1]}${t[0]==='transacties'&&todo&&UI.editor?`<span class="badge warn">${todo}</span>`:''}${t[0]==='meldingen'&&UI.editor&&meldOpen()?`<span class="badge warn">${meldOpen()}</span>`:''}</button>`).join('')}</nav>
   ${body}
   <footer class="foot"><span>Beheerder${(behLijst||S.house.beheerders||[]).length>1?'s':''}: ${esc(beh||'nog niet ingesteld')} · vragen naar ${esc(S.house.email||'')}</span>
     <span>${BE?(UI.editor?'Je bent beheerder.':''):UI.editor?(UI.forced?'Bewerken staat aan op dit apparaat. <button class="ghost" data-act="editoff">Uitzetten</button>':'Je bent beheerder.'):'<button class="ghost" data-act="editon">Beheerder? Bewerken inschakelen</button>'}</span></footer>
   </div>
-  ${UI.dirty&&UI.editor?`<div class="savebar"><div class="in"><span>${UI.saving?'Opslaan…':BE&&!UI.autoStop?'Wordt automatisch opgeslagen…':'Je hebt wijzigingen die nog niet gedeeld zijn.'}</span><div class="row"><button class="ghost" data-act="discard" ${UI.saving?'disabled':''}>Wijzigingen weggooien</button><button class="primary" data-act="save" ${UI.saving?'disabled':''}>Opslaan en delen</button></div></div></div>`:''}
+  ${UI.dirty&&UI.editor&&!BE?`<div class="savebar"><div class="in"><span>${UI.saving?'Opslaan…':'Je hebt wijzigingen die nog niet gedeeld zijn.'}</span><div class="row"><button class="ghost" data-act="discard" ${UI.saving?'disabled':''}>Wijzigingen weggooien</button><button class="primary" data-act="save" ${UI.saving?'disabled':''}>Opslaan en delen</button></div></div></div>`:''}
   ${UI.toast?`<div class="toast ${UI.toast.err?'err':''}" role="status">${esc(UI.toast.text)}</div>`:''}
   ${UI.mail?vMail():''}
   ${UI.meld?vMeldDialoog():''}
@@ -1849,7 +1887,7 @@ const acts={
     mutate(()=>{if(!m.cfg)m.cfg=JSON.parse(JSON.stringify(Object.fromEntries(CFG_KEYS.map(k=>[k,S[k]]))));
       billCache.clear();const R=herbereken(m);m.basis=Object.fromEntries(Object.entries(R).map(([id,b])=>[id,b.end]));m.bewerkt=true})},
   reopen:()=>{const om=openMonth();ask(`${M(UI.month).label} heropenen? ${om.label} verdwijnt en de transacties daarvan gaan terug naar ${M(UI.month).label}.`,'Heropenen',reopenMonth)},
-  save:()=>{UI.autoStop=false;save()},
+  save:()=>{UI.autoStop=false;UI.opslagFout=null;save(true)},
   discard:()=>ask('Alle wijzigingen sinds de laatste keer opslaan weggooien?','Weggooien',()=>{store.del(DRAFT);location.reload()}),
   'confirm-yes':()=>{const f=UI.confirm.yes;UI.confirm=null;f();render()},
   'confirm-no':()=>{UI.confirm=null;render()},
@@ -2005,8 +2043,13 @@ async function boot(){
     DL={save:async({filename,data})=>{if(BE.download)await BE.download(filename,data);else browserDownload(filename,data);return {status:'saved'}}};
     UI.month=(UI.editor?openMonth():(S.months.filter(m=>m.closed).slice(-1)[0]||openMonth())).id;
     if(store.get('huis.tab'))UI.tab=store.get('huis.tab');
-    const d2=loadDraft();if(UI.editor&&d2){S=d2;UI.dirty=true;toast('Je niet-opgeslagen wijzigingen zijn teruggezet.')}
-    billCache.clear();render();laadMeldingen();return;
+    const d2=loadDraft();if(UI.editor&&d2){S=d2;UI.dirty=true;UI.wijzigingen=1;autoSave(300)}
+    billCache.clear();render();laadMeldingen();
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')nuOpslaan();else verversVanServer()});
+    addEventListener('pagehide',nuOpslaan);
+    addEventListener('beforeunload',ev=>{nuOpslaan();if(UI.editor&&(UI.dirty||UI.saving)){ev.preventDefault();ev.returnValue=''}});
+    setInterval(()=>{if(document.visibilityState==='visible')verversVanServer()},60000);
+    return;
   }
   if(UI.local){UI.editor=true;UI.month=openMonth().id;if(draft){S=draft;UI.dirty=true}render();return}
   const [user,art,dl]=await Promise.all([claude.use('user').catch(()=>null),claude.use('artifact').catch(()=>null),claude.use('downloads').catch(()=>null)]);
