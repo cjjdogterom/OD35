@@ -12,12 +12,12 @@ create table if not exists public.huisrekening (
   updated_by text
 );
 
--- Wie de huisrekening mag zien ('lezer') of ook mag invoeren en opslaan ('beheerder').
+-- Wie de huisrekening mag zien ('lezer'), afkoopmomenten mag invullen ('barman') of alles mag invoeren en opslaan ('beheerder').
 -- Staat los van de site-admins. De hoofdadmin heeft altijd toegang en deelt dit uit
 -- in het tabblad Huisrekening op de site; je hoeft hier dus niemand handmatig toe te voegen.
 create table if not exists public.huisrekening_toegang (
   email text primary key check (email = lower(email)),
-  rol text not null check (rol in ('lezer', 'beheerder'))
+  rol text not null check (rol in ('lezer', 'barman', 'beheerder'))
 );
 
 -- Alleen de server (service role, via /api/huisrekening) leest en schrijft deze tabellen.
@@ -66,5 +66,9 @@ create table if not exists public.huisrekening_meldingen (
   afgehandeld_op timestamptz
 );
 alter table public.huisrekening_meldingen enable row level security;
+
+-- Rol 'barman' toestaan (voor een bestaande tabel van vóór deze rol).
+alter table public.huisrekening_toegang drop constraint if exists huisrekening_toegang_rol_check;
+alter table public.huisrekening_toegang add constraint huisrekening_toegang_rol_check check (rol in ('lezer', 'barman', 'beheerder'));
 
 notify pgrst, 'reload schema';

@@ -547,18 +547,20 @@ function sanctionFor(saldo){let s=null;for(const x of [...S.sanctions].sort((a,b
 function sanctionClass(s){if(!s)return'';const max=Math.max(...S.sanctions.map(x=>x.min));return s.min===max?'crit':'warn'}
 
 /* ---------- mutaties ---------- */
+// Beheerders slaan alles op; een barman alleen de afkoopmomenten (de server neemt van hem niets anders over).
+const magOpslaan=()=>UI.editor||UI.barman;
 function mutate(fn){fn();bewaarMaandCfg();billCache.clear();UI.dirty=true;UI.wijzigingen=(UI.wijzigingen||0)+1;saveDraft();render();autoSave()}
 // Elke wijziging van een beheerder wordt na een korte pauze vanzelf opgeslagen (alleen met de site-koppeling).
 let _autoTimer=null;
 function autoSave(wacht){
-  if(!BE||!UI.editor||UI.autoStop)return;
+  if(!BE||!magOpslaan()||UI.autoStop)return;
   clearTimeout(_autoTimer);
   _autoTimer=setTimeout(()=>{if(UI.saving)return autoSave();if(UI.dirty)save(true)},wacht??1200);
 }
 // Direct opslaan, bijv. als je de pagina verlaat of naar een andere app gaat.
 function nuOpslaan(){
   const ae=document.activeElement;if(ae&&ae.matches&&ae.matches('input,textarea,select'))ae.blur(); // laatste invoer vastleggen
-  if(BE&&UI.editor&&UI.dirty&&!UI.saving){clearTimeout(_autoTimer);save(true)}
+  if(BE&&magOpslaan()&&UI.dirty&&!UI.saving){clearTimeout(_autoTimer);save(true)}
 }
 // Nieuwste stand van de server ophalen als je niets openstaands hebt (bijv. na terugkomen in de app).
 async function verversVanServer(){
@@ -1107,7 +1109,7 @@ async function save(auto){
         UI.conflicten=(UI.conflicten||0)+1;
         if(UI.conflicten<=3)try{const r=await BE.load();S.rev=r.rev;UI.opslagFout=null;return save(auto)}catch(e2){}
         UI.opslagFout='conflict';UI.conflicten=0}
-      else if(e&&e.code==='not_writer'){UI.autoStop=true;UI.editor=false;toast('Je hebt geen beheerdersrechten voor de huisrekening.',true)}
+      else if(e&&e.code==='not_writer'){UI.autoStop=true;UI.editor=false;UI.barman=false;toast('Je hebt geen beheerdersrechten voor de huisrekening.',true)}
       else{UI.opslagFout=(e&&e.message)||String(e);UI.pogingen=(UI.pogingen||0)+1;autoSave(Math.min(30000,3000*UI.pogingen))}
       saveDraft();render();herstelFocus();return}
     UI.opslagFout=null;UI.pogingen=0;UI.conflicten=0;UI.opgeslagenOp=Date.now();
@@ -1190,11 +1192,11 @@ function render(){
   ${UI.beheerder?`<div class="alslid${UI.alsLid?' aan':''}">${UI.alsLid?`<span>Je bekijkt de huisrekening zoals een gewoon lid hem ziet.</span><button class="primary" data-act="alsbeheer">Terug naar beheer</button>`:`<button class="ghost" data-act="alslid">Bekijk als lid</button>`}</div>`:''}
   <header class="top"><div class="brand"><span class="eyebrow">${esc(S.house.name)} · Huisrekening</span><h1>${esc(m.label)}</h1>
     <span class="small muted">Periode ${fmtDate(m.from)} t/m ${fmtDate(m.to)} · ${m===openMonth()?'huidige maand':'eerdere maand, blijft aanpasbaar'}${S.savedAt?` · bijgewerkt ${new Date(S.savedAt).toLocaleDateString('nl-NL',{day:'numeric',month:'long'})}`:''}</span></div>
-    <div class="maandkeuze">${BE&&UI.editor?opslagStatus():''}<label class="small muted" for="kiesmaand">Maand</label><select id="kiesmaand" data-ch="kiesmaand">${S.months.slice().reverse().map(x=>`<option value="${x.id}" ${x.id===m.id?'selected':''}>${esc(x.label)}${x.closed?'':' (lopend)'}</option>`).join('')}</select>${UI.editor&&BE&&BE.mail?`<button data-act="mailopen">✉ Mail overzichten</button>`:''}${UI.editor?`<button class="primary" data-act="nieuwemaand">+ Nieuwe maand</button>`:''}</div></header>
+    <div class="maandkeuze">${BE&&magOpslaan()?opslagStatus():''}<label class="small muted" for="kiesmaand">Maand</label><select id="kiesmaand" data-ch="kiesmaand">${S.months.slice().reverse().map(x=>`<option value="${x.id}" ${x.id===m.id?'selected':''}>${esc(x.label)}${x.closed?'':' (lopend)'}</option>`).join('')}</select>${UI.editor&&BE&&BE.mail?`<button data-act="mailopen">✉ Mail overzichten</button>`:''}${UI.editor?`<button class="primary" data-act="nieuwemaand">+ Nieuwe maand</button>`:''}</div></header>
   <nav class="tabs" aria-label="Onderdelen">${tabs.map(t=>typeof t==='string'?`<span class="tabsep" aria-hidden="true"></span><span class="tabgrp">${t.slice(1)}</span>`:`<button data-act="tab" data-id="${t[0]}" ${UI.tab===t[0]?'aria-current="page"':''}>${t[1]}${t[0]==='transacties'&&todo&&UI.editor?`<span class="badge warn">${todo}</span>`:''}${t[0]==='meldingen'&&UI.editor&&meldOpen()?`<span class="badge warn">${meldOpen()}</span>`:''}</button>`).join('')}</nav>
   ${body}
   <footer class="foot"><span>Beheerder${(behLijst||S.house.beheerders||[]).length>1?'s':''}: ${esc(beh||'nog niet ingesteld')} · vragen naar ${esc(S.house.email||'')}</span>
-    <span>${BE?(UI.editor?'Je bent beheerder.':''):UI.editor?(UI.forced?'Bewerken staat aan op dit apparaat. <button class="ghost" data-act="editoff">Uitzetten</button>':'Je bent beheerder.'):'<button class="ghost" data-act="editon">Beheerder? Bewerken inschakelen</button>'}</span></footer>
+    <span>${BE?(UI.editor?'Je bent beheerder.':UI.barman?'Je bent barman: je kunt de afkoopmomenten in de pilsrekening invullen en aanpassen.':''):UI.editor?(UI.forced?'Bewerken staat aan op dit apparaat. <button class="ghost" data-act="editoff">Uitzetten</button>':'Je bent beheerder.'):'<button class="ghost" data-act="editon">Beheerder? Bewerken inschakelen</button>'}</span></footer>
   </div>
   ${UI.dirty&&UI.editor&&!BE?`<div class="savebar"><div class="in"><span>${UI.saving?'Opslaan…':'Je hebt wijzigingen die nog niet gedeeld zijn.'}</span><div class="row"><button class="ghost" data-act="discard" ${UI.saving?'disabled':''}>Wijzigingen weggooien</button><button class="primary" data-act="save" ${UI.saving?'disabled':''}>Opslaan en delen</button></div></div></div>`:''}
   ${UI.toast?`<div class="toast ${UI.toast.err?'err':''}" role="status">${esc(UI.toast.text)}</div>`:''}
@@ -1211,6 +1213,7 @@ const vast=m=>false;
 // Maand waarin nieuwe posten landen: de bekeken maand als die (weer) bewerkbaar is, anders de lopende.
 const doelMaand=()=>M(UI.month)||openMonth();
 const canEdit=m=>UI.editor&&m&&!vast(m);
+const kanAfkopen=m=>magOpslaan()&&m&&!vast(m);
 const dis=ok=>ok?'':'disabled';
 
 /* --- uitleg van één regel --- */
@@ -1841,10 +1844,10 @@ function pilsImportEdit(m){
   </section>`+afkoopImpEdit(m);
 }
 function vPils(m){
-  const ok=canEdit(m);
+  const ok=canEdit(m),afk=kanAfkopen(m);
   if(!m.pils&&ok&&m.closed)return pilsImportEdit(m);
   if(!m.pils)return `<section class="block"><h2>Pilsrekening ${esc(m.label.toLowerCase())}</h2><p class="note">Deze maand komt uit de oude Excel. Per persoon zie je hoeveel flesjes er geturfd zijn en wat elke post kostte.</p></section>`+
-    lineMatrix(m,l=>l.cat==='Pils',{title:'Per persoon',count:{label:'Pils fles',re:/^(\d+) flesjes/,title:'Flesjes geturfd'},empty:'Geen pilskosten in deze maand.'})+afkoopHistHTML(m);
+    lineMatrix(m,l=>l.cat==='Pils',{title:'Per persoon',count:{label:'Pils fles',re:/^(\d+) flesjes/,title:'Flesjes geturfd'},empty:'Geen pilskosten in deze maand.'})+(afk?afkoopImpEdit(m):afkoopHistHTML(m));
   const pl=m.pils,pc=pilsCalc(pl),ps=PS(),f=pl.fust,k=pl.krat;
   const ppl=housePeople().sort(byName);
   const fixedPrices=m.closed&&pl.prices;
@@ -1888,17 +1891,17 @@ function vPils(m){
   </div></section>
   <section class="block">
     ${vast(m)?lateAfkoopButtons(m):''}
-    <div class="spread"><h2>Afkopen</h2>${ok?`<div class="row"><button data-act="addafkoop" data-f="fust20">+ Fust 20L afkopen</button><button data-act="addafkoop" data-f="fust50">+ Fust 50L</button><button data-act="addafkoop" data-f="krat">+ Kratten afkopen</button></div>`:''}</div>
+    <div class="spread"><h2>Afkopen</h2>${afk?`<div class="row"><button data-act="addafkoop" data-f="fust20">+ Fust 20L afkopen</button><button data-act="addafkoop" data-f="fust50">+ Fust 50L</button><button data-act="addafkoop" data-f="krat">+ Kratten afkopen</button></div>`:''}</div>
     <p class="note">Een afkoop is een fust of krat die buiten de turflijst om gaat, bijvoorbeeld voor een feest. De kosten gaan naar de deelnemers en tellen niet als verlies.</p>
     ${pc.afkoop.length?pc.afkoop.map(a=>`<div class="panel stack">
-      <div class="row">${ok?`<label class="field" for="ak-l-${a.id}" style="flex:1 1 200px">Gelegenheid<input id="ak-l-${a.id}" value="${esc(a.label||'')}" data-ch="afk" data-id="${a.id}" data-f="label" placeholder="Bijv. party Eise"></label>
+      <div class="row">${afk?`<label class="field" for="ak-l-${a.id}" style="flex:1 1 200px">Gelegenheid<input id="ak-l-${a.id}" value="${esc(a.label||'')}" data-ch="afk" data-id="${a.id}" data-f="label" placeholder="Bijv. party Eise"></label>
         <label class="field" for="ak-t-${a.id}">Soort<select id="ak-t-${a.id}" data-ch="afk" data-id="${a.id}" data-f="type"><option value="fust20" ${a.type==='fust20'?'selected':''}>Fust 20L</option><option value="fust50" ${a.type==='fust50'?'selected':''}>Fust 50L</option><option value="krat" ${a.type==='krat'?'selected':''}>Krat</option></select></label>
-        <label class="field" for="ak-c-${a.id}">Aantal${numInput('ak-c-'+a.id,a.count,'afk','count',ok,'5rem',`data-id="${a.id}"`)}</label>
+        <label class="field" for="ak-c-${a.id}">Aantal${numInput('ak-c-'+a.id,a.count,'afk','count',afk,'5rem',`data-id="${a.id}"`)}</label>
         <label class="field" for="ak-d-${a.id}">Datum<input type="date" id="ak-d-${a.id}" value="${a.date||''}" data-ch="afk" data-id="${a.id}" data-f="date"></label>`
         :`<b style="flex:1">${esc(a.label||'Afkoop')}</b><span class="small muted">${fmtDate(a.date)}</span>`}
         <span class="num" style="margin-left:auto">${a.count} × ${eur(afkoopPrice(a.type))} = <b>${eur(a.cost)}</b> ÷ ${a.parts.length} = ${eur(a.per)} p.p.</span></div>
-      <div class="people-grid">${ppl.map(p=>`<label for="ap-${a.id}-${p.id}"><input type="checkbox" id="ap-${a.id}-${p.id}" data-ch="afkpart" data-id="${a.id}" data-pid="${p.id}" ${a.parts.includes(p.id)?'checked':''} ${dis(ok)}><span>${esc(p.name)}</span></label>`).join('')}</div>
-      ${ok?`<div class="row"><button class="ghost" data-act="afkall" data-id="${a.id}">Iedereen van Pils & bar</button><button class="ghost" data-act="afknone" data-id="${a.id}">Niemand</button><button class="ghost danger" data-act="delafkoop" data-id="${a.id}">Afkoop verwijderen</button></div>`:''}
+      <div class="people-grid">${ppl.map(p=>`<label for="ap-${a.id}-${p.id}"><input type="checkbox" id="ap-${a.id}-${p.id}" data-ch="afkpart" data-id="${a.id}" data-pid="${p.id}" ${a.parts.includes(p.id)?'checked':''} ${dis(afk)}><span>${esc(p.name)}</span></label>`).join('')}</div>
+      ${afk?`<div class="row"><button class="ghost" data-act="afkall" data-id="${a.id}">Iedereen van Pils & bar</button><button class="ghost" data-act="afknone" data-id="${a.id}">Niemand</button><button class="ghost danger" data-act="delafkoop" data-id="${a.id}">Afkoop verwijderen</button></div>`:''}
     </div>`).join(''):`<div class="empty">Geen afkopen deze maand.</div>`}
   </section>
   <section class="block"><div class="grid2">
@@ -1940,7 +1943,7 @@ function postInputs(x,pl,pc,ok){
   return `<span class="row" style="gap:6px;flex-wrap:nowrap"><span class="small muted">€</span>${numInput('sp-a-'+x.id,x.amount||'',ok?'spost':'x','amount',ok,'6rem',`data-id="${x.id}" step="0.01" placeholder="0" aria-label="Bedrag"`)}</span>`;
 }
 function lateAfkoopButtons(m){
-  const om=openMonth();if(!UI.editor||!vast(m)||!om||!om.pils)return '';
+  const om=openMonth();if(!magOpslaan()||!vast(m)||!om||!om.pils)return '';
   return `<div class="panel stack"><p class="note">Vergeten afkoopmoment? ${esc(m.label)} is al afgesloten, dus een nieuw afkoopmoment wordt verrekend in de pilsrekening van ${esc(om.label.toLowerCase())}.</p>
     <div class="row"><button data-act="addafkooplate" data-f="fust20">+ Fust 20L afkopen</button><button data-act="addafkooplate" data-f="fust50">+ Fust 50L</button><button data-act="addafkooplate" data-f="krat">+ Kratten afkopen</button></div></div>`;
 }
@@ -2309,14 +2312,15 @@ async function boot(){
     catch(e){UI.loadMsg='De huisrekening kon niet geladen worden ('+((e&&e.message)||e)+'). Ben je ingelogd met een e-mailadres dat toegang heeft?';S=null;render();return}
     try{UI.editor=!!(await BE.canEdit())}catch(e){UI.editor=false}
     UI.beheerder=UI.editor;
+    try{UI.barman=!UI.editor&&!!(BE.isBarman&&await BE.isBarman())}catch(e){UI.barman=false}
     DL={save:async({filename,data})=>{if(BE.download)await BE.download(filename,data);else browserDownload(filename,data);return {status:'saved'}}};
     UI.month=(UI.editor?openMonth():(S.months.filter(m=>m.closed).slice(-1)[0]||openMonth())).id;
     if(store.get('huis.tab'))UI.tab=store.get('huis.tab');
-    const d2=loadDraft();if(UI.editor&&d2){S=d2;UI.dirty=true;UI.wijzigingen=1;autoSave(300)}
+    const d2=loadDraft();if(magOpslaan()&&d2){S=d2;UI.dirty=true;UI.wijzigingen=1;autoSave(300)}
     billCache.clear();render();laadMeldingen();
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')nuOpslaan();else verversVanServer()});
     addEventListener('pagehide',nuOpslaan);
-    addEventListener('beforeunload',ev=>{nuOpslaan();if(UI.editor&&(UI.dirty||UI.saving)){ev.preventDefault();ev.returnValue=''}});
+    addEventListener('beforeunload',ev=>{nuOpslaan();if(magOpslaan()&&(UI.dirty||UI.saving)){ev.preventDefault();ev.returnValue=''}});
     setInterval(()=>{if(document.visibilityState==='visible')verversVanServer()},60000);
     return;
   }

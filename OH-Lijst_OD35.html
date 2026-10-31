@@ -3958,16 +3958,17 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
       <summary>Wie heeft toegang? <span class="hr-toegang-sub">(alleen jij ziet dit)</span></summary>
       <h4 class="hr-kop">1. Jaargangen <span class="hr-toegang-sub">— iedereen uit een aangevinkt jaar kan meekijken</span></h4>
       <div id="hr-jaren" class="hr-jaren"></div>
-      <h4 class="hr-kop">2. Beheerders en losse lezers</h4>
+      <h4 class="hr-kop">2. Beheerders, barmannen en losse lezers</h4>
       <p class="hr-uitleg">Een <strong>beheerder</strong> kan de huisrekening invoeren en opslaan. Dat geldt alleen voor
-      de huisrekening, niet voor de rest van de site. Een losse <strong>lezer</strong> is iemand buiten de aangevinkte jaargangen.</p>
+      de huisrekening, niet voor de rest van de site. Een <strong>barman</strong> ziet de huisrekening en kan, samen met de beheerders,
+      als enige de afkoopmomenten van de pilsrekening invullen en aanpassen. Een losse <strong>lezer</strong> is iemand buiten de aangevinkte jaargangen.</p>
       <ul id="hr-toegang-lijst" class="hr-lijst"></ul>
       <form id="hr-toegang-form" class="hr-form">
         <div class="hr-zoek">
           <input type="text" id="hr-toegang-email" placeholder="Typ een naam…" required autocomplete="off">
           <ul id="hr-suggesties" class="hr-suggesties" hidden></ul>
         </div>
-        <select id="hr-toegang-rol"><option value="beheerder">Beheerder</option><option value="lezer">Lezer</option></select>
+        <select id="hr-toegang-rol"><option value="beheerder">Beheerder</option><option value="barman">Barman</option><option value="lezer">Lezer</option></select>
         <button type="submit">Toevoegen</button>
       </form>
       <p id="hr-toegang-melding" class="hr-melding"></p>
@@ -7425,7 +7426,7 @@ function haWisselMaand(stap) {
 
 // ==================== HUISREKENING ====================
 // De app zelf staat in /huisrekening/huisrekening.html (eigen CSS en scripts) en opent als eigen pagina.
-// Toegang: hoofdadmin altijd; anderen via tabel huisrekening_toegang (lezer/beheerder), los van site-admins.
+// Toegang: hoofdadmin altijd; anderen via tabel huisrekening_toegang (lezer/barman/beheerder), los van site-admins.
 var HR_STATUS = null; // var: applyTabZichtbaarheid kan al eerder draaien
 async function hrFetch(pad, opties) {
   const { data: { session } } = await db.auth.getSession();
@@ -7480,9 +7481,9 @@ async function laadHrToegang() {
     ul.innerHTML = vast + (lijst.length ? lijst.map(r => {
       const p = personByEmail(r.email);
       return `<li><span>${escapeHtml(p ? hrNaam(p) : r.email)}</span>
-      <select data-hr-rol="${escapeHtml(r.email)}"><option value="lezer"${r.rol === 'lezer' ? ' selected' : ''}>Lezer</option><option value="beheerder"${r.rol === 'beheerder' ? ' selected' : ''}>Beheerder</option></select>
+      <select data-hr-rol="${escapeHtml(r.email)}"><option value="lezer"${r.rol === 'lezer' ? ' selected' : ''}>Lezer</option><option value="barman"${r.rol === 'barman' ? ' selected' : ''}>Barman</option><option value="beheerder"${r.rol === 'beheerder' ? ' selected' : ''}>Beheerder</option></select>
       <button type="button" data-hr-weg="${escapeHtml(r.email)}">Verwijderen</button></li>`;
-    }).join('') : '<li><span>Verder nog niemand. Kies hieronder wie beheerder of lezer wordt.</span></li>');
+    }).join('') : '<li><span>Verder nog niemand. Kies hieronder wie beheerder, barman of lezer wordt.</span></li>');
   } catch (e) { melding.textContent = melding.textContent || e.message; }
 }
 async function zetHrToegang(email, rol) {

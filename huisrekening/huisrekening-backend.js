@@ -6,6 +6,7 @@
   const API = '/api/huisrekening';
   const SESSIE_SLEUTEL = 'sb-mxbtmbcgycjqapjzulrp-auth-token';
   let canEdit = false;
+  let barman = false;
 
   function token() {
     try {
@@ -34,6 +35,7 @@
       if (!res.ok) throw new Error(await fout(res));
       const j = await res.json();
       canEdit = !!j.canEdit;
+      barman = !!j.barman;
       window.HUIS_BEHEERDERS = j.beheerders || null;
       return { data: j.data, rev: j.rev };
     },
@@ -41,6 +43,11 @@
     // → true als de ingelogde gebruiker beheerder is
     async canEdit() {
       return canEdit;
+    },
+
+    // → true als de ingelogde gebruiker barman is (mag alleen afkoopmomenten invullen en aanpassen)
+    async isBarman() {
+      return barman;
     },
 
     // Slaat de hele huisrekening op. rev = de versie waarop de beheerder verder werkte.
