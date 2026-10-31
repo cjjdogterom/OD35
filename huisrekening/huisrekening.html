@@ -885,19 +885,24 @@ function vTransacties(m){
   const nt=UI.newTx;
   return `<section class="block">
     ${closedNote}
-    <div class="spread"><h2>Transacties</h2>${ok?`<div class="row"><label class="btn primary" for="csv-file">ING-afschrift importeren (PDF of CSV)<input type="file" id="csv-file" accept=".pdf,.csv,application/pdf,text/csv" data-ch="csvfile" hidden></label><button data-act="newtx">Voorgeschoten of contante uitgave toevoegen</button></div>`:''}</div>
+    <div class="spread"><h2>Transacties</h2>${ok?`<div class="row"><label class="btn primary" for="csv-file">ING-afschrift importeren (PDF of CSV)<input type="file" id="csv-file" accept=".pdf,.csv,application/pdf,text/csv" data-ch="csvfile" hidden></label><button data-act="newtx">+ Transactie toevoegen</button></div>`:''}</div>
     ${ok?`<details class="help"><summary>Hoe download ik het afschrift?</summary><p class="note" style="margin-top:6px">Download in Mijn ING of de ING-app het afschrift van de huisrekening als <b>PDF</b> (of de af- en bijschrijvingen als <b>CSV</b>) en upload het hier. De app haalt er alle transacties uit; die koppel je daarna aan een persoon, huislast, extra correctie of de pilsrekening. Dubbele regels worden overgeslagen, dus een overlappende periode is geen probleem. Betalingen van huisgenoten worden herkend aan hun IBAN zodra je ze één keer hebt toegewezen; vaste lasten aan de bankregels in Instellingen.</p></details>`:''}
-    ${nt&&ok?`<div class="panel stack"><h3>Voorgeschoten of contante uitgave</h3><p class="note">Heeft iemand iets voor het huis betaald zonder een Tikkie te sturen? Vul in wie het voorschoot. Hij krijgt het hele bedrag terug op zijn saldo en betaalt daarna zijn eigen deel mee, net als de anderen. Voorbeeld: Freek betaalt €90 boodschappen voor 18 bewoners, dan gaat zijn saldo €90 omlaag en komt er €5 (zijn deel) bij, dus netto −€85.</p>
+    ${nt&&ok?`<div class="panel stack"><h3>Transactie toevoegen</h3>
+      <div class="seg" role="group" aria-label="Soort"><button data-act="ntrichting" data-id="af" aria-pressed="${nt.richting!=='bij'}">Uitgave (af)</button><button data-act="ntrichting" data-id="bij" aria-pressed="${nt.richting==='bij'}">Ontvangen (bij)</button></div>
+      ${nt.richting==='bij'?'<p class="note">Bijvoorbeeld een contante betaling van een huisgenoot of geld dat in de huiskas is gestort.</p>':`<p class="note">Een uitgave die niet (of nog niet) op het afschrift staat. Heeft iemand iets voor het huis betaald zonder een Tikkie te sturen? Vul in wie het voorschoot. Hij krijgt het hele bedrag terug op zijn saldo en betaalt daarna zijn eigen deel mee, net als de anderen. Voorbeeld: Freek betaalt €90 boodschappen voor 18 bewoners, dan gaat zijn saldo €90 omlaag en komt er €5 (zijn deel) bij, dus netto −€85.</p>`}
       <div class="row"><label class="field" for="nt-date">Datum<input type="date" id="nt-date" value="${nt.date}" data-ch="nt" data-f="date"></label>
       <label class="field" for="nt-label" style="flex:1 1 200px">Omschrijving<input id="nt-label" value="${esc(nt.label)}" data-ch="nt" data-f="label" placeholder="Bijv. Cassie schoonmaak"></label>
       <label class="field" for="nt-amount">Bedrag (€)<input type="number" step="0.01" id="nt-amount" value="${nt.amount??''}" data-ch="nt" data-f="amount" style="width:8rem"></label>
       <label class="field" for="nt-cat">Hoort bij<select id="nt-cat" data-ch="nt" data-f="target">
+        ${nt.richting==='bij'?`<optgroup label="Betaling van huisgenoot">${[...S.people].sort(byName).map(p=>`<option value="pay:${p.id}" ${nt.target==='pay:'+p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</optgroup>
+        <optgroup label="Overig"><option value="kas" ${nt.target==='kas'?'selected':''}>Alleen huiskas, niet verdelen</option><option value="todo" ${nt.target==='todo'?'selected':''}>Later koppelen (te verwerken)</option></optgroup>`:`
         <optgroup label="Huislasten">${(S.huislasten||[]).filter(h=>h.type!=='pp').map(h=>`<option value="hl:${h.id}" ${nt.target==='hl:'+h.id?'selected':''}>${esc(h.name)}</option>`).join('')}</optgroup>
         <optgroup label="Overige kosten verdelen (kostenpost)">${S.categories.map(c=>`<option value="cost:${c.id}" ${nt.target==='cost:'+c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</optgroup>
-        <optgroup label="Extra correctie">${S.events.filter(e=>!e.billMonth||!M(e.billMonth)||!M(e.billMonth).closed).map(e=>`<option value="event:${e.id}" ${nt.target==='event:'+e.id?'selected':''}>${esc(e.name)}</option>`).join('')}</optgroup>
+        <optgroup label="Extra correctie">${S.events.filter(e=>!e.billMonth||!M(e.billMonth)||!vast(M(e.billMonth))).map(e=>`<option value="event:${e.id}" ${nt.target==='event:'+e.id?'selected':''}>${esc(e.name)}</option>`).join('')}</optgroup>
         ${om.pils?`<optgroup label="Pilsrekening (gedeelde kosten)">${(om.pils.shared||[]).map(x=>`<option value="pils:${x.id}" ${nt.target==='pils:'+x.id?'selected':''}>${esc(x.label)}</option>`).join('')}</optgroup>`:''}
+        <optgroup label="Overig"><option value="voorschot" ${nt.target==='voorschot'?'selected':''}>Voorschot / inkoop door het huis</option><option value="kas" ${nt.target==='kas'?'selected':''}>Alleen huiskas, niet verdelen</option><option value="todo" ${nt.target==='todo'?'selected':''}>Later koppelen (te verwerken)</option></optgroup>`}
       </select></label>
-      <label class="field" for="nt-paid">Voorgeschoten door<select id="nt-paid" data-ch="nt" data-f="paidBy"><option value="">Niemand (contant uit de kas)</option>${[...S.people].sort(byName).map(p=>`<option value="${p.id}" ${nt.paidBy===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label></div>
+      ${nt.richting==='bij'?'':`<label class="field" for="nt-paid">Voorgeschoten door<select id="nt-paid" data-ch="nt" data-f="paidBy"><option value="">Niemand (contant uit de kas)</option>${[...S.people].sort(byName).map(p=>`<option value="${p.id}" ${nt.paidBy===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>`}</div>
       <div class="row"><button class="primary" data-act="addtx">Toevoegen</button><button class="ghost" data-act="canceltx">Annuleren</button></div></div>`:''}
     <div class="seg">${[['todo','Te verwerken'],['all','Alles'],['payment','Betalingen'],['cost','Kosten'],['kas','Voorschot, kas & genegeerd']].map(([id,l])=>`<button data-act="txfilter" data-id="${id}" aria-pressed="${f===id}">${l} (${counts[id]})</button>`).join('')}</div>
     ${tx.length?`<div class="tbl">${tx.map(t=>{const open=UI.txOpen===t.id;return `<div class="tx ${t.kind==='todo'?'todo':''}">
@@ -1338,10 +1343,14 @@ const acts={
   txfilter:el=>{UI.txFilter=el.dataset.id;render()},
   txopen:el=>{UI.txOpen=UI.txOpen===el.dataset.id?null:el.dataset.id;render()},
   newtx:()=>{UI.newTx={date:new Date().toISOString().slice(0,10),label:'',amount:null,target:(S.huislasten||[]).some(h=>h.id==='hl-makro')?'hl:hl-makro':'cost:huishouden',paidBy:''};render()},
+  ntrichting:el=>{const bij=el.dataset.id==='bij';UI.newTx.richting=bij?'bij':'af';UI.newTx.target=bij?'kas':'todo';if(bij)UI.newTx.paidBy='';render()},
   canceltx:()=>{UI.newTx=false;render()},
   addtx:()=>{const n=UI.newTx;if(!n.label||!n.amount)return toast('Vul een omschrijving en een bedrag in.',true);
-    const [k,id]=(n.target||'cost:huishouden').split(':');
-    mutate(()=>{S.transactions.push({id:uid('m'),source:'manual',date:n.date,name:n.label,label:n.label,desc:'',amount:-Math.abs(n.amount),kind:k==='cost'||k==='hl'?'cost':k,categoryId:k==='cost'?id:null,huislastId:k==='hl'?id:null,eventId:k==='event'?id:null,pilsPost:k==='pils'?id:null,paidBy:n.paidBy||null,monthId:doelMaand().id})});
+    const [k,id]=(n.target||'cost:huishouden').split(':'),bij=n.richting==='bij',verdeel=['cost','hl','event','pils'].includes(k);
+    mutate(()=>{S.transactions.push({id:uid('m'),source:'manual',date:n.date,name:n.label,label:n.label,desc:'',amount:bij?Math.abs(n.amount):-Math.abs(n.amount),
+      kind:k==='pay'?'payment':k==='cost'||k==='hl'?'cost':k,personId:k==='pay'?id:null,categoryId:k==='cost'?id:null,huislastId:k==='hl'?id:null,eventId:k==='event'?id:null,pilsPost:k==='pils'?id:null,
+      vsWhat:k==='voorschot'?n.label:undefined,paidBy:!bij&&verdeel?(n.paidBy||null):null,monthId:doelMaand().id})});
+    if(!n.paidBy)toast(`Transactie “${n.label}” toegevoegd aan ${doelMaand().label.toLowerCase()}.`);
     if(n.paidBy)toast(`${P(n.paidBy).name} krijgt ${eur(Math.abs(n.amount))} terug op zijn saldo en betaalt zijn eigen deel mee.`);UI.newTx=false;UI.txFilter='all';render()},
   deltx:el=>ask('Deze uitgave verwijderen?','Verwijderen',()=>mutate(()=>{S.transactions=S.transactions.filter(t=>t.id!==el.dataset.id)})),
   txremember:el=>{const t=T(el.dataset.id);if(!t||!el.checked)return;
