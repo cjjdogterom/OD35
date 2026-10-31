@@ -852,6 +852,100 @@ function vMeldingen(m){
   </section>`;
 }
 
+/* ---------- oude maand uit Excel ---------- */
+// Leest het oude Excel-bestand (bladen Huischgenoten, Huislasten, Servicekosten, Extra Correctie,
+// Maandoverzicht Pilsrekening, Betalingen en OHs & Onderhuur) en maakt er een afgesloten maand van.
+function xlsMaand(wb){
+  const X=window.XLSX,blad=n=>{const k=wb.SheetNames.find(x=>normNaam(x)===normNaam(n));return k?X.utils.sheet_to_json(wb.Sheets[k],{header:1,defval:null,raw:true}):null};
+  const num=v=>typeof v==='number'?v:(typeof v==='string'&&/^-?[\d.,]+$/.test(v.trim())?+v.replace(/\./g,'').replace(',','.'):0);
+  const hg=blad('Huischgenoten');if(!hg)throw new Error('blad "Huischgenoten" ontbreekt');
+  // Periode uit Betalingen ("24-08-2026 t/m 25-09-2026"); de maand is die van de einddatum.
+  const bt=blad('Betalingen')||[];let from=null,to=null;
+  for(const r of bt)for(const c of r||[]){const mm=String(c||'').match(/(\d{1,2})-(\d{1,2})-(\d{4})\s*t\/m\s*(\d{1,2})-(\d{1,2})-(\d{4})/);
+    if(mm&&!from){const d=(a,b,c)=>`${c}-${String(b).padStart(2,'0')}-${String(a).padStart(2,'0')}`;from=d(mm[1],mm[2],mm[3]);to=d(mm[4],mm[5],mm[6])}}
+  if(!to)throw new Error('de periode (bijv. "24-08-2026 t/m 25-09-2026") staat niet op het blad Betalingen');
+  const [y,mo]=to.split('-').map(Number),id=`${y}-${String(mo).padStart(2,'0')}`,label=MONTHS[mo-1][0].toUpperCase()+MONTHS[mo-1].slice(1)+' '+y;
+  const hRij=hg.findIndex(r=>(r||[]).some(c=>normNaam(c)==='saldo oud'));if(hRij<0)throw new Error('kolom "Saldo Oud" niet gevonden op Huischgenoten');
+  const H=hg[hRij].map(normNaam),kol=n=>H.indexOf(n);
+  const k={oud:kol('saldo oud'),bank:kol('bank'),kas:kol('kas'),pils:kol('pilsrekening'),hl:kol('huislasten'),sc:kol('servicekosten correctie'),ec:kol('extra correctie'),rek:kol('rekening')};
+  const naamKol=k.oud-1,personen=[];
+  for(const r of hg.slice(hRij+1)){const n=r&&r[naamKol];if(!n||/^totaal/i.test(String(n)))break;personen.push({naam:String(n).trim(),r})}
+  // Detailregels per persoon uit een blad met kopregel en personen eronder.
+  const detail=(rijen,kopTest,overslaan)=>{const out={};if(!rijen)return out;
+    const ki=rijen.findIndex(kopTest);if(ki<0)return out;const kop=rijen[ki];
+    for(const r of rijen.slice(ki+1)){const nk=r&&r.findIndex(c=>typeof c==='string'&&personen.some(p=>normNaam(p.naam)===normNaam(c)));if(nk==null||nk<0)continue;
+      const nm=normNaam(r[nk]),cel=out[nm]=out[nm]||[];
+      kop.forEach((h,i)=>{if(i<=nk||h==null||overslaan(normNaam(h)))return;const v=num(r[i]);if(Math.abs(v)>0.00001)cel.push({label:String(h).trim(),i,amount:v})})}
+    return {out,kop,ki,rijen}};
+  const kolTot=(d,i)=>{let t=0,n=0;for(const nm in d.out)for(const c of d.out[nm])if(c.i===i){t+=c.amount;n++}return {t,n}};
+  const hl=detail(blad('Huislasten'),r=>(r||[]).some(c=>normNaam(c)==='rekening')&&(r||[]).some(c=>normNaam(c)==='totaal vast'),h=>['aantal maanden','totaal vast','totaal variabel','rekening'].includes(h));
+  const ecB=blad('Extra Correctie'),ec=detail(ecB,r=>(r||[]).some(c=>normNaam(c)==='totaal')&&(r||[]).some(c=>normNaam(c)==='uitgaven'),h=>h==='totaal'||h==='uitgaven');
+  const pi=detail(blad('Maandoverzicht Pilsrekening'),r=>(r||[]).some(c=>normNaam(c)==='totale kosten'),h=>h==='totale kosten');
+  let flesPrijs=0;for(const r of blad('Maandoverzicht Pilsrekening')||[])if(r&&normNaam(r[1])==='pils fles'&&typeof r[2]==='number')flesPrijs=r[2];
+  const scB=blad('Servicekosten')||[],scKop=(scB[0]||[]).map(normNaam),sk=n=>scKop.indexOf(n);
+  const scRij=nm=>scB.find(r=>r&&normNaam(r[sk('wie ingeschreven')])===nm);
+  const regels=[];
+  for(const {naam,r} of personen){const nm=normNaam(naam),lines=[];
+    const posten=(d,cat,how)=>{for(const c of (d.out&&d.out[nm])||[])lines.push({cat,label:c.label,amount:c.amount,how:how(c)})};
+    posten(hl,'Huislasten',c=>{if(normNaam(c.label)==='sparen')return 'vast bedrag per persoon';const {t,n}=kolTot(hl,c.i);return `${eur(t)} ÷ ${n} personen`});
+    posten(pi,'Pils',c=>normNaam(c.label)==='pils fles'&&flesPrijs?`${Math.round(c.amount/flesPrijs)} flesjes × ${eur3(flesPrijs)}`:'uit de oude pilsrekening');
+    posten(ec,'Extra correctie',c=>{const {t,n}=kolTot(ec,c.i);return `${eur(t)} ÷ ${n} personen`});
+    const scBedrag=num(r[k.sc]);
+    if(Math.abs(scBedrag)>0.00001){const x=scRij(nm);
+      lines.push({cat:'Servicekosten',label:'Servicekosten-correctie',amount:scBedrag,how:x?`gemiddeld ${eur(num(x[sk('gemiddelde servicekosten')]))} − kamer ${eur(num(x[sk('servicekosten')]))} − correctie kale huur ${eur(num(x[sk('correctie kale huur')]))} + Money Underdogs ${eur(num(x[sk('money underdogs')]))}`:'uit de oude Excel'})}
+    // Wat de detailbladen niet verklaren (afronding) komt als losse regel, zodat het saldo exact klopt.
+    for(const [cat,kk] of [['Huislasten','hl'],['Pils','pils'],['Extra correctie','ec']]){const totaal=num(r[k[kk]]),som=sum(lines.filter(l=>l.cat===cat).map(l=>l.amount));
+      if(Math.abs(totaal-som)>0.005)lines.push({cat,label:som?'Afronding / overig':cat,amount:totaal-som,how:'volgens het totaal in de oude Excel'})}
+    const start=num(r[k.oud]),bank=num(r[k.bank]),kas=k.kas>=0?num(r[k.kas]):0,paid=bank+kas;
+    const end=k.rek>=0&&typeof r[k.rek]==='number'?r[k.rek]:start-paid+sum(lines.map(l=>l.amount));
+    const payments=[];if(bank)payments.push({date:to,amount:bank,note:'Betalingen bank (oude Excel)'});if(kas)payments.push({date:to,amount:kas,note:'Betalingen kas (oude Excel)'});
+    const charges=sum(lines.map(l=>l.amount));
+    if(Math.abs(start-paid+charges-end)>0.005)lines.push({cat:'Overig',label:'Verschil volgens de oude Excel',amount:end-(start-paid+charges),how:'volgens het eindsaldo in de oude Excel'});
+    regels.push({naam,huis:true,b:{start:r2(start),paid:r2(paid),end:r2(end),lines,payments}})}
+  // Oud-huisgenoten en onderhuurders: saldo oud, afbetaald, rekening en nieuw saldo per kolom.
+  const oh=blad('OHs & Onderhuur');
+  if(oh){const nr=oh[1]||[],rij=t=>oh.find(r=>r&&r.some(c=>normNaam(c)===t));const ro=rij('saldo oud'),ra=rij('afbetaald'),rr=rij('rekening'),rn=rij('nieuw saldo');
+    nr.forEach((n,i)=>{if(i<2||!n||typeof n!=='string'||!ro||ro[i]==null)return;
+      const start=num(ro[i]),paid=ra?num(ra[i]):0,rek=rr?num(rr[i]):0,end=rn&&rn[i]!=null?num(rn[i]):start-paid+rek;
+      const lines=Math.abs(rek)>0.00001?[{cat:'Overig',label:'Rekening',amount:rek,how:'uit de oude Excel'}]:[];
+      if(Math.abs(start-paid+rek-end)>0.005)lines.push({cat:'Overig',label:'Verschil volgens de oude Excel',amount:end-(start-paid+rek),how:'volgens het nieuwe saldo in de oude Excel'});
+      regels.push({naam:n.trim(),huis:false,b:{start:r2(start),paid:r2(paid),end:r2(end),lines,payments:paid?[{date:to,amount:paid,note:'Afbetaald (oude Excel)'}]:[]}})})}
+  return {id,label,from,to,regels};
+}
+// Koppelt een naam uit de Excel aan een persoon in de app (huisgenoten bij voorkeur, oud-huisgenoten voor het OH-blad).
+function xlsPersoon(naam,huis){
+  const nm=normNaam(naam),kaal=p=>normNaam(p.name.replace(/\(.*?\)/g,''));
+  const pool=huis?[...S.people.filter(p=>HOUSE.includes(p.status)),...S.people.filter(p=>!HOUSE.includes(p.status))]:[...S.people.filter(p=>!HOUSE.includes(p.status)),...S.people.filter(p=>HOUSE.includes(p.status))];
+  return pool.find(p=>normNaam(p.name)===nm||kaal(p)===nm)||null;
+}
+async function xlsImporteren(files){
+  const X=window.XLSX;if(!X)return toast('De Excel-lezer is niet geladen. Herlaad de pagina en probeer het opnieuw.',true);
+  const maanden=[];
+  for(const f of files){try{const wb=X.read(await f.arrayBuffer(),{type:'array'});maanden.push(xlsMaand(wb))}catch(e){return toast(`${f.name} kon niet gelezen worden: ${e.message||e}`,true)}}
+  maanden.sort((a,b)=>a.id.localeCompare(b.id));
+  const dubbel=maanden.filter(x=>S.months.some(m=>m.id===x.id&&!m.closed));
+  if(dubbel.length)return toast(`${dubbel.map(x=>x.label).join(', ')} is de lopende maand en kan niet overschreven worden.`,true);
+  const bestaat=maanden.filter(x=>S.months.some(m=>m.id===x.id));
+  const nieuwePers=new Set();for(const x of maanden)for(const g of x.regels)if(!xlsPersoon(g.naam,g.huis))nieuwePers.add(g.naam);
+  // Sluit het eindsaldo aan op het beginsaldo van de maand erna (al in de app of ook geïmporteerd)?
+  const tekst=maanden.map(x=>{const na=[...S.months.filter(m=>m.id>x.id&&m.snapshot).map(m=>({id:m.id,label:m.label,snap:m.snapshot})),...maanden.filter(y=>y.id>x.id).map(y=>({id:y.id,label:y.label,regels:y.regels}))].sort((a,b)=>a.id.localeCompare(b.id))[0];
+    let aansl='';if(na){let n=0,t=0;for(const g of x.regels){const p=xlsPersoon(g.naam,g.huis);if(!p)continue;
+      const st=na.snap?(na.snap[p.id]||{}).start:((na.regels.find(h=>xlsPersoon(h.naam,h.huis)===p)||{}).b||{}).start;if(st==null)continue;t++;if(Math.abs(st-g.b.end)>0.01)n++}
+      aansl=n?` Let op: bij ${n} van de ${t} personen sluit het eindsaldo niet aan op het beginsaldo van ${na.label.toLowerCase()}.`:` Sluit aan op ${na.label.toLowerCase()}.`}
+    return `${x.label} (${fmtDate(x.from)} t/m ${fmtDate(x.to)}): ${x.regels.length} personen, samen ${eur(sum(x.regels.map(g=>g.b.end)))} open.${aansl}`}).join(' ');
+  ask(`${tekst}${bestaat.length?` ${bestaat.map(x=>x.label).join(', ')} staat al in de app en wordt vervangen.`:''}${nieuwePers.size?` Nieuwe personen (als oud-huisgenoot): ${[...nieuwePers].join(', ')}.`:''} Importeren?`,'Importeren',()=>mutate(()=>{
+    for(const x of maanden){const snap={};
+      for(const g of x.regels){let p=xlsPersoon(g.naam,g.huis);
+        if(!p){p={id:uid('p'),name:g.naam,status:'oud'};S.people.push(p)}
+        snap[p.id]={...g.b,lines:g.b.lines.map(l=>({cat:l.cat,label:l.label,amount:Math.round(l.amount*10000)/10000,how:l.how||'',ref:null}))}}
+      const m={id:x.id,label:x.label,from:x.from,to:x.to,closed:true,snapshot:snap,note:'Overgenomen uit de oude Excel'};
+      const i=S.months.findIndex(y=>y.id===x.id);if(i>=0)S.months[i]=m;else{S.months.push(m);S.months.sort((a,b)=>a.id.localeCompare(b.id))}
+    }
+    UI.month=maanden[maanden.length-1].id;
+    toast(`${maanden.map(x=>x.label).join(' en ')} geïmporteerd.`);
+  }));
+}
+
 /* ---------- maand afsluiten ---------- */
 function addMonthId(id,n){let [y,m]=id.split('-').map(Number);m+=n;while(m>12){m-=12;y++}return `${y}-${String(m).padStart(2,'0')}`}
 function addDays(d,n){const x=new Date(d+'T12:00:00');x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)}
@@ -1673,6 +1767,10 @@ function vInstellingen(){
       <label class="field" for="h-mail">E-mail penningmeester<input id="h-mail" value="${esc(S.house.email)}" data-ch="house" data-f="email"></label></div></div>
   </div></section>
 
+  <section class="block"><h2>Oude maand importeren</h2>
+    <p class="note">Zet een maand uit het oude Excel-bestand van de huisrekening als afgesloten maand in de app, met per persoon alle posten, betalingen en saldo's. Je kunt meerdere bestanden tegelijk kiezen. Je krijgt eerst te zien wat er geïmporteerd wordt en of de saldo's aansluiten op de maand erna.</p>
+    <div class="row"><label class="btn" for="xlsx-maand">Excel-maand importeren<input type="file" id="xlsx-maand" accept=".xlsx,.xls" multiple data-ch="xlsxmaand" hidden></label></div></section>
+
   <section class="block"><h2>Downloaden en back-up</h2>
     <p class="note"><b>App downloaden</b> geeft één HTML-bestand met de app en alle huidige gegevens, inclusief niet-opgeslagen wijzigingen. Stuur dat naar iemand die de app verder wil aanpassen: hij uploadt het in Claude en vraagt om wijzigingen. Een <b>back-up</b> bevat alleen de gegevens en kun je hier terugzetten.</p>
     <div class="row"><button class="primary" data-act="downloadhtml">App downloaden (HTML)</button><button data-act="backup">Back-up downloaden</button><label class="btn" for="restore-file">Back-up terugzetten<input type="file" id="restore-file" accept=".json,application/json" data-ch="restore" hidden></label></div></section>`;
@@ -1816,6 +1914,7 @@ const changes={
   mfrom:el=>mutate(()=>{M(UI.month).from=el.value}),
   mto:el=>mutate(()=>{M(UI.month).to=el.value}),
   msvc:el=>mutate(()=>{M(UI.month).includeService=el.checked}),
+  xlsxmaand:el=>{const f=[...(el.files||[])];el.value='';if(f.length)xlsImporteren(f)},
   csvfile:el=>{const f=el.files&&el.files[0];if(!f)return;
     if(/\.pdf$/i.test(f.name)||f.type==='application/pdf'){const rb=new FileReader();rb.onload=()=>importPDF(rb.result);rb.readAsArrayBuffer(f);return}
     const rd=new FileReader();rd.onload=()=>{const txt=rd.result;if(txt.indexOf(String.fromCharCode(65533))>=0){const r2=new FileReader();r2.onload=()=>importING(r2.result);r2.readAsText(f,'windows-1252')}else importING(txt)};rd.readAsText(f,'utf-8')},
