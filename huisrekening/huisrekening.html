@@ -205,7 +205,7 @@ const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},se
 const BE=window.HUIS_BACKEND||null;
 let S=null;{const raw=JSON.parse($('#huis-data').textContent);S=raw?migrate(raw):null}
 const openMonth=()=>S.months.find(m=>!m.closed);
-const UI={tab:'overzicht',month:null,me:store.get('huis.me')||'',group:'huis',open:null,lineOpen:null,grpOpen:new Set(),grpAll:false,txFilter:'todo',txOpen:null,eventId:null,
+const UI={tab:'overzicht',month:null,me:store.get('huis.me')||'',sortSaldo:store.get('huis.sort')||'anc',group:'huis',open:null,lineOpen:null,grpOpen:new Set(),grpAll:false,txFilter:'todo',txOpen:null,eventId:null,
   editor:false,local:!(window.claude&&window.claude.use),dirty:false,saving:false,toast:null,confirm:null,matrixAll:false,newTx:false};
 UI.month=S?(S.months.filter(m=>m.closed).slice(-1)[0]||openMonth()).id:null;
 if(store.get('huis.tab'))UI.tab=store.get('huis.tab');
@@ -254,7 +254,7 @@ function migrate(d){
 
 /* ---------- concept (per viewer) ---------- */
 const DRAFT='huis.draft';
-function saveDraft(){store.set(DRAFT,JSON.stringify({baseRev:S.rev,state:S}))}
+function saveDraft(){metGlobaal(()=>store.set(DRAFT,JSON.stringify({baseRev:S.rev,state:S})))}
 function loadDraft(){try{const d=JSON.parse(store.get(DRAFT)||'null');if(d&&d.baseRev===S.rev&&d.state)return migrate(d.state)}catch(e){}store.del(DRAFT);return null}
 
 /* ---------- lookups ---------- */
@@ -371,6 +371,30 @@ function herbereken(m){
 }
 // Correctie = wat er door jouw wijzigingen verandert sinds je de maand openzette (m.basis).
 // Zo tellen verschillen door afronding of geïmporteerde maanden niet mee.
+// Afgesloten maand bekijken als beheerder = direct bewerkbaar. Huislasten, kamers enz. van die maand
+// (m.cfg) worden dan tijdelijk de actieve instellingen; bij opslaan gaan de algemene weer mee.
+function openzetten(m){
+  if(!m.cfg)m.cfg=JSON.parse(JSON.stringify(Object.fromEntries(CFG_KEYS.map(k=>[k,UI.globCfg?UI.globCfg[k]:S[k]]))));
+  if(m.bewerkt&&m.basis)return;
+  billCache.clear();const R=herbereken(m);
+  m.basis=Object.fromEntries(Object.entries(R).map(([id,b])=>[id,b.end]));
+  m.basisLines=Object.fromEntries(Object.entries(R).map(([id,b])=>[id,b.lines.map(l=>({ref:l.ref,label:l.label,cat:l.cat,amount:l.amount}))]));
+  m.bewerkt=true;billCache.clear();
+}
+function zetMaandCfg(){
+  const m=M(UI.month),doel=UI.editor&&m&&m.closed?m:null;
+  if((UI.cfgMaand||null)===(doel?doel.id:null))return;
+  if(UI.cfgMaand&&UI.globCfg){for(const k of CFG_KEYS)S[k]=UI.globCfg[k]}
+  UI.cfgMaand=null;UI.globCfg=null;
+  if(doel){openzetten(doel);UI.globCfg=Object.fromEntries(CFG_KEYS.map(k=>[k,S[k]]));for(const k of CFG_KEYS)if(doel.cfg[k]!==undefined)S[k]=doel.cfg[k];UI.cfgMaand=doel.id}
+  billCache.clear();
+}
+// Iets doen met de algemene instellingen actief (opslaan, concept bewaren).
+function metGlobaal(fn){
+  const m=UI.cfgMaand&&M(UI.cfgMaand);if(!m||!UI.globCfg)return fn();
+  for(const k of CFG_KEYS)S[k]=UI.globCfg[k];
+  try{return fn()}finally{for(const k of CFG_KEYS)if(m.cfg[k]!==undefined)S[k]=m.cfg[k]}
+}
 function correcties(){
   const out=[];
   for(const m of S.months)if(m.closed&&m.bewerkt&&m.basis){const R=herbereken(m),snap=m.snapshot||{};
@@ -560,10 +584,11 @@ function addMonthDate(d){const x=new Date(d+'T12:00:00');x.setMonth(x.getMonth()
 function closeMonth(){
   const m=openMonth();const B=bill(m.id);
   const snap={};for(const id in B){const b=B[id];snap[id]={start:r2(b.start),paid:r2(b.paid),end:r2(b.end),lines:b.lines.map(l=>({cat:l.cat,label:l.label,amount:Math.round(l.amount*10000)/10000,how:l.how||'',ref:l.ref||null})),payments:b.payments}}
-  const her=S.months.filter(x=>x.closed&&x.bewerkt);
+  UI.month=m.id;zetMaandCfg();
+  const metCorr=new Set(correcties().map(c=>c.m.id)),her=S.months.filter(x=>x.closed&&x.bewerkt);
   mutate(()=>{
     // De correcties staan nu in de rekening van deze maand; de oude maanden gaan weer op slot.
-    for(const x of her){x.bewerkt=false;delete x.basis;x.gecorrigeerd=(x.gecorrigeerd||[]).concat(m.label)}
+    for(const x of her){x.bewerkt=false;delete x.basis;delete x.basisLines;if(metCorr.has(x.id))x.gecorrigeerd=(x.gecorrigeerd||[]).concat(m.label)}
     m.closed=true;m.snapshot=snap;m.cfg=JSON.parse(JSON.stringify(Object.fromEntries(CFG_KEYS.map(k=>[k,S[k]]))));
     if(m.pils)m.pils.prices={bp:barPrice(),fp:flesPrice(),fust20:+PS().fust20Price,fust50:+PS().fust50Price,krat:+PS().kratPrice,plex:+PS().plexPrice,gas:+PS().gasPrice};
     const nid=addMonthId(m.id,1),[y,mm]=nid.split('-').map(Number);
@@ -607,7 +632,7 @@ async function save(auto){
     const n=UI.wijzigingen||0,prev=S.rev||0;
     UI.saving=true;if(!auto){render();herstelFocus()}
     S.savedAt=new Date().toISOString();
-    try{const r=await BE.save(S,prev);S.rev=(r&&r.rev)||prev+1;UI.saving=false;
+    try{let pr;metGlobaal(()=>{pr=BE.save(S,prev)});const r=await pr;S.rev=(r&&r.rev)||prev+1;UI.saving=false;
       // Tijdens het opslaan opnieuw gewijzigd? Dan blijft het concept staan en volgt er nog een opslag.
       if((UI.wijzigingen||0)===n){UI.dirty=false;store.del(DRAFT)}else{saveDraft();autoSave()}
       if(!auto)toast('Opgeslagen. Iedereen ziet nu de nieuwe stand.')}
@@ -674,6 +699,7 @@ function render(){
   if(!S){$('#app').innerHTML=`<div class="wrap"><p class="boot">${esc(UI.loadMsg||'Huisrekening laden…')}</p></div>`;return}
   const ae=document.activeElement,focusId=ae&&ae.id,sel=ae&&ae.selectionStart!=null&&ae.type!=='number'?[ae.selectionStart,ae.selectionEnd]:null;
   const m=M(UI.month)||openMonth();UI.month=m.id;
+  zetMaandCfg();
   const tabs=[['overzicht','Overzicht'],'|Opbouw huisrekening',['huislasten','Huislasten'],['evenementen','Extra correctie'],['service','Servicekosten'],['pils','Pilsrekening'],'|Administratie',['transacties','Transacties'],['kas','Huiskas']];
   if(UI.editor)tabs.push(['instellingen','Instellingen']);
   if(!tabs.some(t=>Array.isArray(t)&&t[0]===UI.tab))UI.tab='overzicht';
@@ -795,7 +821,8 @@ function vOverzicht(m){
   const B=bill(m.id);
   const house=S.people.filter(p=>HOUSE.includes(p.status)&&B[p.id]);
   const others=S.people.filter(p=>!HOUSE.includes(p.status)&&B[p.id]);
-  const list=(UI.group==='huis'?house:others).map(p=>({p,b:B[p.id]})).sort((a,b)=>byName(a.p,b.p));
+  const srt=UI.sortSaldo||'anc';
+  const list=(UI.group==='huis'?house:others).map(p=>({p,b:B[p.id]})).sort((a,b)=>srt==='hoog'?b.b.end-a.b.end:srt==='laag'?a.b.end-b.b.end:byName(a.p,b.p));
   const allB=S.people.map(p=>B[p.id]).filter(Boolean);
   const kosten=sum(house.map(p=>sum(B[p.id].lines.map(l=>l.amount))));
   const betaald=sum(allB.map(b=>b.paid));
@@ -830,9 +857,10 @@ function vOverzicht(m){
   <section class="block">
     <div class="spread"><h2>Saldo's per huisgenoot</h2>
       <div class="row"><div class="seg"><button data-act="group" data-id="huis" aria-pressed="${UI.group==='huis'}">Huisgenoten (${house.length})</button><button data-act="group" data-id="oud" aria-pressed="${UI.group==='oud'}">Oud-huisgenoten & onderhuur (${others.length})</button></div>
+      <div class="seg" role="group" aria-label="Sorteren"><button data-act="sortsaldo" data-id="anc" aria-pressed="${srt==='anc'}">Anciënniteit</button><button data-act="sortsaldo" data-id="hoog" aria-pressed="${srt==='hoog'}">Saldo hoog → laag</button><button data-act="sortsaldo" data-id="laag" aria-pressed="${srt==='laag'}">Laag → hoog</button></div>
       <button data-act="excel">Download Excel</button></div></div>
     <div class="row small">${sanc.map(x=>`<span class="badge ${sanctionClass(x.s)}">${esc(x.s.label)}</span><span class="muted">vanaf ${eur(x.s.min)}: ${x.n} ${x.n===1?'persoon':'personen'}</span>`).join('<span class="muted" aria-hidden="true">·</span>')}</div>
-    <div class="scroll tbl"><table class="ledger"><thead><tr><th>#</th><th>Naam</th><th class="r hide-sm">Vorige maand</th><th class="r hide-sm">+ Kosten</th><th class="r hide-sm">− Betaald</th><th class="r">Saldo</th><th>Status</th></tr></thead><tbody>
+    <div class="scroll tbl"><table class="ledger"><thead><tr><th>#</th><th>Naam</th><th class="r hide-sm">Vorige maand</th><th class="r hide-sm">+ Kosten</th><th class="r hide-sm">− Betaald</th><th class="r"><button class="ghost" data-act="sortsaldo" data-id="${srt==='hoog'?'laag':'hoog'}" title="Sorteren op saldo">Saldo ${srt==='hoog'?'▼':srt==='laag'?'▲':'↕'}</button></th><th>Status</th></tr></thead><tbody>
     ${list.map(({p,b},i)=>`<tr class="click" tabindex="0" data-act="person" data-id="${p.id}" aria-expanded="${UI.open===p.id}"><td class="rank">${i+1}</td><td><b>${esc(p.name)}</b></td><td class="r num hide-sm">${eur(b.start)}</td><td class="r num hide-sm">${eur(b.end-b.start+b.paid)}</td><td class="r num hide-sm">${eur(b.paid)}</td><td class="r num"><b class="${b.end<0?'credit':''}">${eur(b.end)}</b></td><td>${statusChip(p,b.end)}</td></tr>
       ${UI.open===p.id?`<tr class="detail"><td colspan="7">${statementHTML(p.id,m)}</td></tr>`:''}`).join('')}
     <tr class="total"><td></td><td>Totaal</td><td class="r num hide-sm">${eur(sum(list.map(x=>x.b.start)))}</td><td class="r num hide-sm">${eur(sum(list.map(x=>x.b.end-x.b.start+x.b.paid)))}</td><td class="r num hide-sm">${eur(sum(list.map(x=>x.b.paid)))}</td><td class="r num">${eur(sum(list.map(x=>x.b.end)))}</td><td></td></tr>
@@ -845,8 +873,7 @@ function vOverzicht(m){
       <p class="note">Sluit de maand af als alle transacties verwerkt en de pilsvoorraad geteld is. De bedragen worden dan vastgezet, er start een nieuwe maand en onverwerkte transacties schuiven mee.</p>
       <div><button class="primary" data-act="closemonth">${esc(m.label)} afsluiten</button></div></div>`
     :`<div class="panel stack"><p class="note">${esc(m.label)} is afgesloten${m.note?' · '+esc(m.note):''}. De lopende maand is ${esc(om.label)}.${(m.gecorrigeerd||[]).length?` Na het afsluiten gecorrigeerd (verrekend in ${esc(m.gecorrigeerd.join(', ').toLowerCase())}).`:''}</p>
-      ${m.bewerkt?`<p class="note"><b>Je kunt deze maand aanpassen.</b> Transacties, extra correcties en de pilsrekening van ${esc(m.label.toLowerCase())} zijn weer te wijzigen. Het verschil per persoon komt als <b>correctie</b> in het saldo van ${esc(om.label.toLowerCase())}; de oude rekening blijft bewaard.</p><div><button data-act="mbewerkt" data-id="${m.id}">Klaar met aanpassen</button></div>`
-        :`<div class="row"><button class="primary" data-act="mbewerkt" data-id="${m.id}">Wijzigingen maken in ${esc(m.label.toLowerCase())}</button>${m===lastClosed&&!m.note?`<button data-act="reopen">${esc(m.label)} heropenen</button>`:''}</div>`}</div>`}
+      <p class="note">Je kunt alles in ${esc(m.label.toLowerCase())} gewoon aanpassen. Het verschil per persoon komt als <b>correctie</b> in het saldo van ${esc(om.label.toLowerCase())}; de oude rekening blijft bewaard.</p>${m===lastClosed&&!m.note?`<div><button data-act="reopen">${esc(m.label)} heropenen</button></div>`:''}</div>`}
   </section>`:''}`;
 }
 
@@ -990,13 +1017,16 @@ function hlSuggesties(){
 }
 // Huislasten als één tabel: kolommen = huislasten (naam, totaal, soort), rijen = huisgenoten op anciënniteit.
 function vHuislasten(m){
-  const hl=S.huislasten||[],om=openMonth(),ed=UI.editor&&m.id===om.id,B=bill(m.id);
+  const hl=S.huislasten||[],om=openMonth(),ed=UI.editor&&!vast(m),B=bill(m.id),dicht=m.closed&&m.bewerkt&&m.basisLines;
   // Wat iemand deze maand voor een huislast betaalt, uit de regels van de rekening.
   // Regels uit oude (geïmporteerde) maanden hebben geen koppeling; die herkennen we aan de naam (Prime → Amazon Prime).
   const norm=x=>String(x||'').toLowerCase().replace(/\(.*?\)/g,'').replace(/[^a-z0-9]/g,'');
   const opNaam=l=>{if(!isHL(l))return null;const a=norm(l.label);return hl.find(h=>norm(h.name)===a)||hl.find(h=>{const b=norm(h.name);return a&&b&&(b.includes(a)||a.includes(b))})||null};
   const hoort=(l,h)=>l.ref?((l.ref.type==='hl'&&l.ref.id===h.id)||(l.ref.type==='tx'&&(T(l.ref.id)||{}).huislastId===h.id)):opNaam(l)===h;
-  const bedrag=(id,h)=>{const b=B[id];return b?sum(b.lines.filter(l=>hoort(l,h)).map(l=>l.amount)):0};
+  const regels=(lines,h)=>sum((lines||[]).filter(l=>hoort(l,h)).map(l=>l.amount));
+  // Afgesloten maand: het vastgezette bedrag plus wat jouw aanpassing verandert (nu − bij openzetten).
+  const bedrag=(id,h)=>{const b=B[id];const vastB=b?regels(b.lines.filter(l=>l.cat!=='Correctie'),h):0;
+    if(!dicht)return vastB;const R=herbereken(m);return vastB+regels(R[id]&&R[id].lines,h)-regels(m.basisLines[id],h)};
   const totaal=h=>sum(Object.keys(B).map(id=>bedrag(id,h)));
   const ppl=[...S.people].sort(byName).filter(p=>UI.matrixAll||HOUSE.includes(p.status)||hl.some(h=>h.payers.includes(p.id)||Math.abs(bedrag(p.id,h))>0.004));
   const sug=ed?hlSuggesties():[];
@@ -1015,13 +1045,14 @@ function vHuislasten(m){
       <tr class="hl-info"><td class="n">Vast p.p. / bank</td>${hl.map(h=>`<td class="r">${soort(h)}</td>`).join('')}<td></td></tr>
       ${ed?`<tr class="hl-info"><td class="n small muted">Snel kiezen</td>${hl.map(h=>`<td class="r"><select id="hf-${h.id}" data-ch="hlfill" data-id="${h.id}" aria-label="Snel kiezen voor ${esc(h.name)}"><option value="">…</option><option value="bewoner">Alle bewoners</option><option value="huis">Alle huisgenoten</option><option value="none">Niemand</option></select></td>`).join('')}<td></td></tr>`:''}
     </thead><tbody>
-      ${ppl.map(p=>`<tr><td class="n">${esc(p.name)}</td>${hl.map(h=>cel(p,h)).join('')}<td class="r num"><b>${eur(sum(hl.map(h=>bedrag(p.id,h))))}</b></td></tr>`).join('')}
+      ${ppl.map(p=>{const alle=hl.length&&hl.every(h=>h.payers.includes(p.id));
+        return `<tr><td class="n">${ed?`<label class="hl-cel" title="${alle?'Voor geen enkele':'Voor alle'} huislasten aanslaan"><input type="checkbox" id="hr-alle-${p.id}" data-ch="hlrij" data-pid="${p.id}" ${alle?'checked':''} aria-label="${esc(p.name)} voor alle huislasten aanslaan"> ${esc(p.name)}</label>`:esc(p.name)}</td>${hl.map(h=>cel(p,h)).join('')}<td class="r num"><b>${eur(sum(hl.map(h=>bedrag(p.id,h))))}</b></td></tr>`}).join('')}
       <tr class="total"><td class="n">Betalers</td>${hl.map(h=>`<td class="r num">${ppl.filter(p=>Math.abs(bedrag(p.id,h))>0.004).length}</td>`).join('')}<td></td></tr>
     </tbody></table></div>`;
   return `<section class="block"><div class="spread"><h2>Huislasten ${esc(m.label.toLowerCase())}</h2>${ed?'<button class="primary" data-act="addhl">+ Huislast</button>':''}</div>
-    <p class="note">${ed?'Bovenaan per huislast de totaalprijs en hoe hij berekend wordt: een vast bedrag per persoon, of herkend in het bankafschrift (meerdere teksten scheid je met een komma). Daaronder per huisgenoot wat hij betaalt; met het vinkje zet je iemand aan of uit.'
+    <p class="note">${ed?'Bovenaan per huislast de totaalprijs en hoe hij berekend wordt: een vast bedrag per persoon, of herkend in het bankafschrift (meerdere teksten scheid je met een komma). Daaronder per huisgenoot wat hij betaalt; met het vinkje zet je iemand aan of uit. Het vinkje vóór een naam zet iemand in één keer voor álle huislasten aan of uit.'
       :`Per huislast de totaalprijs en per huisgenoot wat hij in ${esc(m.label.toLowerCase())} betaalt.`}</p>
-    ${UI.editor&&m.id!==om.id?`<p class="note">Je bekijkt ${esc(m.label.toLowerCase())}. Huislasten aanpassen doe je in de lopende maand, <button class="ghost" data-act="month" data-id="${om.id}">${esc(om.label)}</button>.</p>`:''}
+    ${ed&&m.closed?`<p class="note">Je past <b>${esc(m.label.toLowerCase())}</b> aan. Wijzigingen hier gelden alleen voor die maand; het verschil komt als correctie in ${esc(om.label.toLowerCase())}.</p>`:''}
     ${ed?`<div class="row" style="margin-bottom:8px"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div></div>`:''}
     ${hl.length?tabel:'<div class="empty">Nog geen huislasten.</div>'}
     ${sug.length?`<h3 style="margin-top:16px">Herkend in het afschrift</h3><p class="note">Deze afschrijvingen komen elke maand terug maar zijn nog geen huislast.</p>
@@ -1030,7 +1061,7 @@ function vHuislasten(m){
 }
 function vService(m){
   const B=bill(m.id);
-  if(m.closed){
+  if(vast(m)){
     const re=/gemiddeld (\S+) − kamer (\S+) − correctie kale huur (\S+) \+ Money Underdogs (\S+)/;
     const rows=S.people.map(p=>{const b=B[p.id];const l=b&&b.lines.find(x=>x.cat==='Servicekosten');return l?{p,l,mm:(l.how||'').match(re),room:S.rooms.find(r=>r.personId===p.id)}:null}).filter(Boolean).sort((a,b)=>byName(a.p,b.p));
     const parsed=rows.length&&rows.every(r=>r.mm);
@@ -1155,7 +1186,7 @@ function vPils(m){
     </div>
   </div></section>
   <section class="block">
-    ${m.closed?lateAfkoopButtons(m):''}
+    ${vast(m)?lateAfkoopButtons(m):''}
     <div class="spread"><h2>Afkopen</h2>${ok?`<div class="row"><button data-act="addafkoop" data-f="fust20">+ Fust 20L afkopen</button><button data-act="addafkoop" data-f="fust50">+ Fust 50L</button><button data-act="addafkoop" data-f="krat">+ Kratten afkopen</button></div>`:''}</div>
     <p class="note">Een afkoop is een fust of krat die buiten de turflijst om gaat, bijvoorbeeld voor een feest. De kosten gaan naar de deelnemers en tellen niet als verlies.</p>
     ${pc.afkoop.length?pc.afkoop.map(a=>`<div class="panel stack">
@@ -1208,7 +1239,7 @@ function postInputs(x,pl,pc,ok){
   return `<span class="row" style="gap:6px;flex-wrap:nowrap"><span class="small muted">€</span>${numInput('sp-a-'+x.id,x.amount||'',ok?'spost':'x','amount',ok,'6rem',`data-id="${x.id}" step="0.01" placeholder="0" aria-label="Bedrag"`)}</span>`;
 }
 function lateAfkoopButtons(m){
-  const om=openMonth();if(!UI.editor||!m.closed||!om||!om.pils)return '';
+  const om=openMonth();if(!UI.editor||!vast(m)||!om||!om.pils)return '';
   return `<div class="panel stack"><p class="note">Vergeten afkoopmoment? ${esc(m.label)} is al afgesloten, dus een nieuw afkoopmoment wordt verrekend in de pilsrekening van ${esc(om.label.toLowerCase())}.</p>
     <div class="row"><button data-act="addafkooplate" data-f="fust20">+ Fust 20L afkopen</button><button data-act="addafkooplate" data-f="fust50">+ Fust 50L</button><button data-act="addafkooplate" data-f="krat">+ Kratten afkopen</button></div></div>`;
 }
@@ -1341,6 +1372,7 @@ const acts={
   line:el=>{UI.lineOpen=UI.lineOpen===el.dataset.key?null:el.dataset.key;render()},
   editon:()=>{UI.editor=true;UI.forced=true;store.set('huis.edit','1');UI.month=openMonth().id;render();toast('Bewerken staat aan. Opslaan lukt alleen als je op claude.ai bewerkrechten hebt.')},
   pmove:el=>{const i=S.people.findIndex(p=>p.id===el.dataset.id),j=i+(+el.dataset.d);if(j<0||j>=S.people.length)return;mutate(()=>{const [p]=S.people.splice(i,1);S.people.splice(j,0,p)})},
+  sortsaldo:el=>{UI.sortSaldo=el.dataset.id;store.set('huis.sort',el.dataset.id);render()},
   alslid:()=>{UI.alsLid=true;UI.editor=false;UI.month=(S.months.filter(m=>m.closed).slice(-1)[0]||openMonth()).id;render()},
   alsbeheer:()=>{UI.alsLid=false;UI.editor=true;UI.month=openMonth().id;render()},
   editoff:()=>{UI.editor=false;UI.forced=false;store.del('huis.edit');render()},
@@ -1485,6 +1517,7 @@ const changes={
   cat:el=>{const c=C(el.dataset.id),f=el.dataset.f;mutate(()=>{c[f]=f==='minimum'?(num(el.value)||0):el.value})},
   rc:el=>{const x=S.recurring.find(y=>y.id===el.dataset.id),f=el.dataset.f;mutate(()=>{x[f]=f==='amount'?(num(el.value)||0):el.value})},
   hl:el=>{const h=H(el.dataset.id),f=el.dataset.f;mutate(()=>{h[f]=f==='amountPP'?(num(el.value)||0):f==='match'?el.value.toUpperCase().trim():el.value})},
+  hlrij:el=>{const pid=el.dataset.pid,aan=el.checked;mutate(()=>{for(const h of S.huislasten||[]){const s2=new Set(toggleIn(h.payers,pid,aan));h.payers=S.people.map(p=>p.id).filter(id=>s2.has(id))}});toast(`${P(pid).name} ${aan?'betaalt nu alle':'betaalt geen'} huislasten meer mee.`.replace('alle huislasten meer mee','alle huislasten mee'))},
   hlpayer:el=>{const h=H(el.dataset.id);mutate(()=>{const s2=new Set(toggleIn(h.payers,el.dataset.pid,el.checked));h.payers=S.people.map(p=>p.id).filter(id=>s2.has(id))})},
   hlfill:el=>{const h=H(el.dataset.id),f=el.value;if(!f)return;mutate(()=>{h.payers=f==='none'?[]:S.people.filter(p=>f==='bewoner'?p.status==='bewoner':['bewoner','huisgenoot'].includes(p.status)).map(p=>p.id)})},
   roomtoeslag:el=>{const r=S.rooms.find(y=>y.id===el.dataset.id);mutate(()=>{r.huurtoeslag=el.checked})},
