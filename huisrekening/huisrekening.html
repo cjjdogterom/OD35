@@ -579,6 +579,72 @@ async function importPDF(buf){
   }catch(e){toast('De PDF kon niet gelezen worden ('+((e&&e.message)||e)+'). Probeer het afschrift als CSV te downloaden.',true)}
 }
 
+/* ---------- maandoverzicht als PDF ---------- */
+const JSPDF='https://cdnjs.cloudflare.com/ajax/libs/';
+async function pdfMaker(){
+  if(!window.jspdf)await loadScript(JSPDF+'jspdf/2.5.1/jspdf.umd.min.js');
+  if(!window.jspdf.jsPDF.API.autoTable)await loadScript(JSPDF+'jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+  return window.jspdf.jsPDF;
+}
+async function exportPDF(pid,m){
+  const p=P(pid),b=bill(m.id)[pid];if(!p||!b)return;
+  let jsPDF;try{jsPDF=await pdfMaker()}catch(e){return toast('De PDF-maker kon niet laden. Controleer je internetverbinding en probeer het opnieuw.',true)}
+  // De standaardletters van een PDF kennen het lange minteken niet.
+  const E=n=>eur(n).replace('−','-'),T=x=>String(x==null?'':x).replace(/−/g,'-');
+  const i=S.months.indexOf(m),prevTo=i>0?S.months[i-1].to:addDays(m.from,-1);
+  const doc=new jsPDF({unit:'mm',format:'a4'}),W=doc.internal.pageSize.getWidth(),L=16;
+  const navy=[42,77,130],grijs=[110,110,110];
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...grijs);
+  doc.text(T((S.house.name||'Huis')+' · Huisrekening'),L,16);
+  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(...navy);doc.text(T('Rekeningoverzicht '+m.label.toLowerCase()),L,26);
+  doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(30,30,30);
+  doc.text(T(p.name),L,33);
+  doc.setFontSize(9);doc.setTextColor(...grijs);
+  doc.text(T(`Periode ${fmtDate(m.from)} t/m ${fmtDate(m.to)} · ${m.closed?'afgesloten':'lopende maand, bedragen kunnen nog veranderen'}`),L,38);
+  const sc=HOUSE.includes(p.status)?sanctionFor(b.end):null;
+  doc.autoTable({startY:44,theme:'plain',margin:{left:L,right:L},styles:{fontSize:10,cellPadding:1.6},columnStyles:{1:{halign:'right',font:'courier'}},
+    body:[[`Saldo per ${fmtDate(prevTo)}`,E(b.start)],['+ nieuwe kosten',E(b.end-b.start+b.paid)],['- betaald',E(-b.paid)],
+      [{content:`= saldo per ${fmtDate(m.to)}${b.end>0.005?' (te betalen)':b.end<-0.005?' (tegoed)':''}`,styles:{fontStyle:'bold'}},{content:E(b.end),styles:{fontStyle:'bold'}}]]
+      .concat(sc?[[{content:'Status: '+T(sc.label),colSpan:2,styles:{textColor:[160,40,40]}}]]:[])});
+  const kop={fillColor:navy,textColor:255,fontStyle:'bold'};
+  const groups={};for(const l of b.lines)(groups[l.cat]=groups[l.cat]||[]).push(l);
+  const kosten=[];
+  for(const [cat,ls] of Object.entries(groups)){
+    kosten.push([{content:T(cat),styles:{fontStyle:'bold',fillColor:[240,236,226]}},{content:E(sum(ls.map(l=>l.amount))),styles:{fontStyle:'bold',fillColor:[240,236,226]}}]);
+    for(const l of ls)kosten.push([T(l.label)+(l.how?'\n'+T(l.how):''),E(l.amount)]);
+  }
+  if(!kosten.length)kosten.push(['Geen nieuwe kosten deze maand',E(0)]);
+  kosten.push([{content:'Totaal nieuwe kosten',styles:{fontStyle:'bold'}},{content:E(sum(b.lines.map(l=>l.amount))),styles:{fontStyle:'bold'}}]);
+  doc.setFontSize(12);doc.setTextColor(...navy);doc.setFont('helvetica','bold');
+  let y=doc.lastAutoTable.finalY+9;doc.text('Kosten',L,y);
+  doc.autoTable({startY:y+2,margin:{left:L,right:L},head:[['Omschrijving','Bedrag']],body:kosten,headStyles:kop,styles:{fontSize:9,cellPadding:1.8,textColor:[30,30,30]},
+    columnStyles:{1:{halign:'right',cellWidth:30,font:'courier'}},theme:'grid',tableLineColor:[221,214,196]});
+  const bet=(b.payments&&b.payments.length)?b.payments.map(x=>[fmtDate(x.date),T(x.note||''),E(-x.amount)]):b.paid?[['','Betalingen deze periode',E(-b.paid)]]:[['','Geen betalingen ontvangen','']];
+  y=doc.lastAutoTable.finalY+9;if(y>270){doc.addPage();y=20}
+  doc.setFontSize(12);doc.setTextColor(...navy);doc.setFont('helvetica','bold');doc.text('Betalingen',L,y);
+  doc.autoTable({startY:y+2,margin:{left:L,right:L},head:[['Datum','Omschrijving','Bedrag']],body:bet,headStyles:kop,theme:'grid',styles:{fontSize:9,cellPadding:1.8,textColor:[30,30,30]},
+    columnStyles:{0:{cellWidth:24},2:{halign:'right',cellWidth:30,font:'courier'}}});
+  y=doc.lastAutoTable.finalY+10;if(y>255){doc.addPage();y=20}
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(30,30,30);
+  if(b.end>0.005&&S.house.iban){
+    doc.setFont('helvetica','bold');doc.text(T(`Graag ${E(b.end)} overmaken`),L,y);doc.setFont('helvetica','normal');
+    doc.text(T(`IBAN ${S.house.iban}${S.house.tav?' t.a.v. '+S.house.tav:''}`),L,y+5.5);
+    doc.text(T(`Omschrijving: Huisrekening ${p.name}`),L,y+11);
+  }else if(b.end<-0.005)doc.text(T(`Je hebt een tegoed van ${E(-b.end)}; dat wordt verrekend met de volgende maand.`),L,y);
+  else doc.text('Je saldo staat op nul. Er hoeft niets betaald te worden.',L,y);
+  const n=doc.getNumberOfPages();
+  for(let k=1;k<=n;k++){doc.setPage(k);doc.setFontSize(8);doc.setTextColor(...grijs);
+    doc.text(T(`Gemaakt op ${new Date().toLocaleDateString('nl-NL')} · vragen? Neem contact op met de beheerder van de huisrekening`),L,290);
+    doc.text(`${k}/${n}`,W-L,290,{align:'right'})}
+  const naam=`Huisrekening ${m.label} ${p.name}`.replace(/[\\/:*?"<>|]+/g,'').replace(/\s+/g,'-');
+  // Op een telefoon via het deelmenu (bewaren in Bestanden, doorsturen); anders gewoon downloaden.
+  const file=new File([doc.output('blob')],naam+'.pdf',{type:'application/pdf'});
+  if(matchMedia('(pointer:coarse)').matches&&navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:naam});return}catch(e){if(e&&e.name==='AbortError')return}
+  }
+  doc.save(naam+'.pdf');
+}
+
 /* ---------- maand afsluiten ---------- */
 function addMonthId(id,n){let [y,m]=id.split('-').map(Number);m+=n;while(m>12){m-=12;y++}return `${y}-${String(m).padStart(2,'0')}`}
 function addDays(d,n){const x=new Date(d+'T12:00:00');x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)}
@@ -813,7 +879,7 @@ function statementHTML(pid,m){
   else if(b.paid)rows.push(`<tr class="ln"><td>Betalingen deze periode</td><td class="r num credit">${eur(-b.paid)}</td></tr>`);
   else rows.push(`<tr class="ln"><td class="muted">Geen betalingen ontvangen</td><td></td></tr>`);
   rows.push(`<tr class="bal end"><td>Saldo per ${fmtDate(m.to)}${b.end>0.005?' · te betalen':b.end<-0.005?' · tegoed':''}</td><td class="r num ${b.end<0?'credit':''}">${eur(b.end)}</td></tr>`);
-  return `<div class="row end" style="margin-bottom:4px"><button class="ghost" data-act="grpall">${UI.grpAll?'Alles inklappen':'Alles uitklappen'}</button></div><div class="scroll"><table class="stmt">${rows.join('')}</table></div>`;
+  return `<div class="row end" style="margin-bottom:4px"><button class="ghost" data-act="pdf" data-id="${pid}">Download PDF</button><button class="ghost" data-act="grpall">${UI.grpAll?'Alles inklappen':'Alles uitklappen'}</button></div><div class="scroll"><table class="stmt">${rows.join('')}</table></div>`;
 }
 function groupsOf(key){const pid=key.split('|')[0],b=bill(UI.month)[pid],o={};if(b){for(const l of b.lines)o[pid+'|'+l.cat]=1;o[pid+'|__pay']=1}return o}
 function statusChip(p,saldo){
@@ -1443,6 +1509,7 @@ const acts={
   'confirm-no':()=>{UI.confirm=null;render()},
   copy:async el=>{try{await navigator.clipboard.writeText(el.dataset.text);toast('Gekopieerd.')}catch(e){toast('Kopiëren lukt hier niet; selecteer het IBAN en kopieer het zelf.',true)}},
   excel:()=>exportExcel(),
+  pdf:el=>exportPDF(el.dataset.id,M(UI.month)),
   downloadhtml:()=>download('Huisrekening Omega Ksi.html',buildDocument()),
   backup:()=>download(`huisrekening-backup-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(S,null,1)),
   matrixall:()=>{UI.matrixAll=!UI.matrixAll;render()},
