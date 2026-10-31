@@ -679,7 +679,9 @@ function render(){
   if(!tabs.some(t=>Array.isArray(t)&&t[0]===UI.tab))UI.tab='overzicht';
   const todo=S.transactions.filter(t=>t.kind==='todo').length;
   const body={overzicht:vOverzicht,huislasten:vHuislasten,service:vService,transacties:vTransacties,evenementen:vEvenementen,pils:vPils,kas:vKas,instellingen:vInstellingen}[UI.tab](m);
-  const beh=names(S.house.beheerders||[]);
+  // Met de site-koppeling komen de echte beheerders van de server (ingesteld op de site); anders de eigen lijst.
+  const behLijst=BE&&window.HUIS_BEHEERDERS?window.HUIS_BEHEERDERS:null;
+  const beh=behLijst?behLijst.join(', '):names(S.house.beheerders||[]);
   $('#app').innerHTML=`<div class="wrap">
   ${UI.beheerder?`<div class="alslid${UI.alsLid?' aan':''}">${UI.alsLid?`<span>Je bekijkt de huisrekening zoals een gewoon lid hem ziet.</span><button class="primary" data-act="alsbeheer">Terug naar beheer</button>`:`<button class="ghost" data-act="alslid">Bekijk als lid</button>`}</div>`:''}
   <header class="top"><div class="brand"><span class="eyebrow">${esc(S.house.name)} · Huisrekening</span><h1>${esc(m.label)}</h1>
@@ -687,7 +689,7 @@ function render(){
     <div class="months" role="group" aria-label="Maand">${S.months.slice(-6).map(x=>`<button data-act="month" data-id="${x.id}" aria-pressed="${x.id===m.id}">${esc(x.label)}${x.closed?'':' (lopend)'}</button>`).join('')}</div></header>
   <nav class="tabs" aria-label="Onderdelen">${tabs.map(t=>typeof t==='string'?`<span class="tabsep" aria-hidden="true"></span><span class="tabgrp">${t.slice(1)}</span>`:`<button data-act="tab" data-id="${t[0]}" ${UI.tab===t[0]?'aria-current="page"':''}>${t[1]}${t[0]==='transacties'&&todo&&UI.editor?`<span class="badge warn">${todo}</span>`:''}</button>`).join('')}</nav>
   ${body}
-  <footer class="foot"><span>Beheerder${(S.house.beheerders||[]).length>1?'s':''}: ${esc(beh||'nog niet ingesteld')} · vragen naar ${esc(S.house.email||'')}</span>
+  <footer class="foot"><span>Beheerder${(behLijst||S.house.beheerders||[]).length>1?'s':''}: ${esc(beh||'nog niet ingesteld')} · vragen naar ${esc(S.house.email||'')}</span>
     <span>${BE?(UI.editor?'Je bent beheerder.':''):UI.editor?(UI.forced?'Bewerken staat aan op dit apparaat. <button class="ghost" data-act="editoff">Uitzetten</button>':'Je bent beheerder.'):'<button class="ghost" data-act="editon">Beheerder? Bewerken inschakelen</button>'}</span></footer>
   </div>
   ${UI.dirty&&UI.editor?`<div class="savebar"><div class="in"><span>${UI.saving?'Opslaan…':BE&&!UI.autoStop?'Wordt automatisch opgeslagen…':'Je hebt wijzigingen die nog niet gedeeld zijn.'}</span><div class="row"><button class="ghost" data-act="discard" ${UI.saving?'disabled':''}>Wijzigingen weggooien</button><button class="primary" data-act="save" ${UI.saving?'disabled':''}>Opslaan en delen</button></div></div></div>`:''}
@@ -1271,9 +1273,11 @@ function vInstellingen(){
   const ppl=[...S.people];
   const mx=(UI.matrixAll?ppl:ppl.filter(p=>HOUSE.includes(p.status)));
   const {avg}=serviceShares();
-  return `<section class="block"><h2>Beheerders</h2>
+  return `${BE?`<section class="block"><h2>Beheerders</h2>
+    <p class="note">Wie de huisrekening mag beheren stel je in op de site: tabblad <b>Huisrekening</b> → <b>Wie heeft toegang?</b> (alleen de hoofdadmin ziet dat).</p>
+    <div class="panel"><b>Nu beheerder:</b> ${esc(beh||'—')}</div></section>`:`<section class="block"><h2>Beheerders</h2>
     <p class="note">Beheerders staan onderaan de pagina vermeld. Wie echt mag opslaan, bepaal je op claude.ai: open het Delen-menu van deze pagina en geef die persoon bewerkrechten.</p>
-    <div class="panel"><div class="people-grid">${[...S.people].filter(p=>HOUSE.includes(p.status)||(S.house.beheerders||[]).includes(p.id)).sort(byName).map(p=>`<label for="bh-${p.id}"><input type="checkbox" id="bh-${p.id}" data-ch="beheer" data-pid="${p.id}" ${(S.house.beheerders||[]).includes(p.id)?'checked':''}><span>${esc(p.name)}</span></label>`).join('')}</div></div></section>
+    <div class="panel"><div class="people-grid">${[...S.people].filter(p=>HOUSE.includes(p.status)||(S.house.beheerders||[]).includes(p.id)).sort(byName).map(p=>`<label for="bh-${p.id}"><input type="checkbox" id="bh-${p.id}" data-ch="beheer" data-pid="${p.id}" ${(S.house.beheerders||[]).includes(p.id)?'checked':''}><span>${esc(p.name)}</span></label>`).join('')}</div></div></section>`}
   <section class="block"><h2>Kostenposten voor extra correcties en overige kosten</h2>
     <p class="note">Huislasten zoals Ziggo en Makro beheer je op het tabblad Huislasten. Kostenposten hieronder gebruik je voor extra correcties (wie standaard meedoet en het minimum voor niet-deelnemers) en voor losse kosten die je over een groep wilt verdelen.</p>
     <div class="row"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div><button data-act="addcat">+ Kostenpost</button></div>

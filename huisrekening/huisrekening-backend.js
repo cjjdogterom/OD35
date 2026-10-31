@@ -34,6 +34,7 @@
       if (!res.ok) throw new Error(await fout(res));
       const j = await res.json();
       canEdit = !!j.canEdit;
+      window.HUIS_BEHEERDERS = j.beheerders || null;
       return { data: j.data, rev: j.rev };
     },
 

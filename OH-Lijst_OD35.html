@@ -7465,12 +7465,13 @@ async function laadHrToegang() {
     const jaren = [...new Set(PEOPLE.map(p => Number(p['Aankomstjaar'])).filter(Boolean))].sort((a, b) => b - a);
     document.getElementById('hr-jaren').innerHTML = jaren.map(j =>
       `<label><input type="checkbox" data-hr-jaar="${j}"${aan.has(j) ? ' checked' : ''}> ${j}</label>`).join('');
-    ul.innerHTML = lijst.length ? lijst.map(r => {
+    const vast = '<li><span><strong>Jij (hoofdadmin)</strong></span><span class="hr-toegang-sub">Beheerder, altijd</span></li>';
+    ul.innerHTML = vast + (lijst.length ? lijst.map(r => {
       const p = personByEmail(r.email);
       return `<li><span>${escapeHtml(p ? hrNaam(p) : r.email)}</span>
       <select data-hr-rol="${escapeHtml(r.email)}"><option value="lezer"${r.rol === 'lezer' ? ' selected' : ''}>Lezer</option><option value="beheerder"${r.rol === 'beheerder' ? ' selected' : ''}>Beheerder</option></select>
       <button type="button" data-hr-weg="${escapeHtml(r.email)}">Verwijderen</button></li>`;
-    }).join('') : '<li><span>Nog niemand. Jij bent de enige beheerder.</span></li>';
+    }).join('') : '<li><span>Verder nog niemand. Kies hieronder wie beheerder of lezer wordt.</span></li>');
   } catch (e) { melding.textContent = e.message; }
 }
 async function zetHrToegang(email, rol) {
