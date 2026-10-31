@@ -468,6 +468,12 @@ function bill(mid){
     for(const a of pc.afkoop)for(const id of a.parts)add(id,{cat:'Pils',label:`Afkoop ${afkoopName(a.type)}: ${a.label||'zonder naam'}`,amount:a.per,how:`${a.count} × ${eur(afkoopPrice(a.type))} = ${eur(a.cost)} ÷ ${a.parts.length}`,ref:{type:'pils',kind:'afkoop',id:a.id}});
     for(const x of pc.posts)if(Math.abs(x.value)>0.004&&pc.n)for(const id of pc.payers)add(id,{cat:'Pils',label:x.label,amount:x.value/pc.n,how:`${eur(x.value)} ÷ ${pc.n} meebetalers`,ref:{type:'pils',kind:'post',id:x.id}});
   }
+  if(impMaand(m)){
+    for(const cat of IMP_CATS)if(m.impAanp&&m.impAanp[cat])for(const [label,d] of Object.entries(impVerschillen(m,cat)))for(const id in d)
+      if(Math.abs(d[id])>0.004)add(id,{cat,label:`Aanpassing ${label}`,amount:d[id],how:'wie meebetaalt is na afsluiten aangepast door de beheerder',ref:{type:'imp',cat,label}});
+    if(m.scAanp){const oud=scImport(m);for(const id in m.scAanp){const d=(+m.scAanp[id]||0)-(oud[id]||0);
+      if(Math.abs(d)>0.004)add(id,{cat:'Servicekosten',label:'Aanpassing servicekosten',amount:d,how:'na afsluiten aangepast door de beheerder',ref:{type:'imp',cat:'Servicekosten'}})}}
+  }
   if(!m.pils&&m.pilsAanp&&m.snapshot)for(const id in m.pilsAanp){const d=pilsImpVerschil(m,id);
     if(Math.abs(d)>0.004)add(id,{cat:'Pils',label:'Aanpassing pilsrekening',amount:d,how:'pilsrekening na afsluiten aangepast door de beheerder',ref:{type:'pils',kind:'aanp'}})}
   if(!_herberekenen&&m===openMonth())for(const c of correcties())
@@ -1379,6 +1385,7 @@ function txEdit(t){
 }
 
 function vEvenementen(m){
+  if(UI.editor&&impMaand(m)&&m.closed)return impEdit(m,'Extra correctie','Extra correctie');
   const ok=UI.editor;
   const evs=[...S.events].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const e=E(UI.eventId);
@@ -1431,6 +1438,7 @@ function hlSuggesties(){
 }
 // Huislasten als één tabel: kolommen = huislasten (naam, totaal, soort), rijen = huisgenoten op anciënniteit.
 function vHuislasten(m){
+  if(UI.editor&&impMaand(m)&&m.closed)return impEdit(m,'Huislasten','Huislasten');
   const hl=S.huislasten||[],om=openMonth(),ed=UI.editor&&!vast(m),B=bill(m.id),dicht=m.closed&&m.bewerkt&&m.basisLines;
   // Wat iemand deze maand voor een huislast betaalt, uit de regels van de rekening.
   // Regels uit oude (geïmporteerde) maanden hebben geen koppeling; die herkennen we aan de naam (Prime → Amazon Prime).
@@ -1474,6 +1482,7 @@ function vHuislasten(m){
   </section>`;
 }
 function vService(m){
+  if(UI.editor&&impMaand(m)&&m.closed)return scImportEdit(m);
   const B=bill(m.id);
   if(vast(m)){
     const re=/gemiddeld (\S+) − kamer (\S+) − correctie kale huur (\S+) \+ Money Underdogs (\S+)/;
@@ -1554,6 +1563,81 @@ function voorschotHTML(e,k,ok){
 }
 /* --- pilsrekening --- */
 function numInput(id,val,ch,f,ok,w,extra){return `<input type="number" id="${id}" value="${val??''}" data-ch="${ch}" ${f?`data-f="${f}"`:''} ${extra||''} ${dis(ok)} style="width:${w||'5.5rem'}">`}
+// Maanden uit de oude Excel: de rekening van die maand is leidend, op elk tabblad.
+// Per post (NRC, Makro, een extra correctie, …) het totaal en wie wat betaalde; met m.impAanp[cat][post] = [personen]
+// verdeel je hem opnieuw, naar verhouding van wat ieder betaalde (nieuwe betalers krijgen het gebruikelijke bedrag).
+// Servicekosten (m.scAanp) en pils (m.pilsAanp) pas je per persoon aan. Het verschil komt als correctie in de lopende maand.
+const impMaand=m=>!!(m&&m.snapshot&&/oude Excel/i.test(m.note||''));
+const IMP_CATS=['Huislasten','Extra correctie'];
+function impPosten(m,cat){
+  const posts={};
+  for(const [id,b] of Object.entries(m.snapshot||{}))for(const l of b.lines||[])if(l.cat===cat&&!/^Aanpassing /.test(l.label)){
+    const x=posts[l.label]=posts[l.label]||{label:l.label,per:{},how:l.how};x.per[id]=(x.per[id]||0)+l.amount}
+  return Object.values(posts);
+}
+const hlImport=m=>impPosten(m,'Huislasten');
+function impNieuw(m,cat,x){
+  const oud=Object.keys(x.per).filter(id=>Math.abs(x.per[id])>0.00001),tot=sum(oud.map(id=>x.per[id]));
+  const wie=(m.impAanp&&m.impAanp[cat]&&m.impAanp[cat][x.label])||oud;
+  const vals=oud.map(id=>x.per[id]).sort((a,b)=>a-b),gewoon=vals.length?vals[Math.floor(vals.length/2)]:0;
+  const w=Object.fromEntries(wie.map(id=>[id,oud.includes(id)?x.per[id]:gewoon])),sw=sum(Object.values(w));
+  const nieuw={};for(const id of wie)nieuw[id]=sw?tot*w[id]/sw:0;
+  return {nieuw,wie,tot,oud};
+}
+function impVerschillen(m,cat){
+  const out={},A=(m.impAanp||{})[cat]||{};
+  for(const x of impPosten(m,cat)){if(!A[x.label])continue;const {nieuw}=impNieuw(m,cat,x),d={};
+    for(const id of new Set([...Object.keys(x.per),...Object.keys(nieuw)]))d[id]=(nieuw[id]||0)-(x.per[id]||0);out[x.label]=d}
+  return out;
+}
+function impZet(m,cat,label,pid,aan){
+  const x=impPosten(m,cat).find(y=>y.label===label);if(!x)return;
+  const {wie,oud}=impNieuw(m,cat,x),s2=new Set(wie);aan?s2.add(pid):s2.delete(pid);
+  const nw=S.people.map(p=>p.id).filter(id=>s2.has(id));
+  const A=m.impAanp=m.impAanp||{},C2=A[cat]=A[cat]||{};
+  if(nw.length===oud.length&&nw.every(id=>oud.includes(id)))delete C2[label];else C2[label]=nw;
+  if(!Object.keys(C2).length)delete A[cat];if(!Object.keys(A).length)delete m.impAanp;
+}
+// Tabel met per post wie meebetaalt (vinkjes) en wat ieder betaalt; voor Huislasten en Extra correctie.
+function impEdit(m,cat,titel){
+  const posts=impPosten(m,cat),info=posts.map(x=>({x,...impNieuw(m,cat,x)}));
+  const ppl=[...S.people].sort(byName).filter(p=>UI.matrixAll||HOUSE.includes(p.status)||info.some(i=>i.x.per[p.id]||i.nieuw[p.id]));
+  const cel=(p,i)=>{const aan=i.wie.includes(p.id),v=i.nieuw[p.id]||0,oud=i.x.per[p.id]||0,anders=Math.abs(v-oud)>0.004;
+    return `<td class="r num"><label class="hl-cel"><input type="checkbox" data-ch="impzet" data-cat="${esc(cat)}" data-label="${esc(i.x.label)}" data-pid="${p.id}" ${aan?'checked':''} aria-label="${esc(p.name)} betaalt ${esc(i.x.label)}"> ${aan||anders?(anders?`<b title="was ${eur(oud)}">${eur(v)}</b>`:eur(v)):'<span class="muted">—</span>'}</label></td>`};
+  const verschil=sum(info.map(i=>sum(Object.values(i.nieuw))-sum(i.oud.map(id=>i.x.per[id]))));
+  const heeft=m.impAanp&&m.impAanp[cat]&&Object.keys(m.impAanp[cat]).length;
+  return `<section class="block"><h2>${esc(titel)} ${esc(m.label.toLowerCase())}</h2>
+    <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is leidend. Per post zie je wie er in ${esc(m.label.toLowerCase())} voor betaald heeft. Zet je een vinkje aan of uit, dan wordt die post opnieuw verdeeld over wie aangevinkt staat. Het verschil komt als correctie in ${esc(openMonth().label.toLowerCase())}. Vetgedrukte bedragen zijn aangepast.</p>
+    <div class="row" style="margin-bottom:8px"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div>
+      ${heeft?`<button class="ghost" data-act="impreset" data-cat="${esc(cat)}">Alle aanpassingen ongedaan maken</button>`:''}</div>
+    ${posts.length?`<div class="scroll tbl"><table class="hl-tabel"><thead>
+      <tr><th class="n">${esc(titel)}</th>${info.map(i=>`<th class="r">${esc(i.x.label)}</th>`).join('')}<th class="r">Totaal</th></tr>
+      <tr class="hl-info"><td class="n">Totaalprijs</td>${info.map(i=>`<td class="r num"><b>${eur(i.tot)}</b></td>`).join('')}<td class="r num"><b>${eur(sum(info.map(i=>i.tot)))}</b></td></tr>
+    </thead><tbody>
+      ${ppl.map(p=>{const alle=info.every(i=>i.wie.includes(p.id));return `<tr><td class="n"><label class="hl-cel" title="${alle?'Nergens':'Overal'} aanslaan"><input type="checkbox" data-ch="imprij" data-cat="${esc(cat)}" data-pid="${p.id}" ${alle?'checked':''} aria-label="${esc(p.name)} voor alle posten aanslaan"> ${esc(p.name)}</label></td>
+        ${info.map(i=>cel(p,i)).join('')}<td class="r num"><b>${eur(sum(info.map(i=>i.nieuw[p.id]||0)))}</b></td></tr>`}).join('')}
+      <tr class="total"><td class="n">Betalers</td>${info.map(i=>`<td class="r num">${i.wie.length}</td>`).join('')}<td class="r num">${Math.abs(verschil)>0.01?'verschil '+eur(verschil):''}</td></tr>
+    </tbody></table></div>`:`<div class="empty">Geen ${esc(titel.toLowerCase())} in deze maand.</div>`}
+  </section>`;
+}
+// Servicekosten van een maand uit de oude Excel: per persoon het bedrag aanpassen.
+function scImport(m){const o={};for(const [id,b] of Object.entries(m.snapshot||{}))for(const l of b.lines||[])if(l.cat==='Servicekosten'&&!/^Aanpassing /.test(l.label))o[id]=(o[id]||0)+l.amount;return o}
+function scImportEdit(m){
+  const oud=scImport(m),A=m.scAanp||{};
+  const ppl=[...S.people].sort(byName).filter(p=>UI.matrixAll||HOUSE.includes(p.status)||oud[p.id]!=null||A[p.id]!=null);
+  const how=id=>{const l=((m.snapshot[id]||{}).lines||[]).find(x=>x.cat==='Servicekosten');return l?l.how:''};
+  const nu=id=>A[id]!=null?+A[id]:(oud[id]||0);
+  return `<section class="block"><h2>Servicekosten ${esc(m.label.toLowerCase())}</h2>
+    <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is leidend. Pas per persoon het bedrag aan; het verschil komt als correctie in ${esc(openMonth().label.toLowerCase())}.</p>
+    <div class="row" style="margin-bottom:8px"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div>
+      ${Object.keys(A).length?'<button class="ghost" data-act="scimpreset">Alle aanpassingen ongedaan maken</button>':''}</div>
+    <div class="scroll tbl"><table class="ledger"><thead><tr><th>Naam</th><th class="hide-sm">Berekening in de Excel</th><th class="r">Bedrag</th><th class="r">Verschil</th></tr></thead><tbody>
+    ${ppl.map(p=>{const d=nu(p.id)-(oud[p.id]||0);return `<tr><td><b>${esc(p.name)}</b></td><td class="hide-sm small muted">${esc(how(p.id))}</td>
+      <td class="r"><input type="number" step="0.01" value="${Math.round(nu(p.id)*100)/100}" data-ch="scimp" data-pid="${p.id}" aria-label="Servicekosten ${esc(p.name)}" style="width:7rem"></td>
+      <td class="r num">${Math.abs(d)>0.004?`<b>${d>0?'+':''}${eur(d)}</b>`:'<span class="muted">—</span>'}</td></tr>`}).join('')}
+    <tr class="total"><td>Totaal</td><td class="hide-sm"></td><td class="r num">${eur(sum(ppl.map(p=>nu(p.id))))}</td><td></td></tr>
+    </tbody></table></div></section>`;
+}
 // Pilsrekening uit de oude Excel (geen turflijst, alleen bedragen per persoon in de vastgezette rekening).
 // De beheerder past per persoon het aantal flesjes en elk bedrag aan; het verschil wordt als correctie verrekend.
 const FLES='Pils fles';
@@ -1894,6 +1978,8 @@ const acts={
   copy:async el=>{try{await navigator.clipboard.writeText(el.dataset.text);toast('Gekopieerd.')}catch(e){toast('Kopiëren lukt hier niet; selecteer het IBAN en kopieer het zelf.',true)}},
   excel:()=>exportExcel(),
   mailopen:()=>mailOpen(),
+  impreset:el=>{const cat=el.dataset.cat;ask(`Alle aanpassingen aan ${cat.toLowerCase()} van deze maand ongedaan maken?`,'Ongedaan maken',()=>mutate(()=>{const m=M(UI.month);if(m.impAanp){delete m.impAanp[cat];if(!Object.keys(m.impAanp).length)delete m.impAanp}}))},
+  scimpreset:()=>ask('Alle aanpassingen aan de servicekosten van deze maand ongedaan maken?','Ongedaan maken',()=>mutate(()=>{delete M(UI.month).scAanp})),
   pilsimpreset:()=>ask('Alle aanpassingen aan deze pilsrekening ongedaan maken?','Ongedaan maken',()=>mutate(()=>{delete M(UI.month).pilsAanp})),
   meld:el=>{UI.meld={onderwerp:el.dataset.ond||'',tekst:'',bezig:false};render();setTimeout(()=>{const t=document.getElementById('meld-tekst');if(t)t.focus()},0)},
   meldclose:()=>{UI.meld=null;render()},
@@ -2004,6 +2090,10 @@ const changes={
   cat:el=>{const c=C(el.dataset.id),f=el.dataset.f;mutate(()=>{c[f]=f==='minimum'?(num(el.value)||0):el.value})},
   rc:el=>{const x=S.recurring.find(y=>y.id===el.dataset.id),f=el.dataset.f;mutate(()=>{x[f]=f==='amount'?(num(el.value)||0):el.value})},
   hl:el=>{const h=H(el.dataset.id),f=el.dataset.f;mutate(()=>{h[f]=f==='amountPP'?(num(el.value)||0):f==='match'?el.value.toUpperCase().trim():el.value})},
+  impzet:el=>mutate(()=>impZet(M(UI.month),el.dataset.cat,el.dataset.label,el.dataset.pid,el.checked)),
+  imprij:el=>{const m=M(UI.month),aan=el.checked,cat=el.dataset.cat;mutate(()=>{for(const x of impPosten(m,cat))impZet(m,cat,x.label,el.dataset.pid,aan)})},
+  scimp:el=>mutate(()=>{const m=M(UI.month),id=el.dataset.pid,oud=scImport(m)[id]||0,v=el.value===''?0:+el.value;
+    m.scAanp=m.scAanp||{};if(Math.abs(v-oud)<0.005)delete m.scAanp[id];else m.scAanp[id]=v;if(!Object.keys(m.scAanp).length)delete m.scAanp}),
   hlrij:el=>{const pid=el.dataset.pid,aan=el.checked;mutate(()=>{for(const h of S.huislasten||[]){const s2=new Set(toggleIn(h.payers,pid,aan));h.payers=S.people.map(p=>p.id).filter(id=>s2.has(id))}});toast(`${P(pid).name} ${aan?'betaalt nu alle':'betaalt geen'} huislasten meer mee.`.replace('alle huislasten meer mee','alle huislasten mee'))},
   hlpayer:el=>{const h=H(el.dataset.id);mutate(()=>{const s2=new Set(toggleIn(h.payers,el.dataset.pid,el.checked));h.payers=S.people.map(p=>p.id).filter(id=>s2.has(id))})},
   hlfill:el=>{const h=H(el.dataset.id),f=el.value;if(!f)return;mutate(()=>{h.payers=f==='none'?[]:S.people.filter(p=>f==='bewoner'?p.status==='bewoner':['bewoner','huisgenoot'].includes(p.status)).map(p=>p.id)})},
