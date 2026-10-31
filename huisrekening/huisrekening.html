@@ -706,7 +706,9 @@ function render(){
   if(UI.editor)tabs.push(['instellingen','Instellingen']);
   if(!tabs.some(t=>Array.isArray(t)&&t[0]===UI.tab))UI.tab='overzicht';
   const todo=S.transactions.filter(t=>t.kind==='todo').length;
-  const body={overzicht:vOverzicht,huislasten:vHuislasten,service:vService,transacties:vTransacties,evenementen:vEvenementen,pils:vPils,kas:vKas,instellingen:vInstellingen}[UI.tab](m);
+  const views={overzicht:vOverzicht,huislasten:vHuislasten,service:vService,transacties:vTransacties,evenementen:vEvenementen,pils:vPils,kas:vKas,instellingen:vInstellingen};
+  // Gaat een tabblad mis, val dan terug op het overzicht zodat de huisrekening altijd opent.
+  let body;try{body=views[UI.tab](m)}catch(e){console.error(e);const fout=UI.tab;UI.tab='overzicht';store.set('huis.tab','overzicht');body=`<div class="panel"><p class="note">Het tabblad ${esc(fout)} kon niet getoond worden (${esc(e.message)}). Je ziet daarom het overzicht.</p></div>`+vOverzicht(m)}
   // Met de site-koppeling komen de echte beheerders van de server (ingesteld op de site); anders de eigen lijst.
   const behLijst=BE&&window.HUIS_BEHEERDERS?window.HUIS_BEHEERDERS:null;
   const beh=behLijst?behLijst.join(', '):names(S.house.beheerders||[]);
@@ -1308,7 +1310,7 @@ function vInstellingen(){
   const {avg}=serviceShares();
   return `${BE?`<section class="block"><h2>Beheerders</h2>
     <p class="note">Wie de huisrekening mag beheren stel je in op de site: tabblad <b>Huisrekening</b> → <b>Wie heeft toegang?</b> (alleen de hoofdadmin ziet dat).</p>
-    <div class="panel"><b>Nu beheerder:</b> ${esc(beh||'—')}</div></section>`:`<section class="block"><h2>Beheerders</h2>
+    <div class="panel"><b>Nu beheerder:</b> ${esc((window.HUIS_BEHEERDERS||[]).join(', ')||'—')}</div></section>`:`<section class="block"><h2>Beheerders</h2>
     <p class="note">Beheerders staan onderaan de pagina vermeld. Wie echt mag opslaan, bepaal je op claude.ai: open het Delen-menu van deze pagina en geef die persoon bewerkrechten.</p>
     <div class="panel"><div class="people-grid">${[...S.people].filter(p=>HOUSE.includes(p.status)||(S.house.beheerders||[]).includes(p.id)).sort(byName).map(p=>`<label for="bh-${p.id}"><input type="checkbox" id="bh-${p.id}" data-ch="beheer" data-pid="${p.id}" ${(S.house.beheerders||[]).includes(p.id)?'checked':''}><span>${esc(p.name)}</span></label>`).join('')}</div></div></section>`}
   <section class="block"><h2>Kostenposten voor extra correcties en overige kosten</h2>
