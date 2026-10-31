@@ -149,6 +149,13 @@ tr.grp-row td{background:var(--sunk);border-bottom:1px solid var(--strong)}
 .savebar button.ghost{color:var(--paper)}
 .toast{position:fixed;z-index:30;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 12px);background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);padding:10px 16px;border-radius:var(--r);box-shadow:0 6px 24px rgb(0 0 0 / .15);max-width:min(92vw,520px);font-size:.9rem}
 .toast.err{border-left-color:var(--crit)}
+.imp-cel{white-space:nowrap}
+.imp-cel .imp-bedrag{width:5.6rem;margin-left:4px;text-align:right;font-variant-numeric:tabular-nums}
+.imp-bedrag{width:6.5rem;text-align:right}
+.imp-cel.anders .imp-bedrag{font-weight:700}
+.imp-cel.vast .imp-bedrag{color:var(--accent,#2a4d82);border-color:var(--accent,#2a4d82)}
+.imp-los{padding:0 4px!important;margin-left:2px;border:0!important;background:none!important}
+.stmt tr.aanp td{font-size:12.5px;color:var(--muted,#777);padding-left:18px;font-style:italic}
 .meldknop{padding:0 4px!important;margin-left:6px;font-size:13px;line-height:1;opacity:.55;border:0!important;background:none!important;vertical-align:middle}
 .meldknop:hover,.meldknop:focus-visible{opacity:1}
 .meldkaart.open{border-left:3px solid var(--warn,#c80)}
@@ -280,6 +287,7 @@ function migrate(d){
   for(const p of d.people||[])if(p.kaleHuurCorr==null){const fc=+p.fixedCorrection||0,r=(d.rooms||[]).find(x=>x.personId===p.id);
     if(r&&r.huurtoeslag===false){p.kaleHuurCorr=0;p.moneyUnderdogs=fc}else{p.kaleHuurCorr=fc;p.moneyUnderdogs=0}delete p.fixedCorrection}
   koppelHuislasten(d);
+  for(const m of d.months){delete m.bewerkt;delete m.basis;delete m.basisLines;delete m.gecorrigeerd}
   d.schema=2;return d;
 }
 
@@ -385,32 +393,20 @@ function pilsCalc(pl){
     tapPct:fustKnown&&expTap>0?tapZoek/expTap:null,flesPct:kratKnown&&expFles>0?flesZoek/expFles:null};
 }
 const billCache=new Map();
-// Afgesloten maand opnieuw doorrekenen met de instellingen van toen (m.cfg), vanaf de vastgezette beginsaldo's.
-// Het verschil met de vastgezette eindsaldo's komt als correctie in de lopende maand.
+// Lopende rekening: elke maand wordt altijd opnieuw doorgerekend. Het beginsaldo is het eindsaldo van de maand
+// ervoor, dus een wijziging in een eerdere maand loopt vanzelf door in alle saldo's daarna. Een PDF is een momentopname.
+// Eerdere maanden rekenen met hun eigen instellingen (m.cfg: huislasten, kamers, …); de huidige maand met de algemene.
+// Maanden uit de oude Excel hebben geen turflijsten of transacties: daar is de vastgelegde rekening (snapshot) de basis,
+// plus wat de beheerder per post aanpast.
 const CFG_KEYS=['huislasten','categories','recurring','rooms','pilsSettings'];
-let _herberekenen=false;
-function herbereken(m){
-  const key='her:'+m.id;if(billCache.has(key))return billCache.get(key);
-  const keep={};for(const k of CFG_KEYS)keep[k]=S[k];
-  if(m.cfg)for(const k of CFG_KEYS)if(m.cfg[k]!==undefined)S[k]=m.cfg[k];
-  const pr=m.pils&&m.pils.prices;if(pr)S.pilsSettings={...S.pilsSettings,barPrice:pr.bp,flesPrice:pr.fp,fust20Price:pr.fust20,fust50Price:pr.fust50,kratPrice:pr.krat,plexPrice:pr.plex,gasPrice:pr.gas};
-  const wasHer=_herberekenen;_herberekenen=true;m.closed=false;billCache.delete(m.id);
-  let B;try{B=bill(m.id)}finally{m.closed=true;billCache.delete(m.id);_herberekenen=wasHer;for(const k of CFG_KEYS)S[k]=keep[k]}
-  const snap=m.snapshot||{};
-  for(const id in B){const b=B[id];if(snap[id])b.start=snap[id].start;b.end=b.start-b.paid+b.charges}
-  billCache.set(key,B);return B;
+function metMaandCfg(m,fn){
+  const c=m.closed&&m.cfg?m.cfg:UI.globCfg;if(!c)return fn();
+  const keep={};for(const k of CFG_KEYS)if(c[k]!==undefined&&S[k]!==c[k]){keep[k]=S[k];S[k]=c[k]}
+  try{return fn()}finally{for(const k in keep)S[k]=keep[k]}
 }
-// Correctie = wat er door jouw wijzigingen verandert sinds je de maand openzette (m.basis).
-// Zo tellen verschillen door afronding of geïmporteerde maanden niet mee.
-// Afgesloten maand bekijken als beheerder = direct bewerkbaar. Huislasten, kamers enz. van die maand
-// (m.cfg) worden dan tijdelijk de actieve instellingen; bij opslaan gaan de algemene weer mee.
+// Eerdere maand bekijken als beheerder: de instellingen van die maand worden tijdelijk de actieve.
 function openzetten(m){
   if(!m.cfg)m.cfg=JSON.parse(JSON.stringify(Object.fromEntries(CFG_KEYS.map(k=>[k,UI.globCfg?UI.globCfg[k]:S[k]]))));
-  if(m.bewerkt&&m.basis)return;
-  billCache.clear();const R=herbereken(m);
-  m.basis=Object.fromEntries(Object.entries(R).map(([id,b])=>[id,b.end]));
-  m.basisLines=Object.fromEntries(Object.entries(R).map(([id,b])=>[id,b.lines.map(l=>({ref:l.ref,label:l.label,cat:l.cat,amount:l.amount}))]));
-  m.bewerkt=true;billCache.clear();
 }
 function zetMaandCfg(){
   const m=M(UI.month),doel=UI.editor&&m&&m.closed?m:null;
@@ -433,46 +429,10 @@ function metGlobaal(fn){
   for(const k of CFG_KEYS)S[k]=UI.globCfg[k];
   try{return fn()}finally{for(const k of CFG_KEYS)if(m.cfg[k]!==undefined)S[k]=m.cfg[k]}
 }
-function correcties(){
-  const out=[];
-  for(const m of S.months)if(m.closed&&m.bewerkt&&m.basis){const R=herbereken(m),snap=m.snapshot||{};
-    for(const id in R){const d=R[id].end-(m.basis[id]??R[id].end);
-      if(Math.abs(d)>0.004){const oud=snap[id]?snap[id].end:0;out.push({m,id,oud,nieuw:oud+d,d})}}}
-  return out;
-}
-// Afgesloten maand die je aanpast: de vastgezette rekening plus een regel 'Aanpassing na afsluiten'.
-// Elke post krijgt het nieuwe bedrag (was … , verrekend in de lopende maand); wat niet bij een post hoort
-// (bijv. een betaling die je achteraf toevoegt) blijft een losse regel 'Aanpassing na afsluiten'.
-function aangepast(m){
-  const key='adj:'+m.id;if(billCache.has(key))return billCache.get(key);
-  const B=JSON.parse(JSON.stringify(m.snapshot||{})),R=m.basisLines?herbereken(m):null,waar=openMonth().label.toLowerCase();
-  for(const c of correcties())if(c.m===m){
-    const b=B[c.id]=B[c.id]||{start:0,paid:0,end:0,lines:[],payments:[]};let verwerkt=0;
-    if(R){const d={},sleutel=l=>l.cat+'\u0000'+l.label;
-      for(const l of (R[c.id]||{}).lines||[])d[sleutel(l)]=(d[sleutel(l)]||0)+l.amount;
-      for(const l of m.basisLines[c.id]||[])d[sleutel(l)]=(d[sleutel(l)]||0)-l.amount;
-      for(const [k,v] of Object.entries(d)){if(Math.abs(v)<0.004)continue;let [cat,label]=k.split('\u0000');
-        const kaal=label.replace(/^Aanpassing /,'');
-        const l=b.lines.find(x=>x.cat===cat&&x.label===kaal)||b.lines.find(x=>x.cat===cat&&x.label===label);
-        if(l){l.how=`aangepast na afsluiten, was ${eur(l.amount)}; verschil verrekend in ${waar}`;l.amount+=v}
-        else b.lines.push({cat,label,amount:v,how:`toegevoegd na afsluiten, verrekend in ${waar}`});
-        verwerkt+=v}
-      b.lines=b.lines.filter(l=>Math.abs(l.amount)>0.004||!/aangepast na afsluiten/.test(l.how||''))}
-    const rest=c.d-verwerkt;
-    if(Math.abs(rest)>0.004)b.lines.push({cat:'Correctie',label:'Aanpassing na afsluiten',amount:rest,how:`verrekend in ${waar}`});
-    b.charges=(b.charges||0)+c.d;b.end=r2(b.end+c.d)}
-  billCache.set(key,B);return B;
-}
-function bill(mid){
-  const m=M(mid);if(!m)return {};
-  if(m.closed)return m.bewerkt&&!_herberekenen?aangepast(m):(m.snapshot||{});
-  if(billCache.has(mid))return billCache.get(mid);
-  // Beginsaldo komt uit de vastgezette stand van de vorige maand; wijzigingen daarin komen als correctie.
-  const i=S.months.indexOf(m),pm=i>0?S.months[i-1]:null,prev=pm?(pm.closed?(pm.snapshot||{}):bill(pm.id)):null;
-  const B={};
-  for(const p of S.people){const st=prev&&prev[p.id]?prev[p.id].end:(+p.startSaldo||0);B[p.id]={start:st,paid:0,lines:[],end:st,payments:[]}}
-  const add=(id,l)=>{if(B[id]&&Math.abs(l.amount)>0.00001)B[id].lines.push(l)};
-  for(const t of S.transactions.filter(t=>t.monthId===mid)){
+const correcties=()=>[];
+const herbereken=m=>bill(m.id);
+function txRegels(m,B,add,mid,alleen){
+  for(const t of S.transactions.filter(t=>t.monthId===mid&&(!alleen||alleen(t)))){
     if(t.kind==='payment'&&B[t.personId]){B[t.personId].paid+=t.amount;B[t.personId].payments.push({date:t.date,amount:t.amount,note:t.name})}
     if(t.kind==='cost'){
       const h=t.huislastId&&H(t.huislastId),c=C(t.categoryId),cost=-t.amount,ids=txPayers(t);
@@ -480,6 +440,9 @@ function bill(mid){
     }
     if(t.paidBy&&B[t.paidBy]&&['cost','event','pils'].includes(t.kind)){const v=-t.amount;B[t.paidBy].paid+=v;B[t.paidBy].payments.push({date:t.date,amount:v,note:'voorgeschoten: '+(t.label||t.name)})}
   }
+}
+function gewoneRegels(m,B,add,mid){
+  txRegels(m,B,add,mid);
   for(const e of S.events)for(const v of (e.voorschotten||[]))if(v.monthId===mid)for(const id of (v.persons||[]))add(id,{cat:'Extra correctie',label:`${e.name}: voorschot`,amount:+v.amountPP||0,how:'voorschot vooraf, wordt verrekend bij de eindafrekening',ref:{type:'event',id:e.id}});
   for(const e of S.events.filter(e=>e.billMonth===mid)){const k=eventCalc(e);
     for(const id in k.shares){const s=k.shares[id],adv=k.adv[id]||0;
@@ -500,21 +463,54 @@ function bill(mid){
     for(const a of pc.afkoop)for(const id of a.parts)add(id,{cat:'Pils',label:`Afkoop ${afkoopName(a.type)}: ${a.label||'zonder naam'}`,amount:a.per,how:`${a.count} × ${eur(afkoopPrice(a.type))} = ${eur(a.cost)} ÷ ${a.parts.length}`,ref:{type:'pils',kind:'afkoop',id:a.id}});
     for(const x of pc.posts)if(Math.abs(x.value)>0.004&&pc.n)for(const id of pc.payers)add(id,{cat:'Pils',label:x.label,amount:x.value/pc.n,how:`${eur(x.value)} ÷ ${pc.n} meebetalers`,ref:{type:'pils',kind:'post',id:x.id}});
   }
-  if(impMaand(m)){
+}
+// Maand uit de oude Excel: de vastgelegde regels, met de aanpassingen van de beheerder verwerkt in de posten zelf.
+function excelRegels(m,B,add,mid){
+  const snap=m.snapshot||{};
+  for(const id in snap){const b=B[id];if(!b)continue;const x=snap[id];
+    b.lines=(x.lines||[]).map(l=>({...l}));b.paid=+x.paid||0;b.payments=(x.payments||[]).map(y=>({...y}))}
+  const extra=[],addA=(id,l)=>{if(B[id]&&Math.abs(l.amount)>0.00001)extra.push([id,l])};
+  (function(add){
+  {
     for(const cat of IMP_CATS)if(m.impAanp&&m.impAanp[cat])for(const [label,d] of Object.entries(impVerschillen(m,cat)))for(const id in d)
-      if(Math.abs(d[id])>0.004)add(id,{cat,label:`Aanpassing ${label}`,amount:d[id],how:'wie meebetaalt is na afsluiten aangepast door de beheerder',ref:{type:'imp',cat,label}});
+      if(Math.abs(d[id])>0.004)add(id,{cat,label:`Aanpassing ${label}`,amount:d[id],how:impReden(m,cat,label),ref:{type:'imp',cat,label}});
     if(m.afkoopAanp){const d=afkoopImpVerschil(m),lb=(Object.values(m.snapshot||{}).flatMap(b=>b.lines||[]).find(l=>l.cat==='Pils'&&isAfkoop(l.label))||{label:'Fust afkoop'}).label;
-      for(const id in d)if(Math.abs(d[id])>0.004)add(id,{cat:'Pils',label:`Aanpassing ${lb}`,amount:d[id],how:'wie bij het afkoopmoment was is na afsluiten aangepast',ref:{type:'imp',cat:'Pils'}})}
+      for(const id in d)if(Math.abs(d[id])>0.004)add(id,{cat:'Pils',label:`Aanpassing ${lb}`,amount:d[id],how:afkoopReden(m),ref:{type:'imp',cat:'Pils'}})}
     if(m.scAanp){const oud=scImport(m);for(const id in m.scAanp){const d=(+m.scAanp[id]||0)-(oud[id]||0);
-      if(Math.abs(d)>0.004)add(id,{cat:'Servicekosten',label:'Aanpassing servicekosten',amount:d,how:'na afsluiten aangepast door de beheerder',ref:{type:'imp',cat:'Servicekosten'}})}}
+      if(Math.abs(d)>0.004)add(id,{cat:'Servicekosten',label:'Aanpassing servicekosten',amount:d,how:'aangepast door de beheerder',ref:{type:'imp',cat:'Servicekosten'}})}}
   }
   // Per pilspost een eigen aanpassingsregel (turven bar, flesjes Nestor, …), zodat het overzicht ze bij de juiste post toont.
-  if(!m.pils&&m.pilsAanp&&m.snapshot){const imp=pilsImport(m);for(const id in m.pilsAanp){const n=pilsImpNieuw(m,id,imp);
+  if(m.pilsAanp){const imp=pilsImport(m);for(const id in m.pilsAanp){const n=pilsImpNieuw(m,id,imp);
     for(const lb of new Set([...Object.keys(n.cells),...Object.keys(n.oud.cells)])){const d=(n.cells[lb]||0)-(n.oud.cells[lb]||0);
-      if(Math.abs(d)>0.004)add(id,{cat:'Pils',label:`Aanpassing ${lb}`,amount:d,how:lb===TAP?`${n.tap} tapturven × ${eur3(imp.tapPrijs)}`:lb===FLES?`${n.cnt} flesjes × ${eur3(imp.prijs)}`:'pilsrekening na afsluiten aangepast door de beheerder',ref:{type:'pils',kind:'aanp'}})}}}
-  if(!_herberekenen&&m===openMonth())for(const c of correcties())
-    add(c.id,{cat:'Correctie',label:`Correctie ${c.m.label.toLowerCase()}`,amount:c.d,how:`${c.m.label} is na het afsluiten aangepast: eindsaldo was ${eur(c.oud)}, wordt ${eur(c.nieuw)}`,ref:{type:'corr',id:c.m.id}});
-  for(const id in B){const b=B[id];b.charges=sum(b.lines.map(l=>l.amount));b.end=b.start-b.paid+b.charges}
+      if(Math.abs(d)>0.004)add(id,{cat:'Pils',label:`Aanpassing ${lb}`,amount:d,how:lb===TAP?`${n.tap} tapturven × ${eur3(imp.tapPrijs)}`:lb===FLES?`${n.cnt} flesjes × ${eur3(imp.prijs)}`:'aangepast door de beheerder',ref:{type:'pils',kind:'aanp'}})}}}
+  })(addA);
+  for(const [id,d] of extra){const b=B[id],kaal=d.label.replace(/^Aanpassing /,'');
+    const l=b.lines.find(x=>x.cat===d.cat&&x.label===kaal);
+    if(l){const telt=/^\d+ (tapturven|flesjes) ×/.test(d.how||'');l.how=telt?`${d.how}; was ${eur(l.amount)}`:`aangepast: ${d.how||'door de beheerder'}; was ${eur(l.amount)}`;l.amount+=d.amount;l.aangepast=true}
+    else b.lines.push({...d,label:kaal,how:`toegevoegd: ${d.how||'door de beheerder'}`,aangepast:true})}
+  for(const id in B)B[id].lines=B[id].lines.filter(l=>Math.abs(l.amount)>0.004||!l.aangepast);
+  // Wat de beheerder later aan deze maand toevoegt (transacties, kopjes) telt gewoon mee.
+  txRegels(m,B,add,mid,t=>t.naImport);
+  for(const e of S.events.filter(e=>e.billMonth===mid&&e.naImport)){const k=eventCalc(e);
+    for(const id in k.shares)add(id,{cat:'Extra correctie',label:e.name,amount:k.shares[id].a,how:k.shares[id].why==='vast bedrag'?'vast bedrag':`${eur(k.rest)} verdeeld`,ref:{type:'event',id:e.id}})}
+}
+function bill(mid){
+  const m=M(mid);if(!m)return {};
+  if(billCache.has(mid))return billCache.get(mid);
+  const i=S.months.indexOf(m),pm=i>0?S.months[i-1]:null,prev=pm?bill(pm.id):null,snap=impMaand(m)?m.snapshot:null;
+  const B={};
+  for(const p of S.people){
+    // Beginsaldo = eindsaldo vorige maand. Staat iemand daar op nul maar heeft de Excel van deze maand een beginsaldo
+    // (bijv. een oud-huisgenoot die er toen pas bij kwam), dan dat beginsaldo.
+    const pe=prev&&prev[p.id]?prev[p.id].end:null,ss=snap&&snap[p.id]?snap[p.id].start:null;
+    const st=pe!=null&&(Math.abs(pe)>0.004||ss==null)?pe:(ss!=null?ss:(prev||snap?0:(+p.startSaldo||0)));
+    B[p.id]={start:st,paid:0,lines:[],end:st,payments:[]}}
+  const add=(id,l)=>{if(B[id]&&Math.abs(l.amount)>0.00001)B[id].lines.push(l)};
+  metMaandCfg(m,()=>snap?excelRegels(m,B,add,mid):gewoneRegels(m,B,add,mid));
+  for(const id in B){const b=B[id];b.charges=sum(b.lines.map(l=>l.amount));b.end=b.start-b.paid+b.charges;
+    // Excel-maand: de verandering ten opzichte van de Excel, opgeteld bij wat de Excel zelf als mutatie had.
+    const x=snap&&snap[id];if(x){const exCh=sum((x.lines||[]).map(l=>l.amount)),exPaid=+x.paid||0;
+      b.end=b.start+(x.end-x.start)+(b.charges-exCh)-(b.paid-exPaid)}}
   billCache.set(mid,B);return B;
 }
 function sanctionFor(saldo){let s=null;for(const x of [...S.sanctions].sort((a,b)=>a.min-b.min))if(saldo>=x.min)s=x;return s}
@@ -707,7 +703,7 @@ async function maakPDF(pid,m){
   font('bold',21);kleur(NAVY);doc.text('Rekeningoverzicht',L,26);
   font('normal',13);kleur(INK);doc.text(T(m.label),L,33);
   // Gegevensblok
-  const vak=[['Naam',p.name],['Periode',`${fmtDate(m.from)} t/m ${fmtDate(m.to)}`],['Status',m.closed?'Afgesloten':'Lopende maand (voorlopig)'],['Aangemaakt op',new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'})]];
+  const vak=[['Naam',p.name],['Periode',`${fmtDate(m.from)} t/m ${fmtDate(m.to)}`],['Status',m===openMonth()?'Huidige maand':'Eerdere maand'],['Momentopname van',new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'})]];
   doc.setDrawColor(...LIJN);doc.setLineWidth(0.3);doc.rect(L,40,R-L,24);
   vak.forEach(([k,v],ix)=>{const x=L+4+(ix%2)*((R-L)/2),yy=46+Math.floor(ix/2)*10;font('normal',7.5);kleur(GRIJS);doc.text(k.toUpperCase(),x,yy);font('bold',10);kleur(INK);doc.text(T(v),x,yy+4.6)});
   y=74;
@@ -717,6 +713,7 @@ async function maakPDF(pid,m){
   // 1 Beginsaldo
   rubriek(1,'Beginsaldo');
   regel(`Saldo per ${fmtDate(prevTo)} (overgenomen uit vorige maand)`,b.start,{k:K3});
+  for(const x of eerdereAanpassingen(pid,m))regel(`waarvan aangepast in ${x.m.label.toLowerCase()}`,x.d,{in:1,k:K2,sz:8.5,c:GRIJS,toel:x.posten.map(y=>`${y.label} ${y.d>0?'+':''}${E(y.d)}${y.why?` (${y.why})`:''}`).join('; ')});
 
   // 2 Kosten
   rubriek(2,'Kosten in deze periode');
@@ -762,7 +759,7 @@ async function maakPDF(pid,m){
   // Voettekst op elke pagina
   const n=doc.getNumberOfPages();
   for(let k=1;k<=n;k++){doc.setPage(k);doc.setDrawColor(...LIJN);doc.setLineWidth(0.2);doc.line(L,284,R,284);font('normal',7.5);kleur(GRIJS);
-    doc.text(T('Dit overzicht is automatisch gemaakt uit de huisrekening. Vragen of een fout gezien? Neem contact op met de beheerder.'),L,288.5);
+    doc.text(T('Momentopname van de huisrekening; latere aanpassingen kunnen de bedragen nog veranderen. Vragen? Neem contact op met de beheerder.'),L,288.5);
     doc.text(`Pagina ${k} van ${n}`,R,288.5,{align:'right'})}
   const naam=`Huisrekening ${m.label} ${p.name}`.replace(/[\\/:*?"<>|]+/g,'').replace(/\s+/g,'-');
   return {doc,naam};
@@ -1024,10 +1021,8 @@ function closeMonth(naarNieuw){
   const m=openMonth();const B=bill(m.id);
   const snap={};for(const id in B){const b=B[id];snap[id]={start:r2(b.start),paid:r2(b.paid),end:r2(b.end),lines:b.lines.map(l=>({cat:l.cat,label:l.label,amount:Math.round(l.amount*10000)/10000,how:l.how||'',ref:l.ref||null})),payments:b.payments}}
   UI.month=m.id;zetMaandCfg();
-  const metCorr=new Set(correcties().map(c=>c.m.id)),her=S.months.filter(x=>x.closed&&x.bewerkt);
   mutate(()=>{
-    // De correcties staan nu in de rekening van deze maand; de oude maanden gaan weer op slot.
-    for(const x of her){x.bewerkt=false;delete x.basis;delete x.basisLines;if(metCorr.has(x.id))x.gecorrigeerd=(x.gecorrigeerd||[]).concat(m.label)}
+    // De maand blijft aanpasbaar; hij krijgt alleen eigen instellingen en een momentopname voor de geschiedenis.
     m.closed=true;m.snapshot=snap;m.cfg=JSON.parse(JSON.stringify(Object.fromEntries(CFG_KEYS.map(k=>[k,S[k]]))));
     if(m.pils)m.pils.prices={bp:barPrice(),fp:flesPrice(),fust20:+PS().fust20Price,fust50:+PS().fust50Price,krat:+PS().kratPrice,plex:+PS().plexPrice,gas:+PS().gasPrice};
     const nid=addMonthId(m.id,1),[y,mm]=nid.split('-').map(Number);
@@ -1035,7 +1030,7 @@ function closeMonth(naarNieuw){
     for(const t of S.transactions)if(t.monthId===m.id&&t.kind==='todo')t.monthId=nid;
     UI.month=naarNieuw?nid:m.id;
   });
-  toast(naarNieuw?`${openMonth().label} is aangemaakt. ${m.label} is afgesloten en de eindsaldo's zijn doorgerekend als beginsaldo.`:`${m.label} is afgesloten.`+(BE?'':' Klik op Opslaan en delen om de rekening te publiceren.'));
+  toast(naarNieuw?`${openMonth().label} is aangemaakt. De eindsaldo's van ${m.label.toLowerCase()} zijn de beginsaldo's; ${m.label.toLowerCase()} blijft gewoon aanpasbaar.`:`${openMonth().label} is begonnen.`+(BE?'':' Klik op Opslaan en delen om de rekening te publiceren.'));
 }
 function reopenMonth(){
   const om=openMonth(),i=S.months.indexOf(om),last=S.months[i-1];
@@ -1164,7 +1159,7 @@ function render(){
   $('#app').innerHTML=`<div class="wrap">
   ${UI.beheerder?`<div class="alslid${UI.alsLid?' aan':''}">${UI.alsLid?`<span>Je bekijkt de huisrekening zoals een gewoon lid hem ziet.</span><button class="primary" data-act="alsbeheer">Terug naar beheer</button>`:`<button class="ghost" data-act="alslid">Bekijk als lid</button>`}</div>`:''}
   <header class="top"><div class="brand"><span class="eyebrow">${esc(S.house.name)} · Huisrekening</span><h1>${esc(m.label)}</h1>
-    <span class="small muted">Periode ${fmtDate(m.from)} t/m ${fmtDate(m.to)} · ${m.closed?'afgesloten':'lopende maand'}${S.savedAt?` · bijgewerkt ${new Date(S.savedAt).toLocaleDateString('nl-NL',{day:'numeric',month:'long'})}`:''}</span></div>
+    <span class="small muted">Periode ${fmtDate(m.from)} t/m ${fmtDate(m.to)} · ${m===openMonth()?'huidige maand':'eerdere maand, blijft aanpasbaar'}${S.savedAt?` · bijgewerkt ${new Date(S.savedAt).toLocaleDateString('nl-NL',{day:'numeric',month:'long'})}`:''}</span></div>
     <div class="maandkeuze">${BE&&UI.editor?opslagStatus():''}<label class="small muted" for="kiesmaand">Maand</label><select id="kiesmaand" data-ch="kiesmaand">${S.months.slice().reverse().map(x=>`<option value="${x.id}" ${x.id===m.id?'selected':''}>${esc(x.label)}${x.closed?'':' (lopend)'}</option>`).join('')}</select>${UI.editor&&BE&&BE.mail?`<button data-act="mailopen">✉ Mail overzichten</button>`:''}${UI.editor?`<button class="primary" data-act="nieuwemaand">+ Nieuwe maand</button>`:''}</div></header>
   <nav class="tabs" aria-label="Onderdelen">${tabs.map(t=>typeof t==='string'?`<span class="tabsep" aria-hidden="true"></span><span class="tabgrp">${t.slice(1)}</span>`:`<button data-act="tab" data-id="${t[0]}" ${UI.tab===t[0]?'aria-current="page"':''}>${t[1]}${t[0]==='transacties'&&todo&&UI.editor?`<span class="badge warn">${todo}</span>`:''}${t[0]==='meldingen'&&UI.editor&&meldOpen()?`<span class="badge warn">${meldOpen()}</span>`:''}</button>`).join('')}</nav>
   ${body}
@@ -1180,9 +1175,10 @@ function render(){
   if(focusId){const el=document.getElementById(focusId);if(el){el.focus({preventScroll:true});if(sel&&el.setSelectionRange)try{el.setSelectionRange(sel[0],sel[1])}catch(e){}}}
   markeerMij();
 }
-const vast=m=>!!(m&&m.closed&&!m.bewerkt);
+// Lopende rekening: geen enkele maand staat op slot.
+const vast=m=>false;
 // Maand waarin nieuwe posten landen: de bekeken maand als die (weer) bewerkbaar is, anders de lopende.
-const doelMaand=()=>{const m=M(UI.month);return m&&m.closed&&m.bewerkt?m:openMonth()};
+const doelMaand=()=>M(UI.month)||openMonth();
 const canEdit=m=>UI.editor&&m&&!vast(m);
 const dis=ok=>ok?'':'disabled';
 
@@ -1249,6 +1245,7 @@ function statementHTML(pid,m){
   const i=S.months.indexOf(m),prevTo=i>0?S.months[i-1].to:addDays(m.from,-1);
   const groups={};for(const [ix,l] of b.lines.entries()){(groups[l.cat]=groups[l.cat]||[]).push([ix,l])}
   const rows=[`<tr class="bal"><td>Saldo per ${fmtDate(prevTo)}</td><td class="r num">${eur(b.start)}</td></tr>`];
+  for(const a of eerdereAanpassingen(pid,m))rows.push(`<tr class="ln aanp"><td>waarvan aangepast in ${esc(a.m.label.toLowerCase())}: ${a.posten.map(x=>`${esc(x.label)} ${x.d>0?'+':''}${eur(x.d)}${x.why?` (${esc(x.why)})`:''}`).join('; ')}</td><td class="r num">${a.d>0?'+':''}${eur(a.d)}</td></tr>`);
   const gOpen=c=>UI.grpAll||UI.grpOpen.has(pid+'|'+c);
   const gRow=(c,label,amt,n)=>`<tr class="grp tog" data-act="grp" data-key="${esc(pid+'|'+c)}" tabindex="0" aria-expanded="${gOpen(c)}"><td><span class="chev" aria-hidden="true">${gOpen(c)?'▾':'▸'}</span>${esc(label)} <span class="muted small">(${n})</span>${meldKnop(`${P(pid).name} · ${label} (${amt})`,m)}</td><td class="r num">${amt}</td></tr>`;
   for(const [cat,ls] of Object.entries(groups)){
@@ -1326,10 +1323,10 @@ function vOverzicht(m){
   ${UI.editor?`<section class="block"><h2>Maand beheren</h2>
     ${!m.closed?`<div class="panel stack"><div class="row"><label class="field" for="m-from">Van<input type="date" id="m-from" data-ch="mfrom" value="${m.from}"></label><label class="field" for="m-to">Tot en met<input type="date" id="m-to" data-ch="mto" value="${m.to}"></label>
       <label class="row small" for="m-svc"><input type="checkbox" id="m-svc" data-ch="msvc" ${m.includeService!==false?'checked':''}> Servicekosten-correctie meerekenen</label></div>
-      <p class="note">Sluit de maand af als alle transacties verwerkt en de pilsvoorraad geteld is. De bedragen worden dan vastgezet, er start een nieuwe maand en onverwerkte transacties schuiven mee.</p>
-      <div><button class="primary" data-act="closemonth">${esc(m.label)} afsluiten</button></div></div>`
-    :`<div class="panel stack"><p class="note">${esc(m.label)} is afgesloten${m.note?' · '+esc(m.note):''}. De lopende maand is ${esc(om.label)}.${(m.gecorrigeerd||[]).length?` Na het afsluiten gecorrigeerd (verrekend in ${esc(m.gecorrigeerd.join(', ').toLowerCase())}).`:''}</p>
-      <p class="note">Je kunt alles in ${esc(m.label.toLowerCase())} gewoon aanpassen. Het verschil per persoon komt als <b>correctie</b> in het saldo van ${esc(om.label.toLowerCase())}; de oude rekening blijft bewaard.</p>${m===lastClosed&&!m.note?`<div><button data-act="reopen">${esc(m.label)} heropenen</button></div>`:''}</div>`}
+      <p class="note">Begin een nieuwe maand als dit afschrift verwerkt is. Het eindsaldo wordt het beginsaldo van de nieuwe maand; ${esc(m.label.toLowerCase())} blijft daarna gewoon aanpasbaar en elke wijziging loopt door in de saldo's erna. Onverwerkte transacties schuiven mee.</p>
+      <div><button class="primary" data-act="nieuwemaand">+ Nieuwe maand beginnen</button></div></div>`
+    :`<div class="panel stack"><p class="note">${esc(m.label)}${m.note?' · '+esc(m.note):''}. De huidige maand is ${esc(om.label)}.</p>
+      <p class="note">Je kunt alles in ${esc(m.label.toLowerCase())} gewoon aanpassen. Wijzigingen lopen vanzelf door in de saldo's van alle maanden erna.</p>${m===lastClosed&&!m.note?`<div><button data-act="reopen">${esc(om.label)} weghalen en verder in ${esc(m.label.toLowerCase())}</button></div>`:''}</div>`}
   </section>`:''}`;
 }
 
@@ -1475,7 +1472,7 @@ function hlSuggesties(){
 // Huislasten als één tabel: kolommen = huislasten (naam, totaal, soort), rijen = huisgenoten op anciënniteit.
 function vHuislasten(m){
   if(UI.editor&&impMaand(m)&&m.closed)return impEdit(m,'Huislasten','Huislasten');
-  const hl=S.huislasten||[],om=openMonth(),ed=UI.editor&&!vast(m),B=bill(m.id),dicht=m.closed&&m.bewerkt&&m.basisLines;
+  const hl=S.huislasten||[],om=openMonth(),ed=UI.editor&&!vast(m),B=bill(m.id),dicht=false;
   // Wat iemand deze maand voor een huislast betaalt, uit de regels van de rekening.
   // Regels uit oude (geïmporteerde) maanden hebben geen koppeling; die herkennen we aan de naam (Prime → Amazon Prime).
   const norm=x=>String(x||'').toLowerCase().replace(/\(.*?\)/g,'').replace(/[^a-z0-9]/g,'');
@@ -1484,7 +1481,7 @@ function vHuislasten(m){
   const regels=(lines,h)=>sum((lines||[]).filter(l=>hoort(l,h)).map(l=>l.amount));
   // Afgesloten maand: het vastgezette bedrag plus wat jouw aanpassing verandert (nu − bij openzetten).
   const bedrag=(id,h)=>{const b=dicht?(m.snapshot||{})[id]:B[id];const vastB=b?regels(b.lines.filter(l=>l.cat!=='Correctie'),h):0;
-    if(!dicht)return vastB;const R=herbereken(m);return vastB+regels(R[id]&&R[id].lines,h)-regels(m.basisLines[id],h)};
+    return vastB};
   const totaal=h=>sum(Object.keys(B).map(id=>bedrag(id,h)));
   const ppl=[...S.people].sort(byName).filter(p=>UI.matrixAll||HOUSE.includes(p.status)||hl.some(h=>h.payers.includes(p.id)||Math.abs(bedrag(p.id,h))>0.004));
   const sug=ed?hlSuggesties():[];
@@ -1510,7 +1507,7 @@ function vHuislasten(m){
   return `<section class="block"><div class="spread"><h2>Huislasten ${esc(m.label.toLowerCase())}</h2>${ed?'<button class="primary" data-act="addhl">+ Huislast</button>':''}</div>
     <p class="note">${ed?'Bovenaan per huislast de totaalprijs en hoe hij berekend wordt: een vast bedrag per persoon, of herkend in het bankafschrift (meerdere teksten scheid je met een komma). Daaronder per huisgenoot wat hij betaalt; met het vinkje zet je iemand aan of uit. Het vinkje vóór een naam zet iemand in één keer voor álle huislasten aan of uit.'
       :`Per huislast de totaalprijs en per huisgenoot wat hij in ${esc(m.label.toLowerCase())} betaalt.`}</p>
-    ${ed&&m.closed?`<p class="note">Je past <b>${esc(m.label.toLowerCase())}</b> aan. Wijzigingen hier gelden alleen voor die maand; het verschil komt als correctie in ${esc(om.label.toLowerCase())}.</p>`:''}
+    ${ed&&m.closed?`<p class="note">Je past <b>${esc(m.label.toLowerCase())}</b> aan. Wijzigingen hier gelden alleen voor die maand; de saldo's van de maanden erna lopen vanzelf mee.</p>`:''}
     ${ed?`<div class="row" style="margin-bottom:8px"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div></div>`:''}
     ${hl.length?tabel:'<div class="empty">Nog geen huislasten.</div>'}
     ${sug.length?`<h3 style="margin-top:16px">Herkend in het afschrift</h3><p class="note">Deze afschrijvingen komen elke maand terug maar zijn nog geen huislast.</p>
@@ -1602,7 +1599,7 @@ function numInput(id,val,ch,f,ok,w,extra){return `<input type="number" id="${id}
 // Maanden uit de oude Excel: de rekening van die maand is leidend, op elk tabblad.
 // Per post (NRC, Makro, een extra correctie, …) het totaal en wie wat betaalde; met m.impAanp[cat][post] = [personen]
 // verdeel je hem opnieuw, naar verhouding van wat ieder betaalde (nieuwe betalers krijgen het gebruikelijke bedrag).
-// Servicekosten (m.scAanp) en pils (m.pilsAanp) pas je per persoon aan. Het verschil komt als correctie in de lopende maand.
+// Servicekosten (m.scAanp) en pils (m.pilsAanp) pas je per persoon aan. Het verschil loopt door in de saldo's van de maanden erna.
 const impMaand=m=>!!(m&&m.snapshot&&/oude Excel/i.test(m.note||''));
 const IMP_CATS=['Huislasten','Extra correctie','Pils'];
 function impPosten(m,cat){
@@ -1613,13 +1610,18 @@ function impPosten(m,cat){
   return Object.values(posts);
 }
 const hlImport=m=>impPosten(m,'Huislasten');
+// Aanpassing per post: { wie: [personen], vast: {persoon: bedrag}, totaal }. (Oude vorm: alleen de lijst met personen.)
+function impEntry(m,cat,label){const v=((m.impAanp||{})[cat]||{})[label];return Array.isArray(v)?{wie:v}:(v||null)}
 function impNieuw(m,cat,x){
-  const oud=Object.keys(x.per).filter(id=>Math.abs(x.per[id])>0.00001),tot=sum(oud.map(id=>x.per[id]));
-  const wie=(m.impAanp&&m.impAanp[cat]&&m.impAanp[cat][x.label])||oud;
+  const oud=Object.keys(x.per).filter(id=>Math.abs(x.per[id])>0.00001),totOud=sum(oud.map(id=>x.per[id]));
+  const A=impEntry(m,cat,x.label)||{},wie=A.wie||oud,tot=A.totaal!=null?+A.totaal:totOud;
+  const vast=Object.fromEntries(Object.entries(A.vast||{}).filter(([id])=>wie.includes(id)).map(([id,v])=>[id,+v||0]));
+  // Vaste bedragen eerst; het restant gaat naar de overige aangevinkten, naar verhouding van wat ze betaalden.
   const vals=oud.map(id=>x.per[id]).sort((a,b)=>a-b),gewoon=vals.length?vals[Math.floor(vals.length/2)]:0;
-  const w=Object.fromEntries(wie.map(id=>[id,oud.includes(id)?x.per[id]:gewoon])),sw=sum(Object.values(w));
-  const nieuw={};for(const id of wie)nieuw[id]=sw?tot*w[id]/sw:0;
-  return {nieuw,wie,tot,oud};
+  const vrij=wie.filter(id=>!(id in vast)),w=Object.fromEntries(vrij.map(id=>[id,oud.includes(id)?x.per[id]:gewoon])),sw=sum(Object.values(w));
+  const rest=tot-sum(Object.values(vast)),nieuw={...vast};
+  for(const id of vrij)nieuw[id]=sw?rest*w[id]/sw:(vrij.length?rest/vrij.length:0);
+  return {nieuw,wie,tot,totOud,oud,vast,rest};
 }
 function impVerschillen(m,cat){
   const out={},A=(m.impAanp||{})[cat]||{};
@@ -1627,33 +1629,72 @@ function impVerschillen(m,cat){
     for(const id of new Set([...Object.keys(x.per),...Object.keys(nieuw)]))d[id]=(nieuw[id]||0)-(x.per[id]||0);out[x.label]=d}
   return out;
 }
-function impZet(m,cat,label,pid,aan){
+// Past de aanpassing van één post aan en ruimt hem op als hij weer gelijk is aan de oorspronkelijke rekening.
+function impWijzig(m,cat,label,fn){
   const x=impPosten(m,cat).find(y=>y.label===label);if(!x)return;
-  const {wie,oud}=impNieuw(m,cat,x),s2=new Set(wie);aan?s2.add(pid):s2.delete(pid);
-  const nw=S.people.map(p=>p.id).filter(id=>s2.has(id));
-  const A=m.impAanp=m.impAanp||{},C2=A[cat]=A[cat]||{};
-  if(nw.length===oud.length&&nw.every(id=>oud.includes(id)))delete C2[label];else C2[label]=nw;
-  if(!Object.keys(C2).length)delete A[cat];if(!Object.keys(A).length)delete m.impAanp;
+  const cur=impNieuw(m,cat,x),A={wie:[...cur.wie],vast:{...cur.vast},totaal:(impEntry(m,cat,label)||{}).totaal};
+  fn(A,cur);
+  A.wie=S.people.map(p=>p.id).filter(id=>A.wie.includes(id));
+  for(const id in A.vast)if(!A.wie.includes(id))delete A.vast[id];
+  if(A.totaal!=null&&Math.abs(A.totaal-cur.totOud)<0.005)A.totaal=null;
+  const zelfde=A.wie.length===cur.oud.length&&A.wie.every(id=>cur.oud.includes(id))&&!Object.keys(A.vast).length&&A.totaal==null;
+  const R=m.impAanp=m.impAanp||{},C2=R[cat]=R[cat]||{};
+  if(zelfde)delete C2[label];else{if(!Object.keys(A.vast).length)delete A.vast;if(A.totaal==null)delete A.totaal;C2[label]=A}
+  if(!Object.keys(C2).length)delete R[cat];if(!Object.keys(R).length)delete m.impAanp;
 }
+// Leesbare reden van een aanpassing, zodat iedereen ziet waarom zijn bedrag veranderde.
+function impReden(m,cat,label){
+  const x=impPosten(m,cat).find(y=>y.label===label);if(!x)return 'aangepast door de beheerder';
+  const n=impNieuw(m,cat,x),nm=ids=>ids.map(id=>(P(id)||{name:id}).name).join(', '),r=[];
+  const weg=n.oud.filter(id=>!n.wie.includes(id)),bij=n.wie.filter(id=>!n.oud.includes(id));
+  if(weg.length)r.push(`zonder ${nm(weg)}`);if(bij.length)r.push(`met ${nm(bij)} erbij`);
+  for(const [id,v] of Object.entries(n.vast))r.push(`${(P(id)||{name:id}).name} vast ${eur(v)}`);
+  if(Math.abs(n.tot-n.totOud)>0.004)r.push(`totaal ${eur(n.tot)} (was ${eur(n.totOud)})`);
+  return r.length?`${label} ${r.join(', ')}`:'aangepast door de beheerder';
+}
+function afkoopReden(m){
+  const r=[];for(const x of afkoopImp(m)){if(!(m.afkoopAanp||{})[x.i])continue;const nm=ids=>ids.map(id=>(P(id)||{name:id}).name).join(', ');
+    const weg=x.oud.filter(id=>!x.wie.includes(id)),bij=x.wie.filter(id=>!x.oud.includes(id));
+    r.push(`afkoop ${x.a.label||''}${weg.length?` zonder ${nm(weg)}`:''}${bij.length?` met ${nm(bij)} erbij`:''}`)}
+  return r.join('; ')||'aangepast door de beheerder';
+}
+// Wat er voor deze persoon in eerdere maanden veranderd is ten opzichte van de vastgelegde rekening van toen.
+function eerdereAanpassingen(pid,m){
+  const i=S.months.indexOf(m),out=[];
+  for(const x of S.months.slice(0,i)){const sn=(x.snapshot||{})[pid];if(!sn)continue;const b=bill(x.id)[pid];if(!b)continue;
+    const d=(b.end-b.start)-(sn.end-sn.start);if(Math.abs(d)<0.005)continue;
+    const k=l=>l.cat+'\u0000'+l.label,som={};
+    for(const l of b.lines)som[k(l)]=(som[k(l)]||0)+l.amount;for(const l of sn.lines||[])som[k(l)]=(som[k(l)]||0)-l.amount;
+    const posten=Object.entries(som).filter(([,v])=>Math.abs(v)>0.004).map(([kk,v])=>{const l=b.lines.find(y=>k(y)===kk);return {label:kk.split('\u0000')[1],d:v,why:l&&l.aangepast?String(l.how||'').replace(/^(aangepast|toegevoegd): /,'').replace(/; was .*$/,''):(l?l.how:'')}});
+    if(Math.abs(b.paid-(+sn.paid||0))>0.004)posten.push({label:'Betalingen',d:-(b.paid-(+sn.paid||0)),why:''});
+    out.push({m:x,d,posten})}
+  // Alleen tonen in de maand direct na de aangepaste maand en in de huidige maand.
+  const vorige=S.months[i-1];return out.filter(a=>m===openMonth()||a.m===vorige);
+}
+function impZet(m,cat,label,pid,aan){impWijzig(m,cat,label,A=>{A.wie=toggleIn(A.wie,pid,aan)})}
 // Tabel met per post wie meebetaalt (vinkjes) en wat ieder betaalt; voor Huislasten en Extra correctie.
 function impEdit(m,cat,titel){
   const posts=impPosten(m,cat),info=posts.map(x=>({x,...impNieuw(m,cat,x)}));
   const ppl=[...S.people].sort(byName).filter(p=>UI.matrixAll||HOUSE.includes(p.status)||info.some(i=>i.x.per[p.id]||i.nieuw[p.id]));
-  const cel=(p,i)=>{const aan=i.wie.includes(p.id),v=i.nieuw[p.id]||0,oud=i.x.per[p.id]||0,anders=Math.abs(v-oud)>0.004;
-    return `<td class="r num"><label class="hl-cel"><input type="checkbox" data-ch="impzet" data-cat="${esc(cat)}" data-label="${esc(i.x.label)}" data-pid="${p.id}" ${aan?'checked':''} aria-label="${esc(p.name)} betaalt ${esc(i.x.label)}"> ${aan||anders?(anders?`<b title="was ${eur(oud)}">${eur(v)}</b>`:eur(v)):'<span class="muted">—</span>'}</label></td>`};
+  const cel=(p,i)=>{const aan=i.wie.includes(p.id),v=i.nieuw[p.id]||0,oud=i.x.per[p.id]||0,anders=Math.abs(v-oud)>0.004,vast=p.id in i.vast;
+    const d=`data-cat="${esc(cat)}" data-label="${esc(i.x.label)}" data-pid="${p.id}"`;
+    return `<td class="r num imp-cel${anders?' anders':''}${vast?' vast':''}"><input type="checkbox" data-ch="impzet" ${d} ${aan?'checked':''} aria-label="${esc(p.name)} betaalt ${esc(i.x.label)}">`
+      +(aan?`<input type="number" step="0.01" class="imp-bedrag" value="${(Math.round(v*100)/100).toFixed(2)}" data-ch="impbedrag" ${d} title="${vast?'Vast bedrag':'Automatisch verdeeld'}${anders?` · was ${eur(oud)}`:''}" aria-label="Bedrag ${esc(p.name)} voor ${esc(i.x.label)}">`
+        +(vast?`<button class="ghost imp-los" data-act="impvastweg" ${d} title="Weer automatisch verdelen" aria-label="Weer automatisch verdelen">↺</button>`:'')
+      :(anders?`<b title="was ${eur(oud)}">${eur(v)}</b>`:'<span class="muted">—</span>'))+'</td>'};
   const verschil=sum(info.map(i=>sum(Object.values(i.nieuw))-sum(i.oud.map(id=>i.x.per[id]))));
   const heeft=m.impAanp&&m.impAanp[cat]&&Object.keys(m.impAanp[cat]).length;
   return `<section class="block"><h2>${esc(titel)} ${esc(m.label.toLowerCase())}</h2>
-    <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is leidend. Per post zie je wie er in ${esc(m.label.toLowerCase())} voor betaald heeft. Zet je een vinkje aan of uit, dan wordt die post opnieuw verdeeld over wie aangevinkt staat. Het verschil komt als correctie in ${esc(openMonth().label.toLowerCase())}. Vetgedrukte bedragen zijn aangepast.</p>
+    <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is de basis. Met het vinkje zet je iemand aan of uit. Typ je bij iemand een ander bedrag, dan wordt dat een vast bedrag (blauw) en wordt het restant verdeeld over de overige aangevinkten; met ↺ gaat het weer automatisch. Ook het totaalbedrag van een post kun je aanpassen. De saldo's van de maanden erna lopen vanzelf mee.</p>
     <div class="row" style="margin-bottom:8px"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div>
       ${heeft?`<button class="ghost" data-act="impreset" data-cat="${esc(cat)}">Alle aanpassingen ongedaan maken</button>`:''}</div>
     ${posts.length?`<div class="scroll tbl"><table class="hl-tabel"><thead>
       <tr><th class="n">${esc(titel)}</th>${info.map(i=>`<th class="r">${esc(i.x.label)}</th>`).join('')}<th class="r">Totaal</th></tr>
-      <tr class="hl-info"><td class="n">Totaalprijs</td>${info.map(i=>`<td class="r num"><b>${eur(i.tot)}</b></td>`).join('')}<td class="r num"><b>${eur(sum(info.map(i=>i.tot)))}</b></td></tr>
+      <tr class="hl-info"><td class="n">Totaalbedrag</td>${info.map(i=>`<td class="r"><input type="number" step="0.01" class="imp-bedrag" value="${(Math.round(i.tot*100)/100).toFixed(2)}" data-ch="imptotaal" data-cat="${esc(cat)}" data-label="${esc(i.x.label)}" aria-label="Totaalbedrag ${esc(i.x.label)}" title="${Math.abs(i.tot-i.totOud)>0.004?'was '+eur(i.totOud):'Totaal van deze post'}"></td>`).join('')}<td class="r num"><b>${eur(sum(info.map(i=>i.tot)))}</b></td></tr>
     </thead><tbody>
       ${ppl.map(p=>{const alle=info.every(i=>i.wie.includes(p.id));return `<tr><td class="n"><label class="hl-cel" title="${alle?'Nergens':'Overal'} aanslaan"><input type="checkbox" data-ch="imprij" data-cat="${esc(cat)}" data-pid="${p.id}" ${alle?'checked':''} aria-label="${esc(p.name)} voor alle posten aanslaan"> ${esc(p.name)}</label></td>
         ${info.map(i=>cel(p,i)).join('')}<td class="r num"><b>${eur(sum(info.map(i=>i.nieuw[p.id]||0)))}</b></td></tr>`}).join('')}
-      <tr class="total"><td class="n">Betalers</td>${info.map(i=>`<td class="r num">${i.wie.length}</td>`).join('')}<td class="r num">${Math.abs(verschil)>0.01?'verschil '+eur(verschil):''}</td></tr>
+      <tr class="total"><td class="n">Betalers</td>${info.map(i=>`<td class="r num">${i.wie.length}${i.rest<-0.004?` <span class="badge warn" title="De vaste bedragen zijn samen meer dan het totaal">te veel vast</span>`:''}</td>`).join('')}<td class="r num">${Math.abs(verschil)>0.01?'verschil '+eur(verschil):''}</td></tr>
     </tbody></table></div>`:`<div class="empty">Geen ${esc(titel.toLowerCase())} in deze maand.</div>`}
   </section>`;
 }
@@ -1665,7 +1706,7 @@ function scImportEdit(m){
   const how=id=>{const l=((m.snapshot[id]||{}).lines||[]).find(x=>x.cat==='Servicekosten');return l?l.how:''};
   const nu=id=>A[id]!=null?+A[id]:(oud[id]||0);
   return `<section class="block"><h2>Servicekosten ${esc(m.label.toLowerCase())}</h2>
-    <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is leidend. Pas per persoon het bedrag aan; het verschil komt als correctie in ${esc(openMonth().label.toLowerCase())}.</p>
+    <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is leidend. Pas per persoon het bedrag aan; de saldo's van de maanden erna lopen vanzelf mee.</p>
     <div class="row" style="margin-bottom:8px"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div>
       ${Object.keys(A).length?'<button class="ghost" data-act="scimpreset">Alle aanpassingen ongedaan maken</button>':''}</div>
     <div class="scroll tbl"><table class="ledger"><thead><tr><th>Naam</th><th class="hide-sm">Berekening in de Excel</th><th class="r">Bedrag</th><th class="r">Verschil</th></tr></thead><tbody>
@@ -1676,7 +1717,7 @@ function scImportEdit(m){
     </tbody></table></div></section>`;
 }
 // Pilsrekening uit de oude Excel (geen turflijst, alleen bedragen per persoon in de vastgezette rekening).
-// De beheerder past per persoon het aantal flesjes en elk bedrag aan; het verschil wordt als correctie verrekend.
+// De beheerder past per persoon het aantal flesjes en elk bedrag aan; het verschil loopt door in de saldo's erna.
 const FLES='Pils fles',TAP='Pils fust';
 const isAfkoop=l=>/afkoop/i.test(l||'');
 // Prijs per tapturf afleiden uit de bedragen (die zijn een veelvoud van de turfprijs); anders de huidige barprijs.
@@ -1716,7 +1757,7 @@ function afkoopImpEdit(m){
   const rows=afkoopImp(m);if(!rows.length)return afkoopHistHTML(m);
   const ppl=[...S.people].sort(byName).filter(p=>HOUSE.includes(p.status)||rows.some(x=>x.oud.includes(p.id)||x.wie.includes(p.id)));
   return `<section class="block"><h2>Afkoopmomenten ${esc(m.label.toLowerCase())}</h2>
-    <p class="note">Vink per afkoopmoment aan wie erbij was. De kosten worden verdeeld over wie aangevinkt staat; het verschil komt als correctie in ${esc(openMonth().label.toLowerCase())}.</p>
+    <p class="note">Vink per afkoopmoment aan wie erbij was. De kosten worden verdeeld over wie aangevinkt staat; de saldo's van de maanden erna lopen vanzelf mee.</p>
     <div class="stack">${rows.map(x=>`<div class="panel stack"><div class="spread"><b>${esc(x.a.label||'Afkoop')}</b><span class="small muted">${afkoopName(x.a.type)} · ${x.a.count} × ${eur(x.a.price)} = ${eur(x.cost)} · ${x.wie.length} ${x.wie.length===1?'persoon':'personen'} · ${eur(x.perNu)} p.p.${Math.abs(x.perNu-x.perOud)>0.004?` (was ${eur(x.perOud)})`:''}</span></div>
       <div class="people-grid">${ppl.map(p=>`<label for="aki-${x.i}-${p.id}"><input type="checkbox" id="aki-${x.i}-${p.id}" data-ch="afkimp" data-i="${x.i}" data-pid="${p.id}" ${x.wie.includes(p.id)?'checked':''}><span>${esc(p.name)}</span></label>`).join('')}</div></div>`).join('')}</div>
   </section>`;
@@ -1732,7 +1773,7 @@ function pilsImportEdit(m){
     return `<td class="r num"><label class="hl-cel"><input type="checkbox" data-ch="impzet" data-cat="Pils" data-label="${esc(i.x.label)}" data-pid="${p.id}" ${aan?'checked':''} aria-label="${esc(p.name)} betaalt mee aan ${esc(i.x.label)}"> ${aan||anders?(anders?`<b title="was ${eur(oud)}">${eur(v)}</b>`:eur(v)):'<span class="muted">—</span>'}</label></td>`};
   const heeft=(m.pilsAanp&&Object.keys(m.pilsAanp).length)||(m.impAanp&&m.impAanp.Pils)||m.afkoopAanp;
   return `<section class="block"><h2>Pilsrekening ${esc(m.label.toLowerCase())}</h2>
-    <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is leidend. Vul per persoon de <b>turven van de bar</b> (tap, ${eur3(imp.tapPrijs)} per turf) en <b>van de Nestor</b> (flesjes, ${eur3(imp.prijs)} per flesje) in. Bij de gedeelde posten zet je met het vinkje aan wie meebetaalt: haal je iemand eruit, dan wordt die post verdeeld over de overige meebetalers van ${esc(m.label.toLowerCase())}. Het verschil komt als correctie in ${esc(openMonth().label.toLowerCase())}. Vetgedrukte bedragen zijn aangepast.</p>
+    <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is leidend. Vul per persoon de <b>turven van de bar</b> (tap, ${eur3(imp.tapPrijs)} per turf) en <b>van de Nestor</b> (flesjes, ${eur3(imp.prijs)} per flesje) in. Bij de gedeelde posten zet je met het vinkje aan wie meebetaalt: haal je iemand eruit, dan wordt die post verdeeld over de overige meebetalers van ${esc(m.label.toLowerCase())}. de saldo's van de maanden erna lopen vanzelf mee. Vetgedrukte bedragen zijn aangepast.</p>
     <div class="row" style="margin-bottom:8px"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div>
       ${heeft?'<button class="ghost" data-act="pilsimpreset">Alle aanpassingen ongedaan maken</button>':''}</div>
     <div class="scroll tbl"><table class="hl-tabel"><thead>
@@ -2001,14 +2042,14 @@ const acts={
     const [k,id]=(n.target||'cost:huishouden').split(':'),bij=n.richting==='bij',verdeel=['cost','hl','event','pils'].includes(k);
     mutate(()=>{S.transactions.push({id:uid('m'),source:'manual',date:n.date,name:n.label,label:n.label,desc:'',amount:bij?Math.abs(n.amount):-Math.abs(n.amount),
       kind:k==='pay'?'payment':k==='cost'||k==='hl'?'cost':k,personId:k==='pay'?id:null,categoryId:k==='cost'?id:null,huislastId:k==='hl'?id:null,eventId:k==='event'?id:null,pilsPost:k==='pils'?id:null,
-      vsWhat:k==='voorschot'?n.label:undefined,paidBy:!bij&&verdeel?(n.paidBy||null):null,monthId:doelMaand().id})});
+      vsWhat:k==='voorschot'?n.label:undefined,paidBy:!bij&&verdeel?(n.paidBy||null):null,monthId:doelMaand().id,...(impMaand(doelMaand())?{naImport:true}:{})})});
     if(!n.paidBy)toast(`Transactie “${n.label}” toegevoegd aan ${doelMaand().label.toLowerCase()}.`);
     if(n.paidBy)toast(`${P(n.paidBy).name} krijgt ${eur(Math.abs(n.amount))} terug op zijn saldo en betaalt zijn eigen deel mee.`);UI.newTx=false;UI.txFilter='all';render()},
   deltx:el=>ask('Deze uitgave verwijderen?','Verwijderen',()=>mutate(()=>{S.transactions=S.transactions.filter(t=>t.id!==el.dataset.id)})),
   txremember:el=>{const t=T(el.dataset.id);if(!t||!el.checked)return;
     if(t.kind==='cost'&&t.huislastId&&H(t.huislastId)){const h=H(t.huislastId),match=t.name.toUpperCase().trim();mutate(()=>{const l=(h.match||'').split(',').map(x=>x.trim()).filter(Boolean);if(!l.includes(match))l.push(match);h.match=l.join(', ')});return toast(`“${t.name}” wordt voortaan herkend als ${h.name}.`)}
     mutate(()=>{const match=t.name.toUpperCase().trim();S.bankRules=S.bankRules.filter(r=>r.match!==match);S.bankRules.push({id:uid('r'),match,action:t.kind==='kas'?'kas':t.kind==='voorschot'?'voorschot':'cost',categoryId:t.kind==='cost'?t.categoryId||null:null,label:t.kind==='voorschot'?(t.vsWhat||t.name):(t.label||t.name)})});toast('Bankregel opgeslagen.')},
-  newevent:()=>{const om=doelMaand();const e={id:uid('e'),name:'Nieuw kopje',categoryId:'activiteit',date:new Date().toISOString().slice(0,10),participants:[...(C('activiteit')||{payers:[]}).payers],overrides:{},extra:0,billMonth:om.id};
+  newevent:()=>{const om=doelMaand();const e={id:uid('e'),name:'Nieuw kopje',categoryId:'activiteit',date:new Date().toISOString().slice(0,10),participants:[...(C('activiteit')||{payers:[]}).payers],overrides:{},extra:0,billMonth:om.id,...(impMaand(om)?{naImport:true}:{})};
     mutate(()=>S.events.push(e));UI.eventId=e.id;UI.tab='evenementen';render();setTimeout(()=>{const x=$('#ev-name');if(x){x.focus();x.select()}},0)},
   openevent:el=>{UI.eventId=UI.eventId===el.dataset.id?null:el.dataset.id;render();const p=$('#event-panel');if(p)p.scrollIntoView({block:'start'})},
   closeevent:()=>{UI.eventId=null;render()},
@@ -2056,6 +2097,7 @@ const acts={
   copy:async el=>{try{await navigator.clipboard.writeText(el.dataset.text);toast('Gekopieerd.')}catch(e){toast('Kopiëren lukt hier niet; selecteer het IBAN en kopieer het zelf.',true)}},
   excel:()=>exportExcel(),
   mailopen:()=>mailOpen(),
+  impvastweg:el=>mutate(()=>impWijzig(M(UI.month),el.dataset.cat,el.dataset.label,A=>{delete A.vast[el.dataset.pid]})),
   impreset:el=>{const cat=el.dataset.cat;ask(`Alle aanpassingen aan ${cat.toLowerCase()} van deze maand ongedaan maken?`,'Ongedaan maken',()=>mutate(()=>{const m=M(UI.month);if(m.impAanp){delete m.impAanp[cat];if(!Object.keys(m.impAanp).length)delete m.impAanp}}))},
   scimpreset:()=>ask('Alle aanpassingen aan de servicekosten van deze maand ongedaan maken?','Ongedaan maken',()=>mutate(()=>{delete M(UI.month).scAanp})),
   pilsimpreset:()=>ask('Alle aanpassingen aan deze pilsrekening ongedaan maken?','Ongedaan maken',()=>mutate(()=>{const m=M(UI.month);delete m.pilsAanp;delete m.afkoopAanp;if(m.impAanp){delete m.impAanp.Pils;if(!Object.keys(m.impAanp).length)delete m.impAanp}})),
@@ -2172,6 +2214,9 @@ const changes={
   cat:el=>{const c=C(el.dataset.id),f=el.dataset.f;mutate(()=>{c[f]=f==='minimum'?(num(el.value)||0):el.value})},
   rc:el=>{const x=S.recurring.find(y=>y.id===el.dataset.id),f=el.dataset.f;mutate(()=>{x[f]=f==='amount'?(num(el.value)||0):el.value})},
   hl:el=>{const h=H(el.dataset.id),f=el.dataset.f;mutate(()=>{h[f]=f==='amountPP'?(num(el.value)||0):f==='match'?el.value.toUpperCase().trim():el.value})},
+  impbedrag:el=>mutate(()=>impWijzig(M(UI.month),el.dataset.cat,el.dataset.label,A=>{const pid=el.dataset.pid;
+    if(el.value===''){delete A.vast[pid];return}A.vast[pid]=num(el.value)||0;if(!A.wie.includes(pid))A.wie.push(pid)})),
+  imptotaal:el=>mutate(()=>impWijzig(M(UI.month),el.dataset.cat,el.dataset.label,A=>{A.totaal=el.value===''?null:(num(el.value)||0)})),
   impzet:el=>mutate(()=>impZet(M(UI.month),el.dataset.cat,el.dataset.label,el.dataset.pid,el.checked)),
   imprij:el=>{const m=M(UI.month),aan=el.checked,cat=el.dataset.cat;mutate(()=>{for(const x of impPosten(m,cat))impZet(m,cat,x.label,el.dataset.pid,aan)})},
   scimp:el=>mutate(()=>{const m=M(UI.month),id=el.dataset.pid,oud=scImport(m)[id]||0,v=el.value===''?0:+el.value;
