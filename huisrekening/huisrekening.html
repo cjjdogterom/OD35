@@ -249,6 +249,21 @@ function defaultShared(prev,ps){
   return list;
 }
 function dubbeleKamers(d){const gezien=new Set();for(const r of d.rooms||[]){if(!r.personId)continue;if(gezien.has(r.personId))r.personId=null;else gezien.add(r.personId)}return d}
+// Kosten in een lopende maand die een huislast zijn (herkend aan de banktekst of de naam) hangen aan die huislast,
+// zodat de vinkjes op het tabblad Huislasten bepalen wie betaalt.
+// Transacties van deze huislast in de bekeken maand met een eigen deelnemerslijst: daar het vinkje ook omzetten.
+function hlDeelnemers(h,pid,aan){
+  for(const t of S.transactions)if(t.huislastId===h.id&&t.monthId===UI.month&&t.participants&&t.participants.length)t.participants=toggleIn(t.participants,pid,aan);
+}
+function koppelHuislasten(d){
+  const norm=x=>String(x||'').toLowerCase().replace(/\(.*?\)/g,'').replace(/[^a-z0-9]/g,'');
+  const woord=m=>new RegExp('(^|[^A-Z0-9])'+m.toUpperCase().replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'($|[^A-Z0-9])');
+  const open=new Set((d.months||[]).filter(m=>!m.closed).map(m=>m.id));
+  for(const t of d.transactions||[]){if(t.kind!=='cost'||t.huislastId||!open.has(t.monthId))continue;
+    const hay=((t.name||'')+' '+(t.desc||'')).toUpperCase(),lb=norm(t.label);
+    const h=(d.huislasten||[]).find(h=>h.type!=='pp'&&((h.match||'').split(',').map(x=>x.trim()).filter(Boolean).some(x=>woord(x).test(hay))||(lb&&norm(h.name)===lb)));
+    if(h)t.huislastId=h.id}
+}
 function migrate(d){
   dubbeleKamers(d);
   d.house=d.house||{};if(!d.house.beheerders)d.house.beheerders=['chris'];
@@ -264,6 +279,7 @@ function migrate(d){
     d.bankRules=(d.bankRules||[]).filter(r=>r.action!=='cost');d.recurring=[]}
   for(const p of d.people||[])if(p.kaleHuurCorr==null){const fc=+p.fixedCorrection||0,r=(d.rooms||[]).find(x=>x.personId===p.id);
     if(r&&r.huurtoeslag===false){p.kaleHuurCorr=0;p.moneyUnderdogs=fc}else{p.kaleHuurCorr=fc;p.moneyUnderdogs=0}delete p.fixedCorrection}
+  koppelHuislasten(d);
   d.schema=2;return d;
 }
 
@@ -425,10 +441,26 @@ function correcties(){
   return out;
 }
 // Afgesloten maand die je aanpast: de vastgezette rekening plus een regel 'Aanpassing na afsluiten'.
+// Elke post krijgt het nieuwe bedrag (was … , verrekend in de lopende maand); wat niet bij een post hoort
+// (bijv. een betaling die je achteraf toevoegt) blijft een losse regel 'Aanpassing na afsluiten'.
 function aangepast(m){
   const key='adj:'+m.id;if(billCache.has(key))return billCache.get(key);
-  const B=JSON.parse(JSON.stringify(m.snapshot||{}));
-  for(const c of correcties())if(c.m===m&&B[c.id]){const b=B[c.id];b.lines.push({cat:'Correctie',label:'Aanpassing na afsluiten',amount:c.d,how:`verrekend in ${openMonth().label.toLowerCase()}`});b.charges=(b.charges||0)+c.d;b.end=r2(b.end+c.d)}
+  const B=JSON.parse(JSON.stringify(m.snapshot||{})),R=m.basisLines?herbereken(m):null,waar=openMonth().label.toLowerCase();
+  for(const c of correcties())if(c.m===m){
+    const b=B[c.id]=B[c.id]||{start:0,paid:0,end:0,lines:[],payments:[]};let verwerkt=0;
+    if(R){const d={},sleutel=l=>l.cat+'\u0000'+l.label;
+      for(const l of (R[c.id]||{}).lines||[])d[sleutel(l)]=(d[sleutel(l)]||0)+l.amount;
+      for(const l of m.basisLines[c.id]||[])d[sleutel(l)]=(d[sleutel(l)]||0)-l.amount;
+      for(const [k,v] of Object.entries(d)){if(Math.abs(v)<0.004)continue;let [cat,label]=k.split('\u0000');
+        const kaal=label.replace(/^Aanpassing /,'');
+        const l=b.lines.find(x=>x.cat===cat&&x.label===kaal)||b.lines.find(x=>x.cat===cat&&x.label===label);
+        if(l){l.how=`aangepast na afsluiten, was ${eur(l.amount)}; verschil verrekend in ${waar}`;l.amount+=v}
+        else b.lines.push({cat,label,amount:v,how:`toegevoegd na afsluiten, verrekend in ${waar}`});
+        verwerkt+=v}
+      b.lines=b.lines.filter(l=>Math.abs(l.amount)>0.004||!/aangepast na afsluiten/.test(l.how||''))}
+    const rest=c.d-verwerkt;
+    if(Math.abs(rest)>0.004)b.lines.push({cat:'Correctie',label:'Aanpassing na afsluiten',amount:rest,how:`verrekend in ${waar}`});
+    b.charges=(b.charges||0)+c.d;b.end=r2(b.end+c.d)}
   billCache.set(key,B);return B;
 }
 function bill(mid){
@@ -1447,7 +1479,7 @@ function vHuislasten(m){
   const hoort=(l,h)=>l.ref?((l.ref.type==='hl'&&l.ref.id===h.id)||(l.ref.type==='tx'&&(T(l.ref.id)||{}).huislastId===h.id)):opNaam(l)===h;
   const regels=(lines,h)=>sum((lines||[]).filter(l=>hoort(l,h)).map(l=>l.amount));
   // Afgesloten maand: het vastgezette bedrag plus wat jouw aanpassing verandert (nu − bij openzetten).
-  const bedrag=(id,h)=>{const b=B[id];const vastB=b?regels(b.lines.filter(l=>l.cat!=='Correctie'),h):0;
+  const bedrag=(id,h)=>{const b=dicht?(m.snapshot||{})[id]:B[id];const vastB=b?regels(b.lines.filter(l=>l.cat!=='Correctie'),h):0;
     if(!dicht)return vastB;const R=herbereken(m);return vastB+regels(R[id]&&R[id].lines,h)-regels(m.basisLines[id],h)};
   const totaal=h=>sum(Object.keys(B).map(id=>bedrag(id,h)));
   const ppl=[...S.people].sort(byName).filter(p=>UI.matrixAll||HOUSE.includes(p.status)||hl.some(h=>h.payers.includes(p.id)||Math.abs(bedrag(p.id,h))>0.004));
@@ -2094,8 +2126,8 @@ const changes={
   imprij:el=>{const m=M(UI.month),aan=el.checked,cat=el.dataset.cat;mutate(()=>{for(const x of impPosten(m,cat))impZet(m,cat,x.label,el.dataset.pid,aan)})},
   scimp:el=>mutate(()=>{const m=M(UI.month),id=el.dataset.pid,oud=scImport(m)[id]||0,v=el.value===''?0:+el.value;
     m.scAanp=m.scAanp||{};if(Math.abs(v-oud)<0.005)delete m.scAanp[id];else m.scAanp[id]=v;if(!Object.keys(m.scAanp).length)delete m.scAanp}),
-  hlrij:el=>{const pid=el.dataset.pid,aan=el.checked;mutate(()=>{for(const h of S.huislasten||[]){const s2=new Set(toggleIn(h.payers,pid,aan));h.payers=S.people.map(p=>p.id).filter(id=>s2.has(id))}});toast(`${P(pid).name} ${aan?'betaalt nu alle':'betaalt geen'} huislasten meer mee.`.replace('alle huislasten meer mee','alle huislasten mee'))},
-  hlpayer:el=>{const h=H(el.dataset.id);mutate(()=>{const s2=new Set(toggleIn(h.payers,el.dataset.pid,el.checked));h.payers=S.people.map(p=>p.id).filter(id=>s2.has(id))})},
+  hlrij:el=>{const pid=el.dataset.pid,aan=el.checked;mutate(()=>{for(const h of S.huislasten||[]){const s2=new Set(toggleIn(h.payers,pid,aan));h.payers=S.people.map(p=>p.id).filter(id=>s2.has(id));hlDeelnemers(h,pid,aan)}});toast(`${P(pid).name} ${aan?'betaalt nu alle':'betaalt geen'} huislasten meer mee.`.replace('alle huislasten meer mee','alle huislasten mee'))},
+  hlpayer:el=>{const h=H(el.dataset.id);mutate(()=>{const s2=new Set(toggleIn(h.payers,el.dataset.pid,el.checked));h.payers=S.people.map(p=>p.id).filter(id=>s2.has(id));hlDeelnemers(h,el.dataset.pid,el.checked)})},
   hlfill:el=>{const h=H(el.dataset.id),f=el.value;if(!f)return;mutate(()=>{h.payers=f==='none'?[]:S.people.filter(p=>f==='bewoner'?p.status==='bewoner':['bewoner','huisgenoot'].includes(p.status)).map(p=>p.id)})},
   roomtoeslag:el=>{const r=S.rooms.find(y=>y.id===el.dataset.id);mutate(()=>{r.huurtoeslag=el.checked})},
   room:el=>{const r=S.rooms.find(y=>y.id===el.dataset.id),f=el.dataset.f;
