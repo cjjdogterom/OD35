@@ -3972,6 +3972,8 @@ button.wg-author-link:hover { text-decoration: underline; text-underline-offset:
         <button type="submit">Toevoegen</button>
       </form>
       <p id="hr-toegang-melding" class="hr-melding"></p>
+      <h4 class="hr-kop">3. Wie keek er onlangs? <span class="hr-toegang-sub">— beheerders en barmannen, laatste 100 bezoeken</span></h4>
+      <ul id="hr-bezoeken" class="hr-lijst"></ul>
     </details>
   </div>
   <div class="hr-open">
@@ -7454,7 +7456,7 @@ function openHuisrekening() {
   if (!(HR_STATUS && HR_STATUS.hoofdadmin)) { location.href = '/huisrekening/huisrekening.html'; return; }
   const blok = document.getElementById('hr-toegang');
   if (blok) blok.style.display = HR_STATUS && HR_STATUS.hoofdadmin ? '' : 'none';
-  if (HR_STATUS && HR_STATUS.hoofdadmin) laadHrToegang();
+  if (HR_STATUS && HR_STATUS.hoofdadmin) { laadHrToegang(); laadHrBezoeken(); }
 }
 // Naam + jaar van een lid voor in de lijst en de zoekbox.
 function hrNaam(p) {
@@ -7485,6 +7487,23 @@ async function laadHrToegang() {
       <button type="button" data-hr-weg="${escapeHtml(r.email)}">Verwijderen</button></li>`;
     }).join('') : '<li><span>Verder nog niemand. Kies hieronder wie beheerder, barman of lezer wordt.</span></li>');
   } catch (e) { melding.textContent = melding.textContent || e.message; }
+}
+async function laadHrBezoeken() {
+  const ul = document.getElementById('hr-bezoeken');
+  if (!ul) return;
+  ul.innerHTML = '<li><span>Laden…</span></li>';
+  try {
+    const { bezoeken } = await hrFetch('?actie=bezoeken');
+    const tz = { timeZone: 'Europe/Amsterdam' };
+    const dag = d => d.toLocaleDateString('nl-NL', Object.assign({ weekday: 'short', day: 'numeric', month: 'short' }, tz));
+    const tijd = d => d.toLocaleTimeString('nl-NL', Object.assign({ hour: '2-digit', minute: '2-digit' }, tz));
+    ul.innerHTML = bezoeken.length ? bezoeken.map(b => {
+      const p = personByEmail(b.email), van = new Date(b.begin), tot = new Date(b.laatst);
+      const duur = tot - van > 60000 ? `${tijd(van)} – ${tijd(tot)}` : tijd(van);
+      return `<li><span>${escapeHtml(p ? hrNaam(p) : b.email)}${b.rol === 'barman' ? ' <span class="hr-toegang-sub">(barman)</span>' : ''}</span>
+        <span class="hr-toegang-sub">${escapeHtml(dag(van))} · ${escapeHtml(duur)}</span></li>`;
+    }).join('') : '<li><span>Nog niemand heeft gekeken sinds dit wordt bijgehouden.</span></li>';
+  } catch (e) { ul.innerHTML = `<li><span>${escapeHtml(e.message)}</span></li>`; }
 }
 async function zetHrToegang(email, rol) {
   const melding = document.getElementById('hr-toegang-melding');

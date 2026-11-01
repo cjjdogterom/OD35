@@ -71,4 +71,15 @@ alter table public.huisrekening_meldingen enable row level security;
 alter table public.huisrekening_toegang drop constraint if exists huisrekening_toegang_rol_check;
 alter table public.huisrekening_toegang add constraint huisrekening_toegang_rol_check check (rol in ('lezer', 'barman', 'beheerder'));
 
+-- Wanneer beheerders en barmannen de huisrekening bekeken (alleen de hoofdadmin ziet dit op de site).
+create table if not exists public.huisrekening_bezoeken (
+  id bigserial primary key,
+  email text not null,
+  rol text,
+  begin timestamptz not null default now(),
+  laatst timestamptz not null default now()
+);
+create index if not exists huisrekening_bezoeken_email on public.huisrekening_bezoeken (email, begin desc);
+alter table public.huisrekening_bezoeken enable row level security;
+
 notify pgrst, 'reload schema';
