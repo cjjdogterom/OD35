@@ -265,7 +265,7 @@ let ART=null,DL=null;
 /* ---------- datamodel bijwerken ---------- */
 function pilsTxBought(pl){
   const mo=S&&S.months.find(x=>x.pils===pl);const vt=mo?S.transactions.filter(t=>t.kind==='voorschot'&&t.monthId===mo.id):[];
-  return {b20:sum(vt.map(t=>+t.vsF20||0)),b50:sum(vt.map(t=>+t.vsF50||0)),bk:sum(vt.map(t=>+t.vsK||0)),txs:vt};
+  return {b20:sum(vt.map(t=>+t.vsF20||0)),b50:sum(vt.map(t=>+t.vsF50||0)),bk:sum(vt.map(t=>+t.vsK||0)),r20:sum(vt.map(t=>+t.vsRF20||0)),r50:sum(vt.map(t=>+t.vsRF50||0)),rk:sum(vt.map(t=>+t.vsRK||0)),txs:vt};
 }
 function emptyPils(prev){
   const f=prev&&prev.fust||{},k=prev&&prev.krat||{},tb=prev?pilsTxBought(prev):{b20:0,b50:0,bk:0};
@@ -388,6 +388,23 @@ const flesPrice=()=>PS().flesPrice!=null&&PS().flesPrice!==''?+PS().flesPrice:(+
 const afkoopPrice=type=>type==='fust50'?+PS().fust50Price:type==='krat'?+PS().kratPrice:+PS().fust20Price;
 const afkoopName=type=>type==='fust50'?'fust 50L':type==='krat'?'krat':'fust 20L';
 const has=v=>v!=null&&v!=='';
+// Statiegeld: per soort hoeveel fusten/kratten er zouden moeten zijn, tegenover wat er geteld is (vol + leeg).
+// Het begin volgt uit de maand ervoor; wat kwijt is blijft openstaan tot de beheerder het op de rekening zet (pl.statAfr).
+const STAT=[['f20','Fust 20L'],['f50','Fust 50L'],['k','Kratten']];
+const statPrijs=x=>+((S.statiegeld||{})[x])||0;
+function statCalc(tot){
+  const uit={rij:null,verlies:0,afgerekend:0};let vorig={};
+  for(const mo of S.months){if(!mo.pils)continue;
+    const pl=mo.pils,st=pl.stat||{},tb=pilsTxBought(pl),f=pl.fust,k=pl.krat,rij={};
+    const bij={f20:(+f.bought20||0)+tb.b20,f50:(+f.bought50||0)+tb.b50,k:(+k.bought||0)+tb.bk},fact={f20:tb.r20,f50:tb.r50,k:tb.rk},vol={f20:f.end20,f50:f.end50,k:k.end};
+    for(const [x] of STAT){const vast=(st.begin||{})[x],leeg=(st.leeg||{})[x],begin=has(vast)?+vast:(vorig[x]||0),terug=(+(st.terug||{})[x]||0)+fact[x],moet=begin+bij[x]-terug;
+      const geteld=has(leeg)&&has(vol[x])?+leeg+ +vol[x]:null,kwijt=geteld==null?0:moet-geteld;
+      rij[x]={begin,bij:bij[x],terug,fact:fact[x],moet,geteld,kwijt,eur:kwijt*statPrijs(x)};vorig[x]=geteld==null?moet:geteld;uit.verlies+=rij[x].eur}
+    if(pl.statAfr)uit.afgerekend+=+pl.statAfr.bedrag||0;
+    if(mo===tot){uit.rij=rij;break}}
+  uit.open=uit.verlies-uit.afgerekend;return uit;
+}
+function statAfr(pl){const a=pl.statAfr;if(!a)return null;const wie=(a.wie||[]).filter(id=>P(id)),bedrag=+a.bedrag||0;return wie.length&&Math.abs(bedrag)>0.004?{bedrag,wie,per:bedrag/wie.length}:null}
 function pilsCalc(pl){
   const ps=PS(),bp=barPrice(),fp=flesPrice();
   const barTurf=sum(Object.values(pl.bar.turven||{})),nesTurf=sum(Object.values(pl.nestor.turven||{}));
@@ -497,6 +514,7 @@ function gewoneRegels(m,B,add,mid){
     for(const id in m.pils.nestor.turven){const n=+m.pils.nestor.turven[id]||0;if(n)add(id,{cat:'Pils',label:`${ps.nestorName}: flesjes`,amount:n*pc.fp,how:`${n} × ${eur3(pc.fp)}`,ref:{type:'pils',kind:'nestor'}})}
     for(const a of pc.afkoop)for(const id of a.parts)add(id,{cat:'Pils',label:`Afkoop ${afkoopName(a.type)}: ${a.label||'zonder naam'}`,amount:a.per,how:`${a.count} × ${eur(afkoopPrice(a.type))} = ${eur(a.cost)} ÷ ${a.parts.length}`,ref:{type:'pils',kind:'afkoop',id:a.id}});
     for(const x of pc.posts)if(Math.abs(x.value)>0.004&&pc.n)for(const id of pc.payers)add(id,{cat:'Pils',label:x.label,amount:x.value/pc.n,how:`${eur(x.value)} ÷ ${pc.n} meebetalers`,ref:{type:'pils',kind:'post',id:x.id}});
+    const sa=statAfr(m.pils);if(sa)for(const id of sa.wie)add(id,{cat:'Pils',label:'Statiegeldverlies',amount:sa.per,how:`${eur(sa.bedrag)} ÷ ${sa.wie.length} huisgenoten`,ref:{type:'pils',kind:'statiegeld'}});
   }
 }
 // Maand uit de oude Excel: de vastgelegde regels, met de aanpassingen van de beheerder verwerkt in de posten zelf.
@@ -1242,6 +1260,7 @@ function pilsDetail(kind,id,m){
   if(kind==='bar')return calcRows([['Prijs per tapturf',`${eur(ps.fust20Price)} per fust ÷ ${ps.turfPerFust20} turfjes = ${eur3(pc.bp)}`]]);
   if(kind==='nestor')return calcRows([['Prijs per flesje',`${eur(ps.kratPrice)} per krat ÷ ${ps.flesPerKrat} = ${eur3(pc.fp)}`]]);
   if(kind==='afkoop'){const a=pc.afkoop.find(x=>x.id===id);if(!a)return '';return calcRows([[`${a.count} × ${afkoopName(a.type)} à ${eur(afkoopPrice(a.type))}`,eur(a.cost),'t'],[`÷ ${a.parts.length} deelnemers`,eur(a.per)+' p.p.']])+`<p class="note" style="margin-top:6px">Deelnemers: ${esc(names(a.parts))}</p>`}
+  if(kind==='statiegeld'){const sa=statAfr(pl);return sa?calcRows([['Statiegeldverlies',eur(sa.bedrag),'t'],[`÷ ${sa.wie.length} huisgenoten`,eur(sa.per)+' p.p.']]):''}
   if(kind==='tap')return tapCalcHTML(pc);
   if(kind==='fles')return flesCalcHTML(pc);
   if(kind==='post'){const x=pc.posts.find(y=>y.id===id);if(!x)return '';
@@ -1394,7 +1413,7 @@ function txSub(t){
   if(t.kind==='pils'){const pl=(M(t.monthId)||{}).pils,x=pl&&(pl.shared||[]).find(y=>y.id===t.pilsPost),n=pl?(pl.payers||[]).length:0;return (x?`Pilsrekening · ${esc(x.label)}: ${eur(-t.amount)} gedeeld over ${n} meebetalers`:'Pilsrekening')+(t.paidBy?' · voorgeschoten door '+esc((P(t.paidBy)||{}).name):'')}
   if(t.kind==='payment')return t.suggested?'Herkend op naam. Klopt dit? Kies anders de juiste persoon.':'';
   if(t.kind==='kas')return 'Telt alleen mee in de huiskas'+(t.label?' · '+esc(t.label):'');
-  if(t.kind==='voorschot'){const c=[t.vsF20?t.vsF20+'× fust 20L':'',t.vsF50?t.vsF50+'× fust 50L':'',t.vsK?t.vsK+' kratten':''].filter(Boolean).join(', ');
+  if(t.kind==='voorschot'){const c=[t.vsF20?t.vsF20+'× fust 20L':'',t.vsF50?t.vsF50+'× fust 50L':'',t.vsK?t.vsK+' kratten':'',t.vsRF20||t.vsRF50||t.vsRK?`terug: ${[t.vsRF20?t.vsRF20+'× fust 20L':'',t.vsRF50?t.vsRF50+'× fust 50L':'',t.vsRK?t.vsRK+' kratten':''].filter(Boolean).join(', ')}`:''].filter(Boolean).join(', ');
     return `Voorschot huis: ${t.vsWhat?esc(t.vsWhat):'<b>vul in wat het is (Details)</b>'}${c?' · '+c+' → voorraad pilsrekening':''}`}
   return '';
 }
@@ -1451,6 +1470,7 @@ function txEdit(t){
       <label class="field" for="tx-f20-${t.id}">Fusten 20L<input type="number" min="0" id="tx-f20-${t.id}" value="${t.vsF20||''}" placeholder="0" data-ch="txvs" data-id="${t.id}" data-f="vsF20" style="width:6rem"></label>
       <label class="field" for="tx-f50-${t.id}">Fusten 50L<input type="number" min="0" id="tx-f50-${t.id}" value="${t.vsF50||''}" placeholder="0" data-ch="txvs" data-id="${t.id}" data-f="vsF50" style="width:6rem"></label>
       <label class="field" for="tx-k-${t.id}">Kratten<input type="number" min="0" id="tx-k-${t.id}" value="${t.vsK||''}" placeholder="0" data-ch="txvs" data-id="${t.id}" data-f="vsK" style="width:6rem"></label></div>
+    <div class="row"><span class="small muted" style="flex-basis:100%">Statiegeld teruggenomen op deze factuur:</span>${[['vsRF20','Fusten 20L'],['vsRF50','Fusten 50L'],['vsRK','Kratten']].map(([f,l])=>`<label class="field" for="tx-${f}-${t.id}">${l}<input type="number" min="0" id="tx-${f}-${t.id}" value="${t[f]||''}" placeholder="0" data-ch="txvs" data-id="${t.id}" data-f="${f}" style="width:6rem"></label>`).join('')}</div>
       <p class="note">Een voorschot wordt niet over de huisgenoten verdeeld. Fusten en kratten tellen mee als gekocht in de pilsvoorraad van deze maand en worden via de turven terugverdiend.</p>`:''}
     ${(t.kind==='cost'||t.kind==='kas'||t.kind==='voorschot')&&t.source==='bank'?`<label class="row small" for="tx-r-${t.id}"><input type="checkbox" id="tx-r-${t.id}" data-act="txremember" data-id="${t.id}"> Onthoud: transacties van “${esc(t.name)}” voortaan automatisch zo verwerken</label>`:''}
     ${t.kind==='payment'&&t.iban?`<p class="note">IBAN ${esc(t.iban)} wordt onthouden bij ${esc((P(t.personId)||{}).name||'')}, zodat volgende betalingen vanzelf herkend worden.</p>`:''}
@@ -1896,6 +1916,7 @@ function vPils(m){
       <div><span class="eyebrow">Flesverlies</span>${flesCalcHTML(pc)}</div>
     </div>
   </div></section>
+  ${statHTML(m,ok)}
   <section class="block">
     ${vast(m)?lateAfkoopButtons(m):''}
     <div class="spread"><h2>Afkopen</h2>${afk?`<div class="row"><button data-act="addafkoop" data-f="fust20">+ Fust 20L afkopen</button><button data-act="addafkoop" data-f="fust50">+ Fust 50L</button><button data-act="addafkoop" data-f="krat">+ Kratten afkopen</button></div>`:''}</div>
@@ -1929,10 +1950,10 @@ function vPils(m){
   <section class="block"><h2>Turven per persoon</h2>
     <p class="note">Neem de aantallen over uit de Turff-app: tapturven van de ${esc(ps.barName.toLowerCase())} (${eur3(pc.bp)} per turf) en flesjes van de ${esc(ps.nestorName)} (${eur3(pc.fp)} per flesje).</p>
     <div class="scroll tbl"><table><thead><tr><th>Naam</th><th class="r">${esc(ps.barName)}</th><th class="r">${esc(ps.nestorName)}</th><th class="r hide-sm">Turven</th><th class="r hide-sm">Afkoop</th><th class="r hide-sm">Gedeeld</th><th class="r">Pils totaal</th></tr></thead><tbody>
-      ${ppl.map(p=>{const nb=+(pl.bar.turven||{})[p.id]||0,nn=+(pl.nestor.turven||{})[p.id]||0,isP=pc.payers.includes(p.id),sh=isP&&pc.n?pc.shared/pc.n:0,afk=sum(pc.afkoop.filter(a=>a.parts.includes(p.id)).map(a=>a.per)),tv=nb*pc.bp+nn*pc.fp;
+      ${ppl.map(p=>{const nb=+(pl.bar.turven||{})[p.id]||0,nn=+(pl.nestor.turven||{})[p.id]||0,isP=pc.payers.includes(p.id),sa=statAfr(pl),stP=sa&&sa.wie.includes(p.id)?sa.per:0,sh=(isP&&pc.n?pc.shared/pc.n:0)+stP,afk=sum(pc.afkoop.filter(a=>a.parts.includes(p.id)).map(a=>a.per)),tv=nb*pc.bp+nn*pc.fp;
         return `<tr><td>${esc(p.name)}</td><td class="r">${numInput('tb-'+p.id,nb||'',ok?'turf':'x','bar',ok,'5rem',`data-pid="${p.id}" min="0" placeholder="0" aria-label="Tapturven ${esc(p.name)}"`)}</td><td class="r">${numInput('tn-'+p.id,nn||'',ok?'turf':'x','nestor',ok,'5rem',`data-pid="${p.id}" min="0" placeholder="0" aria-label="Flesjes ${esc(p.name)}"`)}</td>
-        <td class="r num hide-sm">${eur(tv)}</td><td class="r num hide-sm">${afk?eur(afk):'—'}</td><td class="r num hide-sm">${isP?eur(sh):'—'}</td><td class="r num"><b>${eur(tv+afk+sh)}</b></td></tr>`}).join('')}
-      <tr class="total"><td>Totaal</td><td class="r num">${pc.barTurf}</td><td class="r num">${pc.nesTurf}</td><td class="r num hide-sm">${eur(pc.omzetTurf)}</td><td class="r num hide-sm">${eur(sum(pc.afkoop.map(a=>a.cost)))}</td><td class="r num hide-sm">${eur(pc.n?pc.shared:0)}</td><td class="r num">${eur(pc.omzetTurf+sum(pc.afkoop.map(a=>a.cost))+(pc.n?pc.shared:0))}</td></tr>
+        <td class="r num hide-sm">${eur(tv)}</td><td class="r num hide-sm">${afk?eur(afk):'—'}</td><td class="r num hide-sm">${isP||stP?eur(sh):'—'}</td><td class="r num"><b>${eur(tv+afk+sh)}</b></td></tr>`}).join('')}
+      <tr class="total"><td>Totaal</td><td class="r num">${pc.barTurf}</td><td class="r num">${pc.nesTurf}</td><td class="r num hide-sm">${eur(pc.omzetTurf)}</td><td class="r num hide-sm">${eur(sum(pc.afkoop.map(a=>a.cost)))}</td><td class="r num hide-sm">${eur((pc.n?pc.shared:0)+(statAfr(pl)||{bedrag:0}).bedrag)}</td><td class="r num">${eur(pc.omzetTurf+sum(pc.afkoop.map(a=>a.cost))+(pc.n?pc.shared:0)+(statAfr(pl)||{bedrag:0}).bedrag)}</td></tr>
     </tbody></table></div>
   </section>
   ${pilsHistory()}
@@ -1941,6 +1962,33 @@ function vPils(m){
     <div class="panel"><div class="grid3">
       ${[['barName','Naam tap-plek','text'],['nestorName','Naam flesjes-plek','text'],['fust20Price','Fust 20L (€, excl. statiegeld)'],['turfPerFust20','Tapturven per fust 20L'],['fust50Price','Fust 50L (€)'],['turfPerFust50','Tapturven per fust 50L'],['kratPrice','Krat (€, excl. statiegeld)'],['flesPerKrat','Flesjes per krat'],['plexPrice','Doos plexxen (€)'],['gasPrice','Gasfles (€)'],['barPrice','Prijs per tapturf (leeg = berekend)'],['flesPrice','Prijs per flesje (leeg = berekend)']].map(([key,label,type])=>`<label class="field" for="ps-${key}">${label}<input ${type==='text'?'':'type="number" step="0.001"'} id="ps-${key}" value="${esc(ps[key]??'')}" data-ch="ps" data-f="${key}" ${type==='text'?'':`data-num="1"`} ${key==='barPrice'?`placeholder="${eur3((+ps.fust20Price||0)/(+ps.turfPerFust20||100))}"`:key==='flesPrice'?`placeholder="${eur3((+ps.kratPrice||0)/(+ps.flesPerKrat||24))}"`:''}></label>`).join('')}
     </div></div></section>`:''}`;
+}
+function statHTML(m,ok){
+  const pl=m.pils,st=pl.stat||{},c=statCalc(m),a=pl.statAfr,rij=(l,f)=>`<tr><td>${l}</td>${STAT.map(([x])=>`<td class="r num">${f(x,c.rij[x])}</td>`).join('')}</tr>`;
+  const inv=(g,x,w)=>numInput(`st-${g}-${x}`,(st[g]||{})[x],'stat',g,ok,'5rem',`data-x="${x}" min="0" ${w||''}`);
+  const geen=STAT.some(([x])=>c.rij[x].kwijt&&!statPrijs(x));
+  return `<section class="block"><h2>Statiegeld</h2>
+    <p class="note">Tel aan het eind van de maand de lege fusten en kratten. Samen met de volle voorraad hierboven is dat wat er nu is; het verschil met wat er zou moeten zijn, is kwijt. Wat op een factuur is teruggenomen, vul je in bij die transactie (of hier, als die er nog niet is).</p>
+    <div class="scroll tbl"><table class="mini" style="margin:0"><thead><tr><th>Aantal</th>${STAT.map(([,l])=>`<th class="r">${l}</th>`).join('')}</tr></thead><tbody>
+      ${rij('Begin maand',(x,r)=>inv('begin',x,`placeholder="${nf(r.begin)}"`))}
+      ${rij('+ Ingekocht',(x,r)=>nf(r.bij))}
+      ${rij('− Teruggenomen',(x,r)=>inv('terug',x,'placeholder="0"')+(r.fact?`<div class="small muted">+ ${nf(r.fact)} op factuur</div>`:''))}
+      ${rij('= Zou er moeten zijn',(x,r)=>`<b>${nf(r.moet)}</b>`)}
+      ${rij('Vol (geteld, hierboven)',x=>{const v=x==='f20'?pl.fust.end20:x==='f50'?pl.fust.end50:pl.krat.end;return has(v)?nf(v):'<span class="muted">nog tellen</span>'})}
+      ${rij('Leeg (geteld)',x=>inv('leeg',x,'placeholder="tel"'))}
+      ${rij('Kwijt',(x,r)=>r.geteld==null?'—':r.kwijt?`<b>${nf(r.kwijt)}</b>`:'0')}
+      ${rij('Statiegeld per stuk',x=>ok?`<input type="number" step="0.01" min="0" id="st-prijs-${x}" value="${(S.statiegeld||{})[x]??''}" data-ch="statprijs" data-x="${x}" placeholder="€" style="width:5rem" aria-label="Statiegeld per stuk">`:eur(statPrijs(x)))}
+      <tr class="total"><td>Verlies deze maand</td>${STAT.map(([x])=>`<td class="r num">${eur(c.rij[x].eur)}</td>`).join('')}</tr>
+    </tbody></table></div>
+    ${geen?'<p class="note" style="color:var(--neg,#a33)">Vul het statiegeld per stuk in, anders telt wat kwijt is nog niet mee.</p>':''}
+    <div class="panel stack" style="margin-top:10px"><div class="spread"><b>Nog niet op de rekening: ${eur(c.open)}</b>
+      ${ok&&!a&&Math.abs(c.open)>0.004?`<button data-act="statbill">Op de rekening van ${esc(m.label.toLowerCase())} zetten</button>`:''}</div>
+      ${a?`<div class="row"><label class="field" for="st-bedrag">Op de rekening van deze maand${ok?`<input type="number" step="0.01" id="st-bedrag" value="${(+a.bedrag||0).toFixed(2)}" data-ch="statbedrag" style="width:7rem">`:` <b>${eur(a.bedrag)}</b>`}</label>
+        <span class="small muted">${(a.wie||[]).length} huisgenoten · ${eur((a.wie||[]).length?(+a.bedrag||0)/a.wie.length:0)} p.p.</span>
+        ${ok?'<button class="ghost danger" data-act="statundo">Van de rekening halen</button>':''}</div>
+      ${ok?`<div class="people-grid">${[...new Set([...housePeople().map(p=>p.id),...(a.wie||[])])].map(P).filter(Boolean).sort(byName).map(p=>`<label for="st-w-${p.id}"><input type="checkbox" id="st-w-${p.id}" data-ch="statwie" data-pid="${p.id}" ${(a.wie||[]).includes(p.id)?'checked':''}><span>${esc(p.name)}</span></label>`).join('')}</div>`:''}`:'<p class="note">Dit loopt op tot jij het op de rekening zet. Het wordt dan gelijk verdeeld over alle huisgenoten.</p>'}
+    </div>
+  </section>`;
 }
 function postInputs(x,pl,pc,ok){
   if(x.kind==='tap'||x.kind==='fles')return `<span class="small muted">${esc(x.desc)}</span>`;
@@ -2190,6 +2238,8 @@ const acts={
   pdf:el=>exportPDF(el.dataset.id,M(UI.month)),
   downloadhtml:()=>download('Huisrekening Omega Ksi.html',buildDocument()),
   backup:()=>download(`huisrekening-backup-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(S,null,1)),
+  statbill:()=>mutate(()=>{const m=M(UI.month);m.pils.statAfr={bedrag:r2(statCalc(m).open),wie:housePeople().map(p=>p.id),datum:new Date().toISOString().slice(0,10)}}),
+  statundo:()=>ask('Statiegeldverlies van de rekening van deze maand halen? Het bedrag blijft dan openstaan.','Van de rekening halen',()=>mutate(()=>{delete M(UI.month).pils.statAfr})),
   matrixall:()=>{UI.matrixAll=!UI.matrixAll;render()},
   tabelhuis:()=>mutate(()=>{S.tabelPersonen=housePeople().map(p=>p.id)}),
   tabelstandaard:()=>mutate(()=>{delete S.tabelPersonen}),
@@ -2269,6 +2319,10 @@ const changes={
   evpart:el=>{const e=E(UI.eventId);mutate(()=>{e.participants=toggleIn(e.participants,el.dataset.pid,el.checked)})},
   evover:el=>{const e=E(UI.eventId),pid=el.dataset.pid,v=num(el.value);mutate(()=>{e.overrides=e.overrides||{};if(v==null)delete e.overrides[pid];else e.overrides[pid]=v})},
   pl:el=>{const pl=curPils(),f=el.dataset.f;mutate(()=>{pl[f]=num(el.value)||0})},
+  stat:el=>{const g=el.dataset.f,x=el.dataset.x,v=num(el.value);mutate(()=>{const pl=curPils(),st=pl.stat=pl.stat||{},h=st[g]=st[g]||{};if(v==null)delete h[x];else h[x]=Math.max(0,v)})},
+  statprijs:el=>mutate(()=>{S.statiegeld=S.statiegeld||{};S.statiegeld[el.dataset.x]=Math.max(0,num(el.value)||0)}),
+  statbedrag:el=>mutate(()=>{curPils().statAfr.bedrag=r2(num(el.value)||0)}),
+  statwie:el=>mutate(()=>{const a=curPils().statAfr;a.wie=toggleIn(a.wie,el.dataset.pid,el.checked)}),
   pfust:el=>{const f=el.dataset.f,v=num(el.value);mutate(()=>{curPils().fust[f]=(f.startsWith('end')&&v==null)?null:Math.max(0,v||0)})},
   pkrat:el=>{const f=el.dataset.f,v=num(el.value);mutate(()=>{curPils().krat[f]=(f==='end'&&v==null)?null:Math.max(0,v||0)})},
   spost:el=>{const x=curPils().shared.find(y=>y.id===el.dataset.id),f=el.dataset.f;mutate(()=>{x[f]=f==='label'?el.value:(num(el.value)||0)})},
