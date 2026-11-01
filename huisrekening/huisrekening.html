@@ -1633,7 +1633,7 @@ function voorschotHTML(e,k,ok){
 function numInput(id,val,ch,f,ok,w,extra){return `<input type="number" id="${id}" value="${val??''}" data-ch="${ch}" ${f?`data-f="${f}"`:''} ${extra||''} ${dis(ok)} style="width:${w||'5.5rem'}">`}
 // Maanden uit de oude Excel: de rekening van die maand is leidend, op elk tabblad.
 // Per post (NRC, Makro, een extra correctie, …) het totaal en wie wat betaalde; met m.impAanp[cat][post] = [personen]
-// verdeel je hem opnieuw, naar verhouding van wat ieder betaalde (nieuwe betalers krijgen het gebruikelijke bedrag).
+// verdeel je hem opnieuw: iedereen die aangevinkt staat betaalt hetzelfde, behalve wie een eigen (vast) bedrag heeft.
 // Servicekosten (m.scAanp) en pils (m.pilsAanp) pas je per persoon aan. Het verschil loopt door in de saldo's van de maanden erna.
 const impMaand=m=>!!(m&&m.snapshot&&/oude Excel/i.test(m.note||''));
 const IMP_CATS=['Huislasten','Extra correctie','Pils'];
@@ -1651,11 +1651,14 @@ function impNieuw(m,cat,x){
   const oud=Object.keys(x.per).filter(id=>Math.abs(x.per[id])>0.00001),totOud=sum(oud.map(id=>x.per[id]));
   const A=impEntry(m,cat,x.label)||{},wie=A.wie||oud,tot=A.totaal!=null?+A.totaal:totOud;
   const vast=Object.fromEntries(Object.entries(A.vast||{}).filter(([id])=>wie.includes(id)).map(([id,v])=>[id,+v||0]));
-  // Vaste bedragen eerst; het restant gaat naar de overige aangevinkten, naar verhouding van wat ze betaalden.
-  const vals=oud.map(id=>x.per[id]).sort((a,b)=>a-b),gewoon=vals.length?vals[Math.floor(vals.length/2)]:0;
-  const vrij=wie.filter(id=>!(id in vast)),w=Object.fromEntries(vrij.map(id=>[id,oud.includes(id)?x.per[id]:gewoon])),sw=sum(Object.values(w));
-  const rest=tot-sum(Object.values(vast)),nieuw={...vast};
-  for(const id of vrij)nieuw[id]=sw?rest*w[id]/sw:(vrij.length?rest/vrij.length:0);
+  // Vaste bedragen eerst; het restant wordt gelijk verdeeld over de overige aangevinkten.
+  // Wie in de Excel een afwijkend bedrag had (niet het bedrag dat de meesten betaalden), houdt dat bedrag.
+  const tel={};for(const id of oud){const c=Math.round(x.per[id]*100);tel[c]=(tel[c]||0)+1}
+  const [modus,keer]=Object.entries(tel).sort((a,b)=>b[1]-a[1])[0]||[0,0];
+  const eigen=keer>1?Object.fromEntries(oud.filter(id=>wie.includes(id)&&!(id in vast)&&Math.round(x.per[id]*100)!==+modus).map(id=>[id,x.per[id]])):{};
+  const vrij=wie.filter(id=>!(id in vast)&&!(id in eigen));
+  const rest=tot-sum(Object.values(vast))-sum(Object.values(eigen)),nieuw={...eigen,...vast};
+  for(const id of vrij)nieuw[id]=vrij.length?rest/vrij.length:0;
   return {nieuw,wie,tot,totOud,oud,vast,rest};
 }
 function impVerschillen(m,cat){
@@ -1737,7 +1740,7 @@ function impEdit(m,cat,titel){
   const verschil=sum(info.map(i=>sum(Object.values(i.nieuw))-sum(i.oud.map(id=>i.x.per[id]))));
   const heeft=m.impAanp&&m.impAanp[cat]&&Object.keys(m.impAanp[cat]).length;
   return `<section class="block breed${cat==='Huislasten'?' middel':''}"><h2>${esc(titel)} ${esc(m.label.toLowerCase())}</h2>
-    <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is de basis. Met het vinkje zet je iemand aan of uit. Typ je bij iemand een ander bedrag, dan wordt dat een vast bedrag (blauw) en wordt het restant verdeeld over de overige aangevinkten; met ↺ gaat het weer automatisch. Ook het totaalbedrag van een post kun je aanpassen. De saldo's van de maanden erna lopen vanzelf mee.</p>
+    <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is de basis. Met het vinkje zet je iemand aan of uit; iedereen die aangevinkt staat betaalt hetzelfde deel. Typ je bij iemand een ander bedrag, dan wordt dat een vast bedrag (blauw) en wordt het restant gelijk verdeeld over de overige aangevinkten; met ↺ gaat het weer automatisch. Ook het totaalbedrag van een post kun je aanpassen. De saldo's van de maanden erna lopen vanzelf mee.</p>
     <div class="row" style="margin-bottom:8px"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div>
       ${heeft?`<button class="ghost" data-act="impreset" data-cat="${esc(cat)}">Alle aanpassingen ongedaan maken</button>`:''}</div>
     ${posts.length?`<div class="scroll tbl"><table class="hl-tabel"><thead>
