@@ -67,6 +67,26 @@
       return await res.json(); // { rev: <nieuwe versie> }
     },
 
+    async afschriften() {
+      const res = await fetch(API + '?actie=afschriften', { headers: kop(), cache: 'no-store' });
+      if (!res.ok) throw new Error(await fout(res));
+      return (await res.json()).afschriften || [];
+    },
+    async afschrift(id) {
+      const res = await fetch(API + '?actie=afschrift&id=' + encodeURIComponent(id), { headers: kop(), cache: 'no-store' });
+      if (!res.ok) throw new Error(await fout(res));
+      return await res.json(); // { naam, pdf (base64) }
+    },
+    async afschriftUpload(body) {
+      const res = await fetch(API + '?actie=afschriften', { method: 'POST', cache: 'no-store', headers: kop({ 'content-type': 'application/json' }), body: JSON.stringify(body) });
+      if (!res.ok) throw new Error(await fout(res));
+      return await res.json();
+    },
+    async afschriftWeg(id) {
+      const res = await fetch(API + '?actie=afschriften&id=' + encodeURIComponent(id), { method: 'DELETE', cache: 'no-store', headers: kop() });
+      if (!res.ok) throw new Error(await fout(res));
+      return await res.json();
+    },
     async logboek() {
       const res = await fetch(API + '?actie=logboek', { headers: kop(), cache: 'no-store' });
       if (!res.ok) throw new Error(await fout(res));

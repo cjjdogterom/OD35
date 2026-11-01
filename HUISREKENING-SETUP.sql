@@ -105,4 +105,18 @@ create table if not exists public.huisrekening_backups (
 create index if not exists huisrekening_backups_gemaakt on public.huisrekening_backups (gemaakt desc);
 alter table public.huisrekening_backups enable row level security;
 
+-- Geüploade bankafschriften (PDF). Alleen via de server, dus alleen voor wie toegang heeft tot de huisrekening.
+create table if not exists public.huisrekening_afschriften (
+  id bigserial primary key,
+  gemaakt timestamptz not null default now(),
+  maand text,
+  naam text,
+  periode text,
+  grootte integer,
+  hash text unique,
+  door text,
+  pdf text not null
+);
+alter table public.huisrekening_afschriften enable row level security;
+
 notify pgrst, 'reload schema';

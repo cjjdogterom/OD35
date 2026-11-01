@@ -20,6 +20,7 @@
 body{background:var(--paper);color:var(--ink);font:15px/1.5 var(--f-body);margin:0}
 .wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 96px}
 .boot{padding:40px 16px;color:var(--muted)}
+.afschriften{margin-bottom:14px}.afschriften ul{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:4px}.afschriften li{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 :root{--vz-1:#2a78d6;--vz-2:#eb6834;--vz-3:#1baf7a}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--vz-1:#3987e5;--vz-2:#d95926;--vz-3:#199e70}}
 :root[data-theme="dark"]{--vz-1:#3987e5;--vz-2:#d95926;--vz-3:#199e70}
@@ -818,11 +819,60 @@ function parseINGpdf(lines){
   const iso=d=>d.split('-').reverse().join('-');
   return {period,saldo,txs:txs.map(t=>({...t,desc:t.desc.join(' ').replace(/\b(RSM[0-9a-f]{8,}|\d{10,})\b/gi,'').replace(/\s+/g,' ').trim()})),end:period?iso(period[1]):null};
 }
-async function importPDF(buf){
+/* ---------- bankafschriften inzien ---------- */
+// Het geüploade PDF-afschrift blijft bewaard; iedereen met toegang tot de huisrekening kan het openen.
+// Maanden zonder PDF (CSV-import) krijgen een overzicht dat uit de geïmporteerde transacties wordt samengesteld.
+const naarBase64=buf=>{const b=new Uint8Array(buf);let s='';for(let i=0;i<b.length;i+=32768)s+=String.fromCharCode.apply(null,b.subarray(i,i+32768));return btoa(s)};
+async function afschriftBewaren(buf,naam,periode){
+  if(!BE||!BE.afschriftUpload)return;
+  if(buf.byteLength>3*1024*1024)return toast('Transacties zijn geïmporteerd, maar dit afschrift is groter dan 3 MB en kan niet bewaard worden om in te zien.',true);
+  try{await BE.afschriftUpload({maand:openMonth().id,naam:naam||'afschrift.pdf',periode,pdf:naarBase64(buf)});UI.afschriften=undefined;UI.afschriftFout=null;render()}
+  catch(e){toast('Transacties zijn geïmporteerd, maar het afschrift kon niet bewaard worden: '+(e.message||e),true)}
+}
+async function laadAfschriften(){if(UI.afsBezig||!BE||!BE.afschriften)return;UI.afsBezig=true;try{UI.afschriften=await BE.afschriften();UI.afschriftFout=null}catch(e){UI.afschriftFout=e.message||String(e);UI.afschriften=[]}UI.afsBezig=false;render()}
+function pdfTonen(blob,naam,venster){
+  const url=URL.createObjectURL(blob);
+  if(venster&&!venster.closed)venster.location.href=url;
+  else{const a=document.createElement('a');a.href=url;a.download=naam;document.body.appendChild(a);a.click();a.remove()}
+  setTimeout(()=>URL.revokeObjectURL(url),120000);
+}
+async function afschriftOpenen(id,naam){
+  const w=window.open('','_blank');
+  try{const r=await BE.afschrift(id),s=atob(r.pdf),b=new Uint8Array(s.length);for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i);pdfTonen(new Blob([b],{type:'application/pdf'}),r.naam||naam,w)}
+  catch(e){if(w)w.close();toast('Het afschrift kon niet geopend worden: '+(e.message||e),true)}
+}
+async function bankOverzichtPDF(m){
+  const w=window.open('','_blank');
+  try{const jsPDF=await pdfMaker(),doc=new jsPDF({unit:'mm',format:'a4'}),W=doc.internal.pageSize.getWidth(),L=18,R=W-18,T=x=>String(x==null?'':x).replace(/−/g,'-'),E=n=>eur(n).replace('−','- ');
+    const tx=S.transactions.filter(t=>t.monthId===m.id&&t.source==='bank').sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    let y=20,pag=1;const INK=[33,30,26],GRIJS=[120,112,100],LIJN=[200,192,175],NAVY=[42,77,130];
+    const kol=()=>{doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...GRIJS);doc.text('Datum',L,y);doc.text('Naam en omschrijving',L+22,y);doc.text('Bij',R-24,y,{align:'right'});doc.text('Af',R,y,{align:'right'});y+=2;doc.setDrawColor(...LIJN);doc.setLineWidth(.2);doc.line(L,y,R,y);y+=5};
+    doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(...NAVY);doc.text(T(`Bankoverzicht ${m.label.toLowerCase()}`),L,y);y+=6;
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...GRIJS);doc.text(T(`${S.house.name||'Huis'} · samengesteld uit de geïmporteerde transacties, dit is geen origineel afschrift van de bank`),L,y);y+=9;kol();
+    for(const t of tx){doc.setFont('helvetica','normal');doc.setFontSize(9);const naam=doc.splitTextToSize(T(t.name||''),R-L-72),om=doc.splitTextToSize(T(t.desc||''),R-L-72).slice(0,3),h=naam.length*4+om.length*3.5+2.5;
+      if(y+h>280){doc.addPage();pag++;y=20;kol()}
+      doc.setTextColor(...INK);doc.text(fmtDate(t.date),L,y);doc.text(naam,L+22,y);if(t.amount>=0)doc.text(E(t.amount),R-24,y,{align:'right'});else doc.text(E(-t.amount),R,y,{align:'right'});
+      if(om.length){doc.setFontSize(7.5);doc.setTextColor(...GRIJS);doc.text(om,L+22,y+naam.length*3.8)}y+=h}
+    if(y+10>280){doc.addPage();y=20}doc.setDrawColor(...LIJN);doc.line(L,y-2,R,y-2);y+=3;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...INK);doc.text(`${tx.length} transacties`,L,y);doc.text(E(sum(tx.filter(t=>t.amount>0).map(t=>t.amount))),R-24,y,{align:'right'});doc.text(E(-sum(tx.filter(t=>t.amount<0).map(t=>t.amount))),R,y,{align:'right'});
+    pdfTonen(doc.output('blob'),`Bankoverzicht ${m.label}.pdf`,w)}
+  catch(e){if(w)w.close();toast('De PDF kon niet gemaakt worden. Controleer je internetverbinding en probeer het opnieuw.',true)}
+}
+function vAfschriften(m){
+  if(!BE||!BE.afschriften)return '';
+  if(UI.afschriften===undefined)laadAfschriften();
+  const alle=UI.afschriften||[],hier=alle.filter(a=>a.maand===m.id),rest=alle.filter(a=>a.maand!==m.id),heeftTx=S.transactions.some(t=>t.monthId===m.id&&t.source==='bank');
+  const rij=a=>`<li><button class="linkknop" data-act="afsopen" data-id="${a.id}" data-naam="${esc(a.naam||'afschrift.pdf')}">${esc(a.naam||'Afschrift')}</button> <span class="small muted">${a.periode?esc(a.periode):esc((M(a.maand)||{label:''}).label)} · ${Math.max(1,Math.round((a.grootte||0)/1024))} kB</span>${UI.editor?`<button class="ghost danger" data-act="afsweg" data-id="${a.id}" data-naam="${esc(a.naam||'')}" aria-label="Afschrift verwijderen">×</button>`:''}</li>`;
+  return `<div class="panel stack afschriften"><div class="spread"><h3 style="margin:0">Bankafschriften ${esc(m.label.toLowerCase())}</h3>${heeftTx&&!hier.length?`<button class="ghost" data-act="afsmaak">Bankoverzicht als PDF</button>`:''}</div>
+    ${UI.afschriftFout?`<p class="note" style="color:var(--neg,#a33);margin:0">${esc(UI.afschriftFout)}</p>`:UI.afschriften===undefined?'<p class="note" style="margin:0">Laden…</p>':hier.length?`<ul>${hier.map(rij).join('')}</ul>`:`<p class="note" style="margin:0">${heeftTx?'Er is voor deze maand geen PDF van de bank bewaard. Je kunt wel een overzicht van de geïmporteerde transacties openen.':'Nog geen afschrift voor deze maand.'}</p>`}
+    ${rest.length?`<details><summary class="small muted">Andere maanden (${rest.length})</summary><ul>${rest.map(rij).join('')}</ul></details>`:''}</div>`;
+}
+async function importPDF(buf,naam){
   UI.toast={text:'Afschrift wordt gelezen…'};render();
+  const kopie=buf.slice(0); // de PDF-lezer neemt de buffer over
   try{const r=parseINGpdf(await pdfLines(buf));
     if(!r.txs.length)return toast('Ik vind geen transacties in deze PDF. Is het een afschrift van ING?',true);
     commitImport(r.txs,r.saldo!=null&&r.end?{date:r.end,saldo:r.saldo}:null,'ING-afschrift'+(r.period?' '+r.period.join(' t/m '):''));
+    afschriftBewaren(kopie,naam,r.period?r.period.map(fmtDate).join(' t/m '):'');
   }catch(e){toast('De PDF kon niet gelezen worden ('+((e&&e.message)||e)+'). Probeer het afschrift als CSV te downloaden.',true)}
 }
 
@@ -1575,6 +1625,7 @@ function vTransacties(m){
   const nt=UI.newTx;
   return `<section class="block">
     ${closedNote}
+    ${vAfschriften(m)}
     <div class="spread"><h2>Transacties</h2>${ok?`<div class="row"><label class="btn primary" for="csv-file">ING-afschrift importeren (PDF of CSV)<input type="file" id="csv-file" accept=".pdf,.csv,application/pdf,text/csv" data-ch="csvfile" hidden></label><button data-act="newtx">+ Transactie toevoegen</button></div>`:''}</div>
     ${ok?`<details class="help"><summary>Hoe download ik het afschrift?</summary><p class="note" style="margin-top:6px">Download in Mijn ING of de ING-app het afschrift van de huisrekening als <b>PDF</b> (of de af- en bijschrijvingen als <b>CSV</b>) en upload het hier. De app haalt er alle transacties uit; die koppel je daarna aan een persoon, huislast, extra correctie of de pilsrekening. Dubbele regels worden overgeslagen, dus een overlappende periode is geen probleem. Betalingen van huisgenoten worden herkend aan hun IBAN zodra je ze één keer hebt toegewezen; vaste lasten aan de bankregels in Instellingen.</p></details>`:''}
     ${nt&&ok?`<div class="panel stack"><h3>Transactie toevoegen</h3>
@@ -2509,6 +2560,9 @@ const acts={
     try{UI.autoStop=true;UI.dirty=false;clearTimeout(_autoTimer);clearTimeout(_saldoTimer);UI.stand0=null;store.del('huis.stand0');store.del(DRAFT);await BE.terugzetten(+el.dataset.id);location.reload()}
     catch(e){UI.autoStop=false;toast('Terugzetten mislukt: '+(e.message||e),true)}}),
   statper:el=>{UI.statPer=el.dataset.id;render()},
+  afsopen:el=>afschriftOpenen(el.dataset.id,el.dataset.naam),
+  afsmaak:()=>bankOverzichtPDF(M(UI.month)),
+  afsweg:el=>ask(`Afschrift ${el.dataset.naam} verwijderen? De transacties blijven staan.`,'Verwijderen',async()=>{try{await BE.afschriftWeg(el.dataset.id);UI.afschriften=undefined;render()}catch(e){toast(e.message||String(e),true)}}),
   matrixall:()=>{UI.matrixAll=!UI.matrixAll;render()},
   tabelhuis:()=>mutate(()=>{S.tabelPersonen=housePeople().map(p=>p.id)}),
   tabelstandaard:()=>mutate(()=>{delete S.tabelPersonen}),
@@ -2557,7 +2611,7 @@ const changes={
   msvc:el=>mutate(()=>{M(UI.month).includeService=el.checked}),
   xlsxmaand:el=>{const f=[...(el.files||[])];el.value='';if(f.length)xlsImporteren(f)},
   csvfile:el=>{const f=el.files&&el.files[0];if(!f)return;
-    if(/\.pdf$/i.test(f.name)||f.type==='application/pdf'){const rb=new FileReader();rb.onload=()=>importPDF(rb.result);rb.readAsArrayBuffer(f);return}
+    if(/\.pdf$/i.test(f.name)||f.type==='application/pdf'){const rb=new FileReader();rb.onload=()=>importPDF(rb.result,f.name);rb.readAsArrayBuffer(f);return}
     const rd=new FileReader();rd.onload=()=>{const txt=rd.result;if(txt.indexOf(String.fromCharCode(65533))>=0){const r2=new FileReader();r2.onload=()=>importING(r2.result);r2.readAsText(f,'windows-1252')}else importING(txt)};rd.readAsText(f,'utf-8')},
   restore:el=>{const f=el.files&&el.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d.people||!d.months)throw 0;
     ask(`Back-up van ${d.savedAt?new Date(d.savedAt).toLocaleDateString('nl-NL'):'onbekende datum'} terugzetten? Alles wat nu in de app staat wordt vervangen.`,'Terugzetten',()=>{const rev=S.rev;mutate(()=>{S=migrate(d);S.rev=rev});toast('Back-up teruggezet. Klik op Opslaan en delen om hem te publiceren.')})}
