@@ -322,8 +322,27 @@ function koppelHuislasten(d){
     const h=(d.huislasten||[]).find(h=>h.type!=='pp'&&((h.match||'').split(',').map(x=>x.trim()).filter(Boolean).some(x=>woord(x).test(hay))||(lb&&norm(h.name)===lb)));
     if(h)t.huislastId=h.id}
 }
+// Oude vorm: gedeelde pilsposten stonden per persoon in pilsAanp[id].cells. Dat telde mee in het overzicht naast
+// impAanp (dubbel), terwijl de tab het negeerde. Nu gaat alles via impAanp; de vinkjes en bedragen in de tab zijn leidend.
+function pilsCellenOpruimen(m){
+  const A=m.pilsAanp;if(!A||!m.snapshot)return;
+  const al=new Set(Object.keys((m.impAanp||{}).Pils||{})),afkoopApart=(m.afkoopHist||[]).length>0;
+  const per=lb=>{const o={};for(const [id,b] of Object.entries(m.snapshot))for(const l of b.lines||[])if(l.cat==='Pils'&&l.label===lb)o[id]=(o[id]||0)+l.amount;return o};
+  for(const id of Object.keys(A)){const a=A[id];if(!a||!a.cells)continue;
+    for(const lb of Object.keys(a.cells)){if(lb==='Pils fles'||lb==='Pils fust')continue;
+      const v=+a.cells[lb]||0;delete a.cells[lb];
+      if(al.has(lb)||(afkoopApart&&/afkoop/i.test(lb)))continue;
+      const oud=per(lb),I=m.impAanp=m.impAanp||{},R=I.Pils=I.Pils||{};
+      const E=R[lb]=Array.isArray(R[lb])?{wie:R[lb]}:(R[lb]||{wie:Object.keys(oud),totaal:Object.values(oud).reduce((x,y)=>x+y,0)});
+      E.totaal=(+E.totaal||0)+v-(oud[id]||0);
+      if(Math.abs(v)<0.005)E.wie=E.wie.filter(x=>x!==id);else{E.vast=E.vast||{};E.vast[id]=v;if(!E.wie.includes(id))E.wie.push(id)}}
+    if(!Object.keys(a.cells).length)delete a.cells;
+    if(!Object.keys(a).length)delete A[id]}
+  if(!Object.keys(A).length)delete m.pilsAanp;
+}
 function migrate(d){
   dubbeleKamers(d);
+  for(const m of d.months||[])pilsCellenOpruimen(m);
   d.house=d.house||{};if(!d.house.beheerders)d.house.beheerders=['chris'];
   d.pilsSettings=d.pilsSettings||{barName:'Bar',nestorName:'Nestor',fust20Price:58.58,fust50Price:103.5,turfPerFust20:100,turfPerFust50:250,kratPrice:16.4,flesPerKrat:24,plexPrice:41.4,gasPrice:48.88,barPrice:null,flesPrice:null};
   for(const m of d.months){if(m.pils&&!m.pils.bar){const o=m.pils,n=emptyPils(null);
@@ -1684,15 +1703,16 @@ function vHuislasten(m){
   const cel=(p,h)=>{const v=bedrag(p.id,h),txt=Math.abs(v)>0.004?eur(v):'<span class="muted">—</span>';
     return ed?`<td class="r num"><label class="hl-cel"><input type="checkbox" id="hp-${h.id}-${p.id}" data-ch="hlpayer" data-id="${h.id}" data-pid="${p.id}" ${h.payers.includes(p.id)?'checked':''} aria-label="${esc(p.name)} betaalt ${esc(h.name)}"> ${txt}</label></td>`
       :`<td class="r num">${txt}</td>`};
+  const hlTot=id=>catTot(m,id,'Huislasten'),hlRest=id=>hlTot(id)-sum(hl.map(h=>bedrag(id,h))),metRest=Object.keys(B).some(id=>Math.abs(hlRest(id))>0.004),rc=metRest?'<td></td>':'';
   const tabel=`<div class="scroll tbl"><table class="hl-tabel"><thead>
-      <tr><th class="n">Huislast</th>${hl.map(h=>`<th class="r">${kop(h)}</th>`).join('')}<th class="r">Totaal</th></tr>
-      <tr class="hl-info"><td class="n">Totaalprijs</td>${hl.map(h=>`<td class="r num"><b>${eur(totaal(h))}</b></td>`).join('')}<td class="r num"><b>${eur(sum(hl.map(totaal)))}</b></td></tr>
-      <tr class="hl-info"><td class="n">Vast p.p. / bank</td>${hl.map(h=>`<td class="r">${soort(h)}</td>`).join('')}<td></td></tr>
-      ${ed?`<tr class="hl-info"><td class="n small muted">Snel kiezen</td>${hl.map(h=>`<td class="r"><select id="hf-${h.id}" data-ch="hlfill" data-id="${h.id}" aria-label="Snel kiezen voor ${esc(h.name)}"><option value="">…</option><option value="bewoner">Alle bewoners</option><option value="huis">Alle huisgenoten</option><option value="none">Niemand</option></select></td>`).join('')}<td></td></tr>`:''}
+      <tr><th class="n">Huislast</th>${hl.map(h=>`<th class="r">${kop(h)}</th>`).join('')}${metRest?'<th class="r" title="Huislasten op de rekening die niet aan een kolom gekoppeld zijn">Overig</th>':''}<th class="r">Totaal</th></tr>
+      <tr class="hl-info"><td class="n">Totaalprijs</td>${hl.map(h=>`<td class="r num"><b>${eur(totaal(h))}</b></td>`).join('')}${metRest?`<td class="r num"><b>${eur(sum(Object.keys(B).map(hlRest)))}</b></td>`:''}<td class="r num"><b>${eur(sum(Object.keys(B).map(hlTot)))}</b></td></tr>
+      <tr class="hl-info"><td class="n">Vast p.p. / bank</td>${hl.map(h=>`<td class="r">${soort(h)}</td>`).join('')}${rc}<td></td></tr>
+      ${ed?`<tr class="hl-info"><td class="n small muted">Snel kiezen</td>${hl.map(h=>`<td class="r"><select id="hf-${h.id}" data-ch="hlfill" data-id="${h.id}" aria-label="Snel kiezen voor ${esc(h.name)}"><option value="">…</option><option value="bewoner">Alle bewoners</option><option value="huis">Alle huisgenoten</option><option value="none">Niemand</option></select></td>`).join('')}${rc}<td></td></tr>`:''}
     </thead><tbody>
       ${ppl.map(p=>{const alle=hl.length&&hl.every(h=>h.payers.includes(p.id));
-        return `<tr><td class="n">${ed?`<label class="hl-cel" title="${alle?'Voor geen enkele':'Voor alle'} huislasten aanslaan"><input type="checkbox" id="hr-alle-${p.id}" data-ch="hlrij" data-pid="${p.id}" ${alle?'checked':''} aria-label="${esc(p.name)} voor alle huislasten aanslaan"> ${esc(p.name)}</label>`:esc(p.name)}</td>${hl.map(h=>cel(p,h)).join('')}<td class="r num"><b>${eur(sum(hl.map(h=>bedrag(p.id,h))))}</b></td></tr>`}).join('')}
-      <tr class="total"><td class="n">Betalers</td>${hl.map(h=>`<td class="r num">${ppl.filter(p=>Math.abs(bedrag(p.id,h))>0.004).length}</td>`).join('')}<td></td></tr>
+        return `<tr><td class="n">${ed?`<label class="hl-cel" title="${alle?'Voor geen enkele':'Voor alle'} huislasten aanslaan"><input type="checkbox" id="hr-alle-${p.id}" data-ch="hlrij" data-pid="${p.id}" ${alle?'checked':''} aria-label="${esc(p.name)} voor alle huislasten aanslaan"> ${esc(p.name)}</label>`:esc(p.name)}</td>${hl.map(h=>cel(p,h)).join('')}${metRest?`<td class="r num">${Math.abs(hlRest(p.id))>0.004?eur(hlRest(p.id)):'<span class="muted">—</span>'}</td>`:''}<td class="r num"><b>${eur(hlTot(p.id))}</b></td></tr>`}).join('')}
+      <tr class="total"><td class="n">Betalers</td>${hl.map(h=>`<td class="r num">${ppl.filter(p=>Math.abs(bedrag(p.id,h))>0.004).length}</td>`).join('')}${rc}<td></td></tr>
     </tbody></table></div>`;
   return `<section class="block breed middel"><div class="spread"><h2>Huislasten ${esc(m.label.toLowerCase())}</h2>${ed?'<button class="primary" data-act="addhl">+ Huislast</button>':''}</div>
     <p class="note">${ed?'Bovenaan per huislast de totaalprijs en hoe hij berekend wordt: een vast bedrag per persoon, of herkend in het bankafschrift (meerdere teksten scheid je met een komma). Daaronder per huisgenoot wat hij betaalt; met het vinkje zet je iemand aan of uit. Het vinkje vóór een naam zet iemand in één keer voor álle huislasten aan of uit.'
@@ -1800,6 +1820,10 @@ function impPosten(m,cat){
   return Object.values(posts);
 }
 const hlImport=m=>impPosten(m,'Huislasten');
+// Het totaal per persoon in elke tab komt rechtstreeks van de rekening, zodat tab en overzicht nooit kunnen verschillen.
+// Wat geen eigen kolom heeft (bijv. een afkoop of later toegevoegde post) staat zichtbaar onder Overig.
+const catTot=(m,id,cat)=>{const b=bill(m.id)[id];return b?sum(b.lines.filter(l=>l.cat===cat).map(l=>l.amount)):0};
+const snapTot=(m,id,cat)=>sum((((m.snapshot||{})[id]||{}).lines||[]).filter(l=>l.cat===cat).map(l=>l.amount));
 // Aanpassing per post: { wie: [personen], vast: {persoon: bedrag}, totaal }. (Oude vorm: alleen de lijst met personen.)
 function impEntry(m,cat,label){const v=((m.impAanp||{})[cat]||{})[label];return Array.isArray(v)?{wie:v}:(v||null)}
 function impNieuw(m,cat,x){
@@ -1891,18 +1915,19 @@ function impEdit(m,cat,titel){
         +(vast?`<button class="ghost imp-los" data-act="impvastweg" ${d} title="Weer automatisch verdelen" aria-label="Weer automatisch verdelen">↺</button>`:'')
       :(anders?`<b title="was ${eur(oud)}">${eur(v)}</b>`:'<span class="muted">—</span>'))+'</td>'};
   const verschil=sum(info.map(i=>sum(Object.values(i.nieuw))-sum(i.oud.map(id=>i.x.per[id]))));
+  const rest=id=>catTot(m,id,cat)-sum(info.map(i=>i.nieuw[id]||0)),metRest=ppl.some(p=>Math.abs(rest(p.id))>0.004);
   const heeft=m.impAanp&&m.impAanp[cat]&&Object.keys(m.impAanp[cat]).length;
   return `<section class="block breed${cat==='Huislasten'?' middel':''}"><h2>${esc(titel)} ${esc(m.label.toLowerCase())}</h2>
     <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is de basis. Met het vinkje zet je iemand aan of uit; iedereen die aangevinkt staat betaalt hetzelfde deel. Typ je bij iemand een ander bedrag, dan wordt dat een vast bedrag (blauw) en wordt het restant gelijk verdeeld over de overige aangevinkten; met ↺ gaat het weer automatisch. Ook het totaalbedrag van een post kun je aanpassen. De saldo's van de maanden erna lopen vanzelf mee.</p>
     <div class="row" style="margin-bottom:8px">${zichtSeg()}
       ${heeft?`<button class="ghost" data-act="impreset" data-cat="${esc(cat)}">Alle aanpassingen ongedaan maken</button>`:''}</div>
     ${posts.length?`<div class="scroll tbl"><table class="hl-tabel"><thead>
-      <tr><th class="n">${esc(titel)}</th>${info.map(i=>`<th class="r">${esc(i.x.label)}</th>`).join('')}<th class="r">Totaal</th></tr>
+      <tr><th class="n">${esc(titel)}</th>${info.map(i=>`<th class="r">${esc(i.x.label)}</th>`).join('')}${metRest?'<th class="r">Overig</th>':''}<th class="r">Totaal</th></tr>
       <tr class="hl-info"><td class="n">Totaalbedrag</td>${info.map(i=>`<td class="r"><input type="number" step="0.01" class="imp-bedrag" value="${(Math.round(i.tot*100)/100).toFixed(2)}" data-ch="imptotaal" data-cat="${esc(cat)}" data-label="${esc(i.x.label)}" aria-label="Totaalbedrag ${esc(i.x.label)}" title="${Math.abs(i.tot-i.totOud)>0.004?'was '+eur(i.totOud):'Totaal van deze post'}"></td>`).join('')}<td class="r num"><b>${eur(sum(info.map(i=>i.tot)))}</b></td></tr>
     </thead><tbody>
       ${ppl.map(p=>{const alle=info.every(i=>i.wie.includes(p.id));return `<tr><td class="n"><label class="hl-cel" title="${alle?'Nergens':'Overal'} aanslaan"><input type="checkbox" data-ch="imprij" data-cat="${esc(cat)}" data-pid="${p.id}" ${alle?'checked':''} aria-label="${esc(p.name)} voor alle posten aanslaan"> ${esc(p.name)}</label></td>
-        ${info.map(i=>cel(p,i)).join('')}<td class="r num"><b>${eur(sum(info.map(i=>i.nieuw[p.id]||0)))}</b></td></tr>`}).join('')}
-      <tr class="total"><td class="n">Betalers</td>${info.map(i=>`<td class="r num">${i.wie.length}${i.rest<-0.004?` <span class="badge warn" title="De vaste bedragen zijn samen meer dan het totaal">te veel vast</span>`:''}</td>`).join('')}<td class="r num">${Math.abs(verschil)>0.01?'verschil '+eur(verschil):''}</td></tr>
+        ${info.map(i=>cel(p,i)).join('')}${metRest?`<td class="r num">${Math.abs(rest(p.id))>0.004?eur(rest(p.id)):'<span class="muted">—</span>'}</td>`:''}<td class="r num"><b>${eur(catTot(m,p.id,cat))}</b></td></tr>`}).join('')}
+      <tr class="total"><td class="n">Betalers</td>${info.map(i=>`<td class="r num">${i.wie.length}${i.rest<-0.004?` <span class="badge warn" title="De vaste bedragen zijn samen meer dan het totaal">te veel vast</span>`:''}</td>`).join('')}${metRest?'<td></td>':''}<td class="r num">${Math.abs(verschil)>0.01?'verschil '+eur(verschil):''}</td></tr>
     </tbody></table></div>`:`<div class="empty">Geen ${esc(titel.toLowerCase())} in deze maand.</div>`}
   </section>`;
 }
@@ -1946,7 +1971,8 @@ function pilsImport(m){
 }
 function pilsImpNieuw(m,id,imp){
   imp=imp||pilsImport(m);const oud=imp.per[id]||{cells:{},cnt:0,tap:0},a=(m.pilsAanp||{})[id]||{};
-  const cells={...oud.cells,...(a.cells||{})},cnt=a.fles!=null?+a.fles:oud.cnt,tap=a.tap!=null?+a.tap:oud.tap;
+  const cells={...oud.cells},cnt=a.fles!=null?+a.fles:oud.cnt,tap=a.tap!=null?+a.tap:oud.tap;
+  for(const lb of [FLES,TAP])if((a.cells||{})[lb]!=null)cells[lb]=+a.cells[lb];
   if(a.fles!=null)cells[FLES]=cnt*imp.prijs;
   if(a.tap!=null)cells[TAP]=tap*imp.tapPrijs;
   return {cells,cnt,tap,oud};
@@ -1973,10 +1999,11 @@ function afkoopImpEdit(m){
 function pilsImpVerschil(m,id){const n=pilsImpNieuw(m,id);return sum(Object.values(n.cells))-sum(Object.values(n.oud.cells))}
 function pilsImportEdit(m){
   const imp=pilsImport(m),info=impPosten(m,'Pils').map(x=>({x,...impNieuw(m,'Pils',x)}));
-  const ids=[...new Set([...Object.keys(imp.per),...tabelPeople().map(p=>p.id),...Object.keys(m.pilsAanp||{})])].filter(id=>P(id));
-  const rows=ids.map(id=>{const f=pilsImpNieuw(m,id,imp),deel=sum(info.map(i=>i.nieuw[id]||0)),deelOud=sum(info.map(i=>i.x.per[id]||0));
-    return {p:P(id),cnt:f.cnt,tap:f.tap,fles:(f.cells[FLES]||0)+(f.cells[TAP]||0),flesOud:(f.oud.cells[FLES]||0)+(f.oud.cells[TAP]||0),deel,deelOud}})
-    .filter(r=>zie(r.p,r.cnt||r.tap||r.deel||r.deelOud||r.flesOud)).sort((a,b)=>byName(a.p,b.p));
+  const ids=[...new Set([...Object.keys(imp.per),...tabelPeople().map(p=>p.id),...Object.keys(m.pilsAanp||{}),...Object.keys(bill(m.id))])].filter(id=>P(id));
+  const rows=ids.map(id=>{const f=pilsImpNieuw(m,id,imp),deel=sum(info.map(i=>i.nieuw[id]||0)),deelOud=sum(info.map(i=>i.x.per[id]||0)),fles=(f.cells[FLES]||0)+(f.cells[TAP]||0),tot=catTot(m,id,'Pils');
+    return {p:P(id),cnt:f.cnt,tap:f.tap,fles,flesOud:(f.oud.cells[FLES]||0)+(f.oud.cells[TAP]||0),deel,deelOud,tot,totOud:snapTot(m,id,'Pils'),rest:tot-fles-deel}})
+    .filter(r=>zie(r.p,r.cnt||r.tap||r.deel||r.deelOud||r.flesOud||Math.abs(r.tot)>0.004||Math.abs(r.totOud)>0.004)).sort((a,b)=>byName(a.p,b.p));
+  const metRest=rows.some(r=>Math.abs(r.rest)>0.004);
   const cel=(p,i)=>{const aan=i.wie.includes(p.id),v=i.nieuw[p.id]||0,oud=i.x.per[p.id]||0,anders=Math.abs(v-oud)>0.004;
     return `<td class="r num"><label class="hl-cel"><input type="checkbox" data-ch="impzet" data-cat="Pils" data-label="${esc(i.x.label)}" data-pid="${p.id}" ${aan?'checked':''} aria-label="${esc(p.name)} betaalt mee aan ${esc(i.x.label)}"> ${aan||anders?(anders?`<b title="was ${eur(oud)}">${eur(v)}</b>`:eur(v)):'<span class="muted">—</span>'}</label></td>`};
   const heeft=(m.pilsAanp&&Object.keys(m.pilsAanp).length)||(m.impAanp&&m.impAanp.Pils)||m.afkoopAanp;
@@ -1985,17 +2012,18 @@ function pilsImportEdit(m){
     <div class="row" style="margin-bottom:8px">${zichtSeg()}
       ${heeft?'<button class="ghost" data-act="pilsimpreset">Alle aanpassingen ongedaan maken</button>':''}</div>
     <div class="scroll tbl"><table class="hl-tabel"><thead>
-      <tr><th class="n">Naam</th><th class="r">Turven bar (tap)</th><th class="r">Turven Nestor (flesjes)</th><th class="r">Turven samen</th>${info.map(i=>`<th class="r">${esc(i.x.label)}</th>`).join('')}<th class="r" title="Hoeveel het totaal van deze persoon veranderde ten opzichte van de oude Excel">T.o.v. Excel</th><th class="r">Totaal</th></tr>
-      <tr class="hl-info"><td class="n">Totaal / prijs</td><td class="r num">${sum(rows.map(r=>r.tap||0))} × ${eur3(imp.tapPrijs)}</td><td class="r num">${sum(rows.map(r=>r.cnt||0))} × ${eur3(imp.prijs)}</td><td class="r num"><b>${eur(sum(rows.map(r=>r.fles)))}</b></td>${info.map(i=>`<td class="r num"><b>${eur(i.tot)}</b></td>`).join('')}<td></td><td></td></tr>
+      <tr><th class="n">Naam</th><th class="r">Turven bar (tap)</th><th class="r">Turven Nestor (flesjes)</th><th class="r">Turven samen</th>${info.map(i=>`<th class="r">${esc(i.x.label)}</th>`).join('')}${metRest?'<th class="r" title="Afkopen en wat geen eigen kolom heeft; afkopen pas je hieronder aan">Afkoop / overig</th>':''}<th class="r" title="Hoeveel het totaal van deze persoon veranderde ten opzichte van de oude Excel">T.o.v. Excel</th><th class="r">Totaal</th></tr>
+      <tr class="hl-info"><td class="n">Totaal / prijs</td><td class="r num">${sum(rows.map(r=>r.tap||0))} × ${eur3(imp.tapPrijs)}</td><td class="r num">${sum(rows.map(r=>r.cnt||0))} × ${eur3(imp.prijs)}</td><td class="r num"><b>${eur(sum(rows.map(r=>r.fles)))}</b></td>${info.map(i=>`<td class="r num"><b>${eur(i.tot)}</b></td>`).join('')}${metRest?`<td class="r num"><b>${eur(sum(rows.map(r=>r.rest)))}</b></td>`:''}<td></td><td></td></tr>
     </thead><tbody>
-    ${rows.map(r=>{const alle=info.length&&info.every(i=>i.wie.includes(r.p.id)),tot=r.fles+r.deel,d=tot-(r.flesOud+r.deelOud);
+    ${rows.map(r=>{const alle=info.length&&info.every(i=>i.wie.includes(r.p.id)),tot=r.tot,d=tot-r.totOud;
       return `<tr><td class="n">${info.length?`<label class="hl-cel" title="${alle?'Uit alle':'In alle'} gedeelde pilsposten"><input type="checkbox" data-ch="imprij" data-cat="Pils" data-pid="${r.p.id}" ${alle?'checked':''} aria-label="${esc(r.p.name)} in alle gedeelde pilsposten"> ${esc(r.p.name)}</label>`:esc(r.p.name)}</td>
       <td class="r"><input type="number" step="1" min="0" value="${r.tap||0}" data-ch="pilsimp" data-pid="${r.p.id}" data-f="tap" aria-label="Tapturven bar ${esc(r.p.name)}" style="width:5rem"></td>
       <td class="r"><input type="number" step="1" min="0" value="${r.cnt||0}" data-ch="pilsimp" data-pid="${r.p.id}" data-f="fles" aria-label="Flesjes Nestor ${esc(r.p.name)}" style="width:5rem"></td>
       <td class="r num">${r.fles?(Math.abs(r.fles-r.flesOud)>0.004?`<b title="was ${eur(r.flesOud)}">${eur(r.fles)}</b>`:eur(r.fles)):'<span class="muted">—</span>'}</td>
       ${info.map(i=>cel(r.p,i)).join('')}
+      ${metRest?`<td class="r num">${Math.abs(r.rest)>0.004?eur(r.rest):'<span class="muted">—</span>'}</td>`:''}
       <td class="r num">${Math.abs(d)>0.004?`<b>${d>0?'+':''}${eur(d)}</b>`:'<span class="muted">—</span>'}</td><td class="r num"><b>${eur(tot)}</b></td></tr>`}).join('')}
-    <tr class="total"><td class="n">Meebetalers</td><td></td><td></td><td></td>${info.map(i=>`<td class="r num">${i.wie.length}</td>`).join('')}<td></td><td class="r num">${eur(sum(rows.map(r=>r.fles+r.deel)))}</td></tr>
+    <tr class="total"><td class="n">Meebetalers</td><td></td><td></td><td></td>${info.map(i=>`<td class="r num">${i.wie.length}</td>`).join('')}${metRest?'<td></td>':''}<td></td><td class="r num">${eur(sum(rows.map(r=>r.tot)))}</td></tr>
     </tbody></table></div>
   </section>`+afkoopImpEdit(m);
 }
@@ -2007,6 +2035,7 @@ function vPils(m){
   const pl=m.pils,pc=pilsCalc(pl),ps=PS(),f=pl.fust,k=pl.krat;
   const ppl=(UI.matrixAll?[...S.people]:tabelPeople()).sort(byName);
   const fixedPrices=m.closed&&pl.prices;
+  const pilsRest=ppl.some(p=>{const sa=statAfr(pl),stP=sa&&sa.wie.includes(p.id)?sa.per:0,tv=(+(pl.bar.turven||{})[p.id]||0)*pc.bp+(+(pl.nestor.turven||{})[p.id]||0)*pc.fp,sh=(pc.payers.includes(p.id)&&pc.n?pc.shared/pc.n:0)+stP,af=sum(pc.afkoop.filter(a=>a.parts.includes(p.id)).map(a=>a.per));return Math.abs(catTot(m,p.id,'Pils')-tv-af-sh)>0.004});
   return `<section class="block breed">
     <h2>Pilsrekening ${esc(m.label.toLowerCase())}</h2>
     <p class="note">De ${esc(ps.barName.toLowerCase())} tapt uit fusten (${ps.turfPerFust20} tapturven per fust van 20 liter), de ${esc(ps.nestorName)} draait op kratten (${ps.flesPerKrat} flesjes per krat). Wat er uit de voorraad verdwijnt maar niet geturfd of afgekocht is, is verlies. Dat wordt samen met HO-turven, plexxen en gas gelijk verdeeld over de aangevinkte meebetalers.</p>
@@ -2078,11 +2107,11 @@ function vPils(m){
   </div></section>
   <section class="block"><h2>Turven per persoon</h2>
     <p class="note">Neem de aantallen over uit de Turff-app: tapturven van de ${esc(ps.barName.toLowerCase())} (${eur3(pc.bp)} per turf) en flesjes van de ${esc(ps.nestorName)} (${eur3(pc.fp)} per flesje).</p>
-    <div class="scroll tbl"><table><thead><tr><th>Naam</th><th class="r">${esc(ps.barName)}</th><th class="r">${esc(ps.nestorName)}</th><th class="r hide-sm">Turven</th><th class="r hide-sm">Afkoop</th><th class="r hide-sm">Gedeeld</th><th class="r">Pils totaal</th></tr></thead><tbody>
+    <div class="scroll tbl"><table><thead><tr><th>Naam</th><th class="r">${esc(ps.barName)}</th><th class="r">${esc(ps.nestorName)}</th><th class="r hide-sm">Turven</th><th class="r hide-sm">Afkoop</th><th class="r hide-sm">Gedeeld</th>${pilsRest?'<th class="r hide-sm">Overig</th>':''}<th class="r">Pils totaal</th></tr></thead><tbody>
       ${ppl.map(p=>{const nb=+(pl.bar.turven||{})[p.id]||0,nn=+(pl.nestor.turven||{})[p.id]||0,isP=pc.payers.includes(p.id),sa=statAfr(pl),stP=sa&&sa.wie.includes(p.id)?sa.per:0,sh=(isP&&pc.n?pc.shared/pc.n:0)+stP,afk=sum(pc.afkoop.filter(a=>a.parts.includes(p.id)).map(a=>a.per)),tv=nb*pc.bp+nn*pc.fp;
         return `<tr><td>${esc(p.name)}</td><td class="r">${numInput('tb-'+p.id,nb||'',ok?'turf':'x','bar',ok,'5rem',`data-pid="${p.id}" min="0" placeholder="0" aria-label="Tapturven ${esc(p.name)}"`)}</td><td class="r">${numInput('tn-'+p.id,nn||'',ok?'turf':'x','nestor',ok,'5rem',`data-pid="${p.id}" min="0" placeholder="0" aria-label="Flesjes ${esc(p.name)}"`)}</td>
-        <td class="r num hide-sm">${eur(tv)}</td><td class="r num hide-sm">${afk?eur(afk):'—'}</td><td class="r num hide-sm">${isP||stP?eur(sh):'—'}</td><td class="r num"><b>${eur(tv+afk+sh)}</b></td></tr>`}).join('')}
-      <tr class="total"><td>Totaal</td><td class="r num">${pc.barTurf}</td><td class="r num">${pc.nesTurf}</td><td class="r num hide-sm">${eur(pc.omzetTurf)}</td><td class="r num hide-sm">${eur(sum(pc.afkoop.map(a=>a.cost)))}</td><td class="r num hide-sm">${eur((pc.n?pc.shared:0)+(statAfr(pl)||{bedrag:0}).bedrag)}</td><td class="r num">${eur(pc.omzetTurf+sum(pc.afkoop.map(a=>a.cost))+(pc.n?pc.shared:0)+(statAfr(pl)||{bedrag:0}).bedrag)}</td></tr>
+        <td class="r num hide-sm">${eur(tv)}</td><td class="r num hide-sm">${afk?eur(afk):'—'}</td><td class="r num hide-sm">${isP||stP?eur(sh):'—'}</td>${pilsRest?`<td class="r num hide-sm">${Math.abs(catTot(m,p.id,'Pils')-tv-afk-sh)>0.004?eur(catTot(m,p.id,'Pils')-tv-afk-sh):'—'}</td>`:''}<td class="r num"><b>${eur(catTot(m,p.id,'Pils'))}</b></td></tr>`}).join('')}
+      <tr class="total"><td>Totaal</td><td class="r num">${pc.barTurf}</td><td class="r num">${pc.nesTurf}</td><td class="r num hide-sm">${eur(pc.omzetTurf)}</td><td class="r num hide-sm">${eur(sum(pc.afkoop.map(a=>a.cost)))}</td><td class="r num hide-sm">${eur((pc.n?pc.shared:0)+(statAfr(pl)||{bedrag:0}).bedrag)}</td>${pilsRest?'<td class="hide-sm"></td>':''}<td class="r num">${eur(sum(Object.keys(bill(m.id)).map(id=>catTot(m,id,'Pils'))))}</td></tr>
     </tbody></table></div>
   </section>
   ${pilsHistory()}
@@ -2515,8 +2544,7 @@ const changes={
     if(!Object.keys(m.afkoopAanp).length)delete m.afkoopAanp}),
   pilsimp:el=>mutate(()=>{const m=M(UI.month),id=el.dataset.pid,f=el.dataset.f,imp=pilsImport(m),oud=imp.per[id]||{cells:{},cnt:0};
     const A=m.pilsAanp=m.pilsAanp||{},a=A[id]=A[id]||{},v=el.value===''?0:+el.value;
-    if(f==='fles'||f==='tap'){const was=f==='fles'?oud.cnt:(oud.tap||0);if(v===was)delete a[f];else a[f]=Math.max(0,Math.round(v))}
-    else{a.cells=a.cells||{};if(Math.abs(v-(oud.cells[f]||0))<0.005)delete a.cells[f];else a.cells[f]=v;if(!Object.keys(a.cells).length)delete a.cells}
+    {const was=f==='fles'?oud.cnt:(oud.tap||0);if(v===was)delete a[f];else a[f]=Math.max(0,Math.round(v))}
     if(!Object.keys(a).length)delete A[id];if(!Object.keys(A).length)delete m.pilsAanp}),
   meldveld:el=>{if(UI.meld)UI.meld[el.dataset.f]=el.value},
   meldant:el=>{(UI.antw=UI.antw||{})[el.dataset.id]=el.value},
