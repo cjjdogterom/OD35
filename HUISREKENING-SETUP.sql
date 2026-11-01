@@ -82,4 +82,27 @@ create table if not exists public.huisrekening_bezoeken (
 create index if not exists huisrekening_bezoeken_email on public.huisrekening_bezoeken (email, begin desc);
 alter table public.huisrekening_bezoeken enable row level security;
 
+-- Logboek: wie wat wanneer veranderde (beheerders zien dit in Instellingen).
+create table if not exists public.huisrekening_log (
+  id bigserial primary key,
+  email text not null,
+  naam text,
+  begin timestamptz not null default now(),
+  laatst timestamptz not null default now(),
+  regels jsonb not null default '[]'::jsonb
+);
+create index if not exists huisrekening_log_email on public.huisrekening_log (email, begin desc);
+alter table public.huisrekening_log enable row level security;
+
+-- Dagelijkse kopie van de hele huisrekening (90 dagen bewaard); alleen de hoofdadmin zet terug.
+create table if not exists public.huisrekening_backups (
+  id bigserial primary key,
+  gemaakt timestamptz not null default now(),
+  rev integer,
+  reden text,
+  data jsonb not null
+);
+create index if not exists huisrekening_backups_gemaakt on public.huisrekening_backups (gemaakt desc);
+alter table public.huisrekening_backups enable row level security;
+
 notify pgrst, 'reload schema';

@@ -20,6 +20,28 @@
 body{background:var(--paper);color:var(--ink);font:15px/1.5 var(--f-body);margin:0}
 .wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 96px}
 .boot{padding:40px 16px;color:var(--muted)}
+:root{--vz-1:#2a78d6;--vz-2:#eb6834;--vz-3:#1baf7a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--vz-1:#3987e5;--vz-2:#d95926;--vz-3:#199e70}}
+:root[data-theme="dark"]{--vz-1:#3987e5;--vz-2:#d95926;--vz-3:#199e70}
+.vz{width:100%;height:auto;display:block}
+.vz-grid{stroke:var(--line);stroke-width:1}.vz-grid.nul{stroke:var(--strong)}
+.vz-as{font:11px var(--f-body);fill:var(--muted)}
+.vz-lijn{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.vz-punt{stroke:var(--surface);stroke-width:2}
+.vz-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.vz-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.vz-tip{position:fixed;z-index:60;pointer-events:none;background:var(--ink);color:var(--paper);font-size:.78rem;padding:5px 8px;border-radius:6px;max-width:280px}
+.vz-balkkol{width:34%;min-width:80px}.vz-balk{display:block;height:8px;border-radius:0 4px 4px 0;background:var(--vz-1)}
+table.rank tr.ik td{background:var(--accent-soft)}
+.uitsch ul,.waarschuwblok ul,.logregel ul{margin:4px 0 0;padding-left:18px}.uitsch ul{list-style:none;padding-left:0}
+.hoog{color:var(--neg,#b3261e)}.uitsch span{color:var(--neg,#b3261e)}
+.waarschuwblok{margin:0;border-left:3px solid #c98500}
+.saldomelding{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;border-left:3px solid var(--accent)}
+.ookbezig{color:var(--accent);font-weight:600}
+.checklist summary{cursor:pointer}.checklijst{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}
+.checklijst li{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.checklijst .vink{width:1.1em;text-align:center;color:var(--muted)}
+.checklijst li.af .vink{color:var(--vz-3);font-weight:700}.checklijst li.af>span:not(.vink){color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 h1,h2,h3,h4{font-family:var(--f-body);font-weight:600;line-height:1.2;margin:0;text-wrap:balance}
 h1{font-size:1.75rem;letter-spacing:-.01em}
 h2{font-size:1.2rem}
@@ -573,7 +595,79 @@ function sanctionClass(s){if(!s)return'';const max=Math.max(...S.sanctions.map(x
 /* ---------- mutaties ---------- */
 // Beheerders slaan alles op; een barman alleen de afkoopmomenten (de server neemt van hem niets anders over).
 const magOpslaan=()=>UI.editor||UI.barman;
-function mutate(fn){fn();bewaarMaandCfg();billCache.clear();UI.dirty=true;UI.wijzigingen=(UI.wijzigingen||0)+1;saveDraft();render();autoSave()}
+function mutate(fn){standVastleggen();fn();planSaldoMelding();bewaarMaandCfg();billCache.clear();UI.dirty=true;UI.wijzigingen=(UI.wijzigingen||0)+1;saveDraft();render();autoSave()}
+// Samenvoegen als iemand anders intussen opsloeg: wat alleen de ander wijzigde blijft staan, wat alleen jij wijzigde ook.
+// Hebben jullie allebei hetzelfde veld veranderd, dan gaat jouw wijziging voor (dat wordt geteld en gemeld).
+function gelijkJ(a,b){
+  if(a===b)return true;if(a==null||b==null)return a==null&&b==null;
+  if(Array.isArray(a))return Array.isArray(b)&&a.length===b.length&&a.every((x,i)=>gelijkJ(x,b[i]));
+  if(typeof a!=='object'||typeof b!=='object'||Array.isArray(b))return false;
+  for(const k of new Set([...Object.keys(a),...Object.keys(b)]))if(!gelijkJ(a[k],b[k]))return false;
+  return true;
+}
+function samenvoegen(basis,mijn,hun){
+  let botsingen=0;
+  const isO=v=>v&&typeof v==='object'&&!Array.isArray(v),metId=a=>Array.isArray(a)&&a.length&&a.every(x=>isO(x)&&x.id!=null),los=a=>Array.isArray(a)&&a.every(x=>x==null||typeof x!=='object');
+  const voeg=(b,m,h)=>{
+    if(gelijkJ(m,h))return m;if(gelijkJ(b,m))return h;if(gelijkJ(b,h))return m;
+    if(isO(m)&&isO(h)){const uit={},bb=isO(b)?b:{};for(const k of new Set([...Object.keys(m),...Object.keys(h)])){const v=voeg(bb[k],m[k],h[k]);if(v!==undefined)uit[k]=v}return uit}
+    if((metId(m)||!m||!m.length)&&(metId(h)||!h||!h.length)&&(metId(m)||metId(h))&&Array.isArray(m)&&Array.isArray(h)){
+      const B=new Map((Array.isArray(b)?b:[]).filter(isO).map(x=>[x.id,x])),M_=new Map(m.map(x=>[x.id,x])),H_=new Map(h.map(x=>[x.id,x])),uit=[];
+      for(const x of m){if(H_.has(x.id))uit.push(voeg(B.get(x.id),x,H_.get(x.id)));else if(!B.has(x.id))uit.push(x);else if(gelijkJ(B.get(x.id),x)){/* door de ander verwijderd */}else{botsingen++;uit.push(x)}}
+      for(const x of h)if(!M_.has(x.id)){if(!B.has(x.id))uit.push(x);else if(!gelijkJ(B.get(x.id),x))botsingen++}
+      return uit}
+    if(los(m)&&los(h)){const bb=los(b)?b:[],uit=m.filter(x=>h.includes(x)||!bb.includes(x));for(const x of h)if(!uit.includes(x)&&!bb.includes(x))uit.push(x);return uit}
+    botsingen++;return m};
+  return {data:voeg(basis,mijn,hun),botsingen};
+}
+const kloon=x=>JSON.parse(JSON.stringify(x));
+
+/* ---------- melding bij aanpassing achteraf ---------- */
+// Vóór de eerste wijziging leggen we vast wat iedereen in de eerdere maanden had. Is het even rustig (3 minuten),
+// dan krijgt alleen wie echt iets anders betaalt een melding in de app en een pushmelding.
+function standNu(){
+  const om=openMonth(),uit={};
+  for(const x of S.months){if(x===om)break;const B=bill(x.id);
+    for(const id in B){const b=B[id],l={};for(const r of b.lines){const k=r.cat+'\u0000'+r.label;l[k]=(l[k]||0)+r.amount}(uit[id]=uit[id]||{})[x.id]={e:b.end,l}}}
+  return uit;
+}
+function standVastleggen(){
+  if(!BE||!magOpslaan()||UI.stand0)return;
+  try{UI.stand0=standNu();store.set('huis.stand0',JSON.stringify(UI.stand0))}catch(e){UI.stand0=null}
+}
+let _saldoTimer=null;
+function planSaldoMelding(wacht){if(!UI.stand0)return;clearTimeout(_saldoTimer);_saldoTimer=setTimeout(saldoMelden,wacht??180000)}
+function saldoMelden(){
+  const oud=UI.stand0;if(!oud)return;UI.stand0=null;store.del('huis.stand0');
+  const nu=standNu(),nieuw=[];
+  for(const id in nu){const maanden=[];let d=0;
+    for(const x of S.months){const n=nu[id][x.id],o=(oud[id]||{})[x.id];if(!n||!o)continue;
+      const b=bill(x.id)[id],posten=[...new Set([...Object.keys(n.l),...Object.keys(o.l)])].filter(k=>Math.abs((n.l[k]||0)-(o.l[k]||0))>0.004).map(k=>{const [cat,label]=k.split('\u0000'),r=b.lines.find(y=>y.cat===cat&&y.label===label);
+        return {cat,label,oud:r2(o.l[k]||0),nu:r2(n.l[k]||0),why:String((r&&(r.reden!=null?r.reden:r.how))||'').slice(0,120)}});
+      if(!posten.length)continue;d+=sum(posten.map(q=>q.nu-q.oud));maanden.push({mid:x.id,label:x.label,eindOud:r2(o.e),eindNu:r2(n.e),posten})}
+    if(maanden.length&&Math.abs(d)>0.004)nieuw.push({id:uid('sm'),datum:new Date().toISOString(),pid:id,d:r2(d),maanden})}
+  if(!nieuw.length)return;
+  S.saldoMeldingen=[...nieuw,...(S.saldoMeldingen||[])].slice(0,150);
+  UI.dirty=true;UI.wijzigingen=(UI.wijzigingen||0)+1;saveDraft();autoSave();render();
+  if(BE&&BE.saldoPush)BE.saldoPush(nieuw.map(x=>({pid:x.pid,d:x.d,maand:x.maanden.map(y=>y.label.split(' ')[0].toLowerCase()).join(', ')}))).catch(()=>{});
+}
+const gezienSaldo=()=>{try{return JSON.parse(store.get('huis.gezienSaldo')||'[]')}catch(e){return []}};
+function saldoBanner(){
+  if(UI.editor&&!UI.alsLid)return '';
+  const gz=gezienSaldo(),lijst=(S.saldoMeldingen||[]).filter(x=>x.pid===UI.me&&!gz.includes(x.id)).slice(0,3);
+  return lijst.map(x=>`<div class="panel saldomelding" role="status"><span>Je saldo is <b>${x.d>0?'+':''}${eur(x.d)}</b> veranderd door een aanpassing in ${esc(x.maanden.map(y=>y.label.split(' ')[0].toLowerCase()).join(', '))}.</span><span class="row"><button class="linkknop" data-act="saldobekijk" data-id="${x.id}">Bekijk waarom</button><button class="ghost" data-act="saldogezien" data-id="${x.id}" aria-label="Melding sluiten">✕</button></span></div>`).join('');
+}
+function vSaldoVenster(){
+  const x=(S.saldoMeldingen||[]).find(y=>y.id===UI.saldoVenster);if(!x)return '';
+  return `<div class="overlay" data-act="saldosluit"><div class="dialog breed aanp-venster" role="dialog" aria-modal="true" aria-label="Aanpassing van je saldo" data-stop="1">
+    <div class="spread"><h2 style="margin:0">Aanpassing voor ${esc((P(x.pid)||{name:''}).name)}</h2><button class="ghost" data-act="saldosluit" aria-label="Sluiten">✕</button></div>
+    ${x.maanden.map(a=>`<div><h3 style="margin:4px 0 6px">${esc(a.label)}</h3><div class="scroll"><table class="aanp-tabel"><thead><tr><th>Post</th><th class="r">Was</th><th class="r">Nu</th><th class="r">Verschil</th><th class="hide-sm">Waarom</th></tr></thead><tbody>
+      ${a.posten.map(q=>{const d=q.nu-q.oud;return `<tr><td>${esc(q.label)}</td><td class="r num">${eur(q.oud)}</td><td class="r num">${eur(q.nu)}</td><td class="r num ${d>0?'meer':'minder'}">${d>0?'+':''}${eur(d)}</td><td class="hide-sm small muted">${esc(q.why)}</td></tr>`}).join('')}
+      <tr class="som"><td>Eindsaldo ${esc(a.label.toLowerCase())}</td><td class="r num">${eur(a.eindOud)}</td><td class="r num">${eur(a.eindNu)}</td><td></td><td class="hide-sm"></td></tr></tbody></table></div></div>`).join('')}
+    <div class="panel aanp-slot"><span>Totaal effect op je saldo</span><span class="num"><b>${x.d>0?'+':''}${eur(x.d)}</b></span></div>
+  </div></div>`;
+}
+
 // Elke wijziging van een beheerder wordt na een korte pauze vanzelf opgeslagen (alleen met de site-koppeling).
 let _autoTimer=null;
 function autoSave(wacht){
@@ -589,14 +683,15 @@ function nuOpslaan(){
 // Nieuwste stand van de server ophalen als je niets openstaands hebt (bijv. na terugkomen in de app).
 async function verversVanServer(){
   if(!BE||UI.dirty||UI.saving||UI.confirm||UI.mail||UI.meld)return;
-  try{const r=await BE.load();if(!r||!r.data||r.rev===S.rev||UI.dirty||UI.saving)return;
-    UI.cfgMaand=null;UI.globCfg=null;S=migrate(r.data);S.rev=r.rev;billCache.clear();
+  try{const r=await BE.load();if(r&&r.actief&&String(r.actief)!==String(UI.actief||[])){UI.actief=r.actief;if(UI.dirty||UI.saving||r.rev===S.rev)render()}if(!r||!r.data||r.rev===S.rev||UI.dirty||UI.saving)return;
+    UI.cfgMaand=null;UI.globCfg=null;S=migrate(r.data);S.rev=r.rev;UI.basis=kloon(S);billCache.clear();
     if(!M(UI.month))UI.month=openMonth().id;render()}catch(e){}
 }
 function opslagStatus(){
   if(UI.opslagFout)return `<span class="opslag fout" role="status">Niet opgeslagen <button class="ghost" data-act="save">Opnieuw</button></span>`;
   if(UI.saving||UI.dirty)return `<span class="opslag" role="status">Opslaan…</span>`;
-  return UI.opgeslagenOp?`<span class="opslag ok" role="status">✓ Opgeslagen</span>`:'';
+  const ook=(UI.actief||[]).length?`<span class="opslag ookbezig" title="Wijzigingen worden samengevoegd">${esc(UI.actief.join(', '))} ${UI.actief.length===1?'is':'zijn'} ook bezig</span>`:'';
+  return ook+(UI.opgeslagenOp?`<span class="opslag ok" role="status">✓ Opgeslagen</span>`:'');
 }
 function toast(text,err){UI.toast={text,err};render();clearTimeout(toast.t);toast.t=setTimeout(()=>{UI.toast=null;render()},err?7000:3800)}
 function ask(text,yesLabel,yes){UI.confirm={text,yesLabel,yes};render()}
@@ -883,6 +978,8 @@ function vMail(){
   const ml=UI.mail,m=M(UI.month);if(!ml)return '';
   const kand=mailKandidaten(m),jaren=[...new Set(kand.filter(k=>k.ok&&k.l.jaar).map(k=>k.l.jaar))].sort((a,b)=>b-a);
   const nSel=kand.filter(k=>k.ok&&ml.sel.has(k.p.id)).length;
+  const openP=impMaand(m)?[]:checkItems(m).filter(x=>!x.ok&&!x.mail),nietGek=kand.filter(k=>!k.ok).length;
+  const controle=openP.length||nietGek?`<div class="panel waarschuwblok"><b>Nog open vóór je verstuurt</b><ul>${openP.map(x=>`<li>${esc(x.l)}${x.s?` (${esc(x.s)})`:''}</li>`).join('')}${nietGek?`<li>${nietGek} ${nietGek===1?'persoon kan':'personen kunnen'} geen mail krijgen: niet gekoppeld of geen e-mailadres</li>`:''}</ul><span class="small muted">Je kunt toch versturen; de PDF is een momentopname.</span></div>`:'';
   const inhoud=!UI.leden?(UI.ledenFout?`<p class="note">De leden van de site konden niet geladen worden: ${esc(UI.ledenFout)}</p>`:'<p class="note">Leden van de site laden…</p>'):`
     <label class="field" for="mail-ond">Onderwerp<input id="mail-ond" value="${esc(ml.onderwerp)}" data-ch="mailveld" data-f="onderwerp" ${ml.bezig?'disabled':''}></label>
     <label class="field" for="mail-tekst">Je bericht<textarea id="mail-tekst" rows="5" data-ch="mailveld" data-f="tekst" ${ml.bezig?'disabled':''}>${esc(ml.tekst)}</textarea></label>
@@ -896,7 +993,7 @@ function vMail(){
     ${ml.bezig?`<p class="note"><b>Bezig met versturen… ${ml.bezig}</b></p>`:''}
     ${ml.klaar?`<div class="panel"><b>${ml.klaar.verstuurd} mail${ml.klaar.verstuurd===1?'':'s'} verstuurd.</b>${ml.klaar.mislukt.length?`<br>Niet gelukt: ${ml.klaar.mislukt.map(x=>esc(x.naam+' ('+x.fout+')')).join(', ')}`:''}</div>`:''}`;
   return `<div class="overlay"><div class="dialog breed" role="dialog" aria-modal="true" aria-label="Overzichten mailen">
-    <h2 style="margin:0">Overzichten van ${esc(m.label.toLowerCase())} mailen</h2>${inhoud}
+    <h2 style="margin:0">Overzichten van ${esc(m.label.toLowerCase())} mailen</h2>${ml.klaar?'':controle}${inhoud}
     <div class="row end"><button data-act="mailclose" ${ml.bezig?'disabled':''}>${ml.klaar?'Sluiten':'Annuleren'}</button>${UI.leden?`<button class="primary" data-act="mailsend" ${nSel&&!ml.bezig?'':'disabled'}>Verstuur ${nSel} mail${nSel===1?'':'s'}</button>`:''}</div></div></div>`;
 }
 async function mailVersturen(){
@@ -913,7 +1010,8 @@ async function mailVersturen(){
       const r=await BE.mail(ml.onderwerp,ml.tekst,items);res.verstuurd+=r.verstuurd||0;res.mislukt.push(...(r.mislukt||[]));
     }catch(e){res.mislukt.push(...stuk.map(k=>({naam:k.p.name,fout:e.message||String(e)})))}
   }
-  ml.bezig=false;ml.klaar=res;render();
+  ml.bezig=false;ml.klaar=res;
+  if(res.verstuurd)mutate(()=>{m.mailVerstuurd={datum:new Date().toISOString().slice(0,10),aantal:res.verstuurd}});else render();
   toast(res.mislukt.length?`${res.verstuurd} verstuurd, ${res.mislukt.length} niet gelukt.`:`${res.verstuurd} mail${res.verstuurd===1?'':'s'} verstuurd.`,!!res.mislukt.length);
 }
 
@@ -1122,16 +1220,18 @@ async function save(auto){
     const n=UI.wijzigingen||0,prev=S.rev||0;
     UI.saving=true;if(!auto){render();herstelFocus()}
     S.savedAt=new Date().toISOString();
-    try{let kopie;metGlobaal(()=>{kopie=JSON.parse(JSON.stringify(S))});const r=await BE.save(kopie,prev);S.rev=(r&&r.rev)||prev+1;UI.saving=false;
+    try{let kopie;metGlobaal(()=>{kopie=JSON.parse(JSON.stringify(S))});const r=await BE.save(kopie,prev);S.rev=(r&&r.rev)||prev+1;UI.basis=kopie;UI.saving=false;
       // Tijdens het opslaan opnieuw gewijzigd? Dan blijft het concept staan en volgt er nog een opslag.
       if((UI.wijzigingen||0)===n){UI.dirty=false;store.del(DRAFT)}else{saveDraft();autoSave()}
       if(!auto)toast('Opgeslagen. Iedereen ziet nu de nieuwe stand.')}
     catch(e){UI.saving=false;
       if(e&&e.code==='conflict'){
-        // Elders (ander tabblad of apparaat) is intussen opgeslagen. Jouw versie is de meest recente bewerking:
-        // haal het nieuwe versienummer op en sla daarop opnieuw op.
+        // Elders is intussen opgeslagen: haal die stand op, voeg de wijzigingen samen en sla het resultaat op.
         UI.conflicten=(UI.conflicten||0)+1;
-        if(UI.conflicten<=3)try{const r=await BE.load();S.rev=r.rev;UI.opslagFout=null;return save(auto)}catch(e2){}
+        if(UI.conflicten<=3)try{const r=await BE.load(),hun=migrate(r.data);let mijn;metGlobaal(()=>{mijn=kloon(S)});
+          const v=samenvoegen(UI.basis||hun,mijn,hun);UI.cfgMaand=null;UI.globCfg=null;S=v.data;S.rev=r.rev;UI.basis=kloon(hun);UI.actief=r.actief||UI.actief;billCache.clear();UI.opslagFout=null;
+          toast(`Samengevoegd met de wijzigingen van ${r.laatsteDoor||'een andere beheerder'}.${v.botsingen?` Op ${v.botsingen} ${v.botsingen===1?'plek ging':'plekken gingen'} jouw wijziging voor.`:''}`,!!v.botsingen);
+          return save(auto)}catch(e2){}
         UI.opslagFout='conflict';UI.conflicten=0}
       else if(e&&e.code==='not_writer'){UI.autoStop=true;UI.editor=false;UI.barman=false;toast('Je hebt geen beheerdersrechten voor de huisrekening.',true)}
       else{UI.opslagFout=(e&&e.message)||String(e);UI.pogingen=(UI.pogingen||0)+1;autoSave(Math.min(30000,3000*UI.pogingen))}
@@ -1201,12 +1301,12 @@ function render(){
   const ae=document.activeElement,focusId=ae&&ae.id,sel=ae&&ae.selectionStart!=null&&ae.type!=='number'?[ae.selectionStart,ae.selectionEnd]:null;
   const m=M(UI.month)||openMonth();UI.month=m.id;
   zetMaandCfg();
-  const tabs=[['overzicht','Overzicht'],'|Opbouw huisrekening',['huislasten','Huislasten'],['evenementen','Extra correctie'],['service','Servicekosten'],['pils','Pilsrekening'],'|Administratie',['transacties','Transacties'],['kas','Huiskas']];
+  const tabs=[['overzicht','Overzicht'],'|Opbouw huisrekening',['huislasten','Huislasten'],['evenementen','Extra correctie'],['service','Servicekosten'],['pils','Pilsrekening'],'|Administratie',['transacties','Transacties'],['kas','Huiskas'],'|Inzicht',['statistiek','Statistieken']];
   if(BE&&BE.meldingen)tabs.push(['meldingen','Opmerkingen']);
   if(UI.editor)tabs.push(['instellingen','Instellingen']);
   if(!tabs.some(t=>Array.isArray(t)&&t[0]===UI.tab))UI.tab='overzicht';
   const todo=S.transactions.filter(t=>t.kind==='todo').length;
-  const views={overzicht:vOverzicht,huislasten:vHuislasten,service:vService,transacties:vTransacties,evenementen:vEvenementen,pils:vPils,kas:vKas,meldingen:vMeldingen,instellingen:vInstellingen};
+  const views={overzicht:vOverzicht,huislasten:vHuislasten,service:vService,transacties:vTransacties,evenementen:vEvenementen,pils:vPils,kas:vKas,meldingen:vMeldingen,instellingen:vInstellingen,statistiek:vStatistiek};
   // Gaat een tabblad mis, val dan terug op het overzicht zodat de huisrekening altijd opent.
   let body;try{body=views[UI.tab](m)}catch(e){console.error(e);const fout=UI.tab;UI.tab='overzicht';store.set('huis.tab','overzicht');body=`<div class="panel"><p class="note">Het tabblad ${esc(fout)} kon niet getoond worden (${esc(e.message)}). Je ziet daarom het overzicht.</p></div>`+vOverzicht(m)}
   // Met de site-koppeling komen de echte beheerders van de server (ingesteld op de site); anders de eigen lijst.
@@ -1218,6 +1318,7 @@ function render(){
     <span class="small muted">Periode ${fmtDate(m.from)} t/m ${fmtDate(m.to)} · ${m===openMonth()?'huidige maand':'eerdere maand, blijft aanpasbaar'}${S.savedAt?` · bijgewerkt ${new Date(S.savedAt).toLocaleDateString('nl-NL',{day:'numeric',month:'long'})}`:''}</span></div>
     <div class="maandkeuze">${BE&&magOpslaan()?opslagStatus():''}<label class="small muted" for="kiesmaand">Maand</label><select id="kiesmaand" data-ch="kiesmaand">${S.months.slice().reverse().map(x=>`<option value="${x.id}" ${x.id===m.id?'selected':''}>${esc(x.label)}${x.closed?'':' (lopend)'}</option>`).join('')}</select>${UI.editor&&BE&&BE.mail?`<button data-act="mailopen">✉ Mail overzichten</button>`:''}${UI.editor?`<button class="primary" data-act="nieuwemaand">+ Nieuwe maand</button>`:''}</div></header>
   <nav class="tabs" aria-label="Onderdelen">${tabs.map(t=>typeof t==='string'?`<span class="tabsep" aria-hidden="true"></span><span class="tabgrp">${t.slice(1)}</span>`:`<button data-act="tab" data-id="${t[0]}" ${UI.tab===t[0]?'aria-current="page"':''}>${t[1]}${t[0]==='transacties'&&todo&&UI.editor?`<span class="badge warn">${todo}</span>`:''}${t[0]==='meldingen'&&UI.editor&&meldOpen()?`<span class="badge warn">${meldOpen()}</span>`:''}</button>`).join('')}</nav>
+  ${saldoBanner()}
   ${body}
   <footer class="foot"><span>Beheerder${(behLijst||S.house.beheerders||[]).length>1?'s':''}: ${esc(beh||'nog niet ingesteld')} · vragen naar ${esc(S.house.email||'')}</span>
     <span>${BE?(UI.editor?'Je bent beheerder.':UI.barman?'Je bent barman: je kunt de afkoopmomenten in de pilsrekening invullen en aanpassen.':''):UI.editor?(UI.forced?'Bewerken staat aan op dit apparaat. <button class="ghost" data-act="editoff">Uitzetten</button>':'Je bent beheerder.'):'<button class="ghost" data-act="editon">Beheerder? Bewerken inschakelen</button>'}</span></footer>
@@ -1227,6 +1328,7 @@ function render(){
   ${UI.mail?vMail():''}
   ${UI.meld?vMeldDialoog():''}
   ${UI.aanpVenster?vAanpVenster():''}
+  ${UI.saldoVenster?vSaldoVenster():''}
   ${UI.confirm?`<div class="overlay"><div class="dialog" role="dialog" aria-modal="true"><p style="margin:0">${esc(UI.confirm.text)}</p><div class="row end"><button data-act="confirm-no">Annuleren</button><button class="primary" data-act="confirm-yes">${esc(UI.confirm.yesLabel)}</button></div></div></div>`:''}`;
   if(dlgScroll){const d=document.querySelector('.dialog.breed');if(d)d.scrollTop=dlgScroll}
   if(focusId){const el=document.getElementById(focusId);if(el){el.focus({preventScroll:true});if(sel&&el.setSelectionRange)try{el.setSelectionRange(sel[0],sel[1])}catch(e){}}}
@@ -1330,6 +1432,33 @@ function statusChip(p,saldo){
   const s=sanctionFor(saldo);if(s)return `<span class="badge ${sanctionClass(s)}">${esc(s.label)}</span>`;
   if(saldo<-0.005)return `<span class="badge ok">Tegoed</span>`;return '';
 }
+// Maandchecklist voor beheerders: wat is er af, wat moet er nog. Klikken brengt je naar het juiste tabblad.
+function checkItems(m){
+  const uit=[],tx=S.transactions.filter(t=>t.monthId===m.id),todo=tx.filter(t=>t.kind==='todo').length;
+  uit.push({id:'bank',l:'Bankafschrift geïmporteerd',ok:tx.some(t=>t.source==='bank'),tab:'transacties'});
+  uit.push({id:'tx',l:'Transacties ingedeeld',ok:!todo,s:todo?`${todo} nog in te delen`:'',tab:'transacties'});
+  if(m.pils){const pc=pilsCalc(m.pils),f=m.pils.fust,k=m.pils.krat,c=statCalc(m).rij,st=m.pils.stat||{};
+    const nodig={f20:(+f.begin20||0)+(+f.bought20||0)+pilsTxBought(m.pils).b20>0,f50:(+f.begin50||0)+(+f.bought50||0)+pilsTxBought(m.pils).b50>0,k:(+k.begin||0)+(+k.bought||0)+pilsTxBought(m.pils).bk>0};
+    const volOk=(!nodig.f20||has(f.end20))&&(!nodig.f50||has(f.end50))&&(!nodig.k||has(k.end));
+    const leegOk=STAT.every(([x])=>!(nodig[x]||c[x].moet>0)||has((st.leeg||{})[x]));
+    const zonder=pc.afkoop.filter(a=>!a.parts.length).length;
+    uit.push({id:'turf',l:'Turven ingevuld',ok:pc.barTurf+pc.nesTurf>0,tab:'pils'});
+    uit.push({id:'vol',l:'Voorraad geteld',ok:volOk,tab:'pils'});
+    uit.push({id:'leeg',l:'Lege fusten en kratten geteld',ok:leegOk,tab:'pils'});
+    uit.push({id:'afkoop',l:'Afkopen gecontroleerd',ok:!!(m.check||{}).afkoop&&!zonder,s:zonder?`${zonder} zonder deelnemers`:'',hand:true,tab:'pils'})}
+  const open=(UI.meldingen||[]).filter(x=>x.status==='open').length;
+  uit.push({id:'meld',l:'Opmerkingen afgehandeld',ok:!open,s:open?`${open} open`:'',tab:'meldingen'});
+  const mv=m.mailVerstuurd;
+  uit.push({id:'mail',l:'Mail verstuurd',ok:!!mv,s:mv?`${mv.aantal} op ${fmtDate(mv.datum)}`:'',mail:true});
+  return uit;
+}
+function vChecklist(m){
+  if(!UI.editor||impMaand(m))return '';
+  const it=checkItems(m),af=it.filter(x=>x.ok).length;
+  return `<section class="block"><details class="panel checklist" ${af<it.length?'open':''}><summary><b>Maandchecklist ${esc(m.label.toLowerCase())}</b> <span class="small muted">${af} van ${it.length} af</span></summary>
+    <ul class="checklijst">${it.map(x=>`<li class="${x.ok?'af':''}"><span class="vink" aria-hidden="true">${x.ok?'✓':'○'}</span>${x.hand?`<label for="chk-${x.id}"><input type="checkbox" id="chk-${x.id}" data-ch="check" data-f="${x.id}" ${(m.check||{})[x.id]?'checked':''}> ${esc(x.l)}</label>`:`<span>${esc(x.l)}<span class="sr"> ${x.ok?'(af)':'(nog niet af)'}</span></span>`}
+      ${x.s?`<span class="small muted">${esc(x.s)}</span>`:''}${x.ok?'':x.mail?`<button class="linkknop" data-act="mailopen">Mail overzichten</button>`:`<button class="linkknop" data-act="tab" data-id="${x.tab}">Ga erheen</button>`}</li>`).join('')}</ul></details></section>`;
+}
 function vOverzicht(m){
   const B=bill(m.id);
   const house=S.people.filter(p=>HOUSE.includes(p.status)&&B[p.id]);
@@ -1345,7 +1474,7 @@ function vOverzicht(m){
   const cats={};for(const p of house)for(const l of B[p.id].lines)if(l.cat!=='Servicekosten')cats[l.cat]=(cats[l.cat]||0)+l.amount;
   const catList=Object.entries(cats).filter(x=>x[1]>0.5).sort((a,b)=>b[1]-a[1]);const catMax=Math.max(1,...catList.map(x=>x[1]));
   const om=openMonth(),lastClosed=S.months.filter(x=>x.closed).slice(-1)[0];
-  return `
+  return `${vChecklist(m)}
   <section class="block">
     <div class="panel me">
       <div class="stack">
@@ -2059,6 +2188,26 @@ function vKas(m){
   </div></section>`;
 }
 
+// Logboek: wie wat wanneer veranderde. De server maakt de regels, dus ze kloppen ook als iemand de pagina omzeilt.
+const tijdNL=d=>new Date(d).toLocaleString('nl-NL',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Amsterdam'});
+async function laadLogboek(){if(UI.logBezig||!BE||!BE.logboek)return;UI.logBezig=true;try{UI.logboek=await BE.logboek();UI.logFout=null}catch(e){UI.logFout=e.message||String(e)}UI.logBezig=false;render()}
+function vLogboek(){
+  if(!BE||!BE.logboek)return '';
+  if(UI.logboek===undefined&&!UI.logFout)laadLogboek();
+  return `<section class="block"><div class="spread"><h2>Logboek</h2><button class="ghost" data-act="logvers">Vernieuwen</button></div>
+    <p class="note">Wie wat wanneer heeft veranderd, de nieuwste bovenaan. Dit begint vanaf nu; wat eerder gebeurde staat er niet in.</p>
+    ${UI.logFout?`<p class="note" style="color:var(--neg,#a33)">${esc(UI.logFout)}</p>`:!UI.logboek?'<p class="note">Laden…</p>':UI.logboek.length?`<div class="stack">${UI.logboek.map(x=>{const n=(x.regels||[]).length;return `<details class="panel logregel"><summary><b>${esc(x.naam||x.email)}</b> <span class="small muted">${esc(tijdNL(x.begin))}${new Date(x.laatst)-new Date(x.begin)>60000?` – ${esc(new Date(x.laatst).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Amsterdam'}))}`:''} · ${n} ${n===1?'wijziging':'wijzigingen'}</span></summary><ul>${(x.regels||[]).map(r=>`<li class="small">${esc(r)}</li>`).join('')}</ul></details>`}).join('')}</div>`:'<div class="empty">Nog geen wijzigingen vastgelegd.</div>'}
+  </section>`;
+}
+async function laadBackups(){if(UI.backupBezig||!BE||!BE.backups)return;UI.backupBezig=true;try{UI.backups=await BE.backups();UI.backupFout=null}catch(e){UI.backupFout=e.message||String(e)}UI.backupBezig=false;render()}
+function vBackups(){
+  if(!BE||!BE.backups||!window.HUIS_HOOFDADMIN)return '';
+  if(UI.backups===undefined&&!UI.backupFout)laadBackups();
+  return `<section class="block"><h2>Back-ups</h2>
+    <p class="note">Elke dag dat er iets verandert, wordt vooraf een kopie gemaakt. Kopieën blijven 90 dagen bewaard. Terugzetten kan alleen jij; de huidige stand wordt dan eerst nog opgeslagen als kopie, dus je kunt het ook weer ongedaan maken.</p>
+    ${UI.backupFout?`<p class="note" style="color:var(--neg,#a33)">${esc(UI.backupFout)}</p>`:!UI.backups?'<p class="note">Laden…</p>':UI.backups.length?`<div class="scroll tbl" style="max-height:320px"><table class="mini" style="margin:0"><thead><tr><th>Wanneer</th><th>Soort</th><th></th></tr></thead><tbody>${UI.backups.map(b=>`<tr><td>${esc(tijdNL(b.gemaakt))}</td><td class="small muted">${esc(b.reden||'')}</td><td class="r"><button class="ghost" data-act="backupterug" data-id="${b.id}" data-w="${esc(tijdNL(b.gemaakt))}">Terugzetten</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Nog geen back-ups. De eerste wordt gemaakt bij de eerstvolgende wijziging.</div>'}
+  </section>`;
+}
 // Instellingen: wie als rij in de tabellen van Huislasten, Extra correctie en Pilsrekening staat.
 function vTabelPersonen(){
   const ppl=[...S.people].sort((a,b)=>(HOUSE.includes(b.status)-HOUSE.includes(a.status))||byName(a,b));
@@ -2069,6 +2218,87 @@ function vTabelPersonen(){
       <button class="ghost" data-act="tabelhuis">Alleen huisgenoten</button>${S.tabelPersonen?`<button class="ghost" data-act="tabelstandaard">Terug naar automatisch</button>`:''}</div>
     <div class="panel"><div class="people-grid">${ppl.map(p=>`<label for="tz-${p.id}"><input type="checkbox" id="tz-${p.id}" data-ch="tabelp" data-pid="${p.id}" ${tabelPersoon(p)?'checked':''}><span>${esc(p.name)}${HOUSE.includes(p.status)?'':` <span class="small muted">· ${esc(statusLabel(p.status))}</span>`}</span></label>`).join('')}</div></div>
   </section>`;
+}
+/* ---------- statistieken ---------- */
+const maandKort=m=>m.label.slice(0,3).toLowerCase();
+function pilsVanMaand(m){
+  const uit={};
+  if(m.pils){for(const id in m.pils.bar.turven||{})if(+m.pils.bar.turven[id])(uit[id]=uit[id]||{tap:0,fles:0}).tap+=+m.pils.bar.turven[id];
+    for(const id in m.pils.nestor.turven||{})if(+m.pils.nestor.turven[id])(uit[id]=uit[id]||{tap:0,fles:0}).fles+=+m.pils.nestor.turven[id];return uit}
+  if(m.snapshot){const imp=pilsImport(m);for(const id of new Set([...Object.keys(imp.per),...Object.keys(m.pilsAanp||{})])){const x=pilsImpNieuw(m,id,imp);if(x.tap||x.cnt)uit[id]={tap:+x.tap||0,fles:+x.cnt||0}}}
+  return uit;
+}
+function kostenVanMaand(m){
+  const B=bill(m.id),k={Huislasten:0,'Extra correctie':0,Pilsomzet:0,Verlies:0,Pils:0};
+  for(const id in B)for(const l of B[id].lines){
+    if(l.cat==='Huislasten')k.Huislasten+=l.amount;else if(l.cat==='Extra correctie')k['Extra correctie']+=l.amount;
+    else if(l.cat==='Pils'){k.Pils+=l.amount;if(/verlies/i.test(l.label))k.Verlies+=l.amount;else if(l.label===FLES||l.label===TAP||/tapturven|flesjes/.test(l.label))k.Pilsomzet+=l.amount}}
+  return k;
+}
+function vzStaaf(labels,series,o){
+  // Gestapelde staven; dunne staven met een smalle tussenruimte, de waarde staat in de tooltip en de tabel eronder.
+  const W=o.W&&innerWidth>700?o.W:420,H=o.h||190,L=46,R=6,T=10,B=24,tot=labels.map((_,i)=>sum(series.map(s=>Math.max(0,s.v[i]||0)))),hoogste=Math.max(1,...tot);
+  const macht=10**Math.floor(Math.log10(hoogste)),tick=[1,2,5,10].map(f=>f*macht).find(f=>hoogste/f<=4)||macht*10,stapG=Math.max(tick,1),max=Math.ceil(hoogste/stapG)*stapG,y=v=>T+(H-T-B)*(1-v/max),bw=Math.min(30,(W-L-R)/labels.length*.62),st=(W-L-R)/labels.length;
+  const stap=[];for(let v=0;v<=max+1e-9;v+=stapG)stap.push(v);
+  return `<svg class="vz" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.titel)}">
+    ${stap.map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" class="vz-grid"/><text x="${L-6}" y="${y(v)+3.5}" text-anchor="end" class="vz-as">${esc(o.fmt(v))}</text>`).join('')}
+    ${labels.map((lb,i)=>{let b=0;const x=L+st*i+(st-bw)/2,tip=`${o.tips[i]}: `+series.map(s=>`${s.n} ${o.fmt(s.v[i]||0)}`).join(' · ');
+      const seg=series.map(s=>{const v=Math.max(0,s.v[i]||0);if(!v)return '';const y1=y(b+v),y0=y(b);b+=v;const h=Math.max(0,y0-y1-1.5);return `<rect x="${x}" y="${y1}" width="${bw}" height="${h}" rx="2.5" style="fill:var(${s.c})"/>`}).join('');
+      return `<g class="vz-hit" data-tip="${esc(tip)}"><rect x="${L+st*i}" y="${T}" width="${st}" height="${H-T-B}" fill="transparent"/>${seg}<text x="${L+st*i+st/2}" y="${H-8}" text-anchor="middle" class="vz-as">${esc(lb)}</text></g>`}).join('')}
+  </svg>${series.length>1?`<div class="vz-legend">${series.map(s=>`<span><i style="background:var(${s.c})"></i>${esc(s.n)}</span>`).join('')}</div>`:''}`;
+}
+function vzLijn(labels,vals,o){
+  const W=o.W||420,H=o.h||190,L=58,R=12,T=12,B=24,lo=Math.min(0,...vals),hi=Math.max(0,...vals),pad=(hi-lo||1)*.1,mn=lo-(lo<0?pad:0),mx=hi+pad,y=v=>T+(H-T-B)*(1-(v-mn)/(mx-mn)),st=labels.length>1?(W-L-R)/(labels.length-1):0,x=i=>labels.length>1?L+st*i:(L+W-R)/2;
+  const asw=[...new Set([mx-pad,0,lo<0?lo:null].filter(v=>v!=null))];
+  return `<svg class="vz" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.titel)}">
+    ${asw.map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" class="vz-grid${v===0?' nul':''}"/><text x="${L-6}" y="${y(v)+3.5}" text-anchor="end" class="vz-as">${esc(o.fmt(v))}</text>`).join('')}
+    <polyline points="${vals.map((v,i)=>`${x(i)},${y(v)}`).join(' ')}" class="vz-lijn" style="stroke:var(--vz-1)"/>
+    ${labels.map((lb,i)=>`<g class="vz-hit" data-tip="${esc(o.tips[i]+': '+o.fmt(vals[i]))}"><rect x="${x(i)-Math.max(st/2,14)}" y="${T}" width="${Math.max(st,28)}" height="${H-T-B}" fill="transparent"/><circle cx="${x(i)}" cy="${y(vals[i])}" r="4.5" style="fill:var(--vz-1)" class="vz-punt"/><text x="${x(i)}" y="${H-8}" text-anchor="middle" class="vz-as">${esc(lb)}</text></g>`).join('')}
+  </svg>`;
+}
+function uitschieters(rijen,sleutels){
+  // Hoger dan anderhalf keer de mediaan van de andere maanden, en minstens 20 euro.
+  const uit=[];
+  for(const k of sleutels)rijen.forEach((r,i)=>{const rest=rijen.filter((_,j)=>j!==i).map(x=>x.k[k]).filter(v=>v>0).sort((a,b)=>a-b);if(rest.length<2)return;
+    const med=rest[Math.floor(rest.length/2)],v=r.k[k];if(med>0&&v>=med*1.5&&v>=20)uit.push({m:r.m,k,v,f:v/med})});
+  return uit.sort((a,b)=>b.f-a.f);
+}
+function vStatistiek(){
+  const ms=S.months.slice(-12),rijen=ms.map(m=>({m,k:kostenVanMaand(m),p:pilsVanMaand(m)}));
+  const lb=ms.map(maandKort),tip=ms.map(m=>m.label),num0=v=>Math.round(v).toLocaleString('nl-NL'),eur0=v=>'€'+Math.round(v).toLocaleString('nl-NL');
+  const me=P(UI.me);
+  // Eigen deel
+  const eigen=me?`<section class="block"><h2>Jouw cijfers: ${esc(me.name)}</h2>
+    <div class="grid2"><div class="panel stack"><h3>Saldo per maand</h3><p class="note">Boven de nullijn moet je betalen, eronder heb je tegoed.</p>${vzLijn(lb,ms.map(m=>(bill(m.id)[me.id]||{end:0}).end),{titel:'Saldo per maand',tips:tip,fmt:v=>eur(v)})}</div>
+    <div class="panel stack"><h3>Jouw pils per maand</h3><p class="note">Tapturven en flesjes samen.</p>${vzStaaf(lb,[{n:'Tap',c:'--vz-1',v:rijen.map(r=>(r.p[me.id]||{}).tap||0)},{n:'Fles',c:'--vz-2',v:rijen.map(r=>(r.p[me.id]||{}).fles||0)}],{titel:'Jouw pils per maand',tips:tip,fmt:num0})}</div></div></section>`
+    :`<section class="block"><div class="panel"><p class="note" style="margin:0">Kies op het tabblad Overzicht bij <b>Wie ben jij?</b> je naam, dan zie je hier ook je eigen saldo en pilsverbruik per maand.</p></div></section>`;
+  // Jaaroverzicht
+  const sl=['Huislasten','Extra correctie','Pilsomzet','Verlies'],uit=uitschieters(rijen,sl).slice(0,5),hoog=new Set(uit.map(u=>u.m.id+u.k));
+  const som=k=>sum(rijen.map(r=>r.k[k])),gem=k=>rijen.length?som(k)/rijen.length:0;
+  const jaar=`<section class="block"><h2>Jaaroverzicht</h2><p class="note">De laatste ${ms.length} ${ms.length===1?'maand':'maanden'}, totaal van alle huisgenoten.</p>
+    ${uit.length?`<div class="panel stack uitsch"><b>Opvallend</b><ul>${uit.map(u=>`<li><span aria-hidden="true">▲</span> ${esc(u.m.label)}: ${esc(u.k==='Verlies'?'pilsverlies':u.k.toLowerCase())} ${eur(u.v)}, ${u.f.toLocaleString('nl-NL',{maximumFractionDigits:1})}× zo hoog als normaal</li>`).join('')}</ul></div>`:''}
+    <div class="panel stack" style="margin-top:10px"><h3>Kosten per maand</h3>${vzStaaf(lb,[{n:'Huislasten',c:'--vz-1',v:rijen.map(r=>r.k.Huislasten)},{n:'Extra correctie',c:'--vz-2',v:rijen.map(r=>r.k['Extra correctie'])},{n:'Pils',c:'--vz-3',v:rijen.map(r=>r.k.Pils)}],{titel:'Kosten per maand',tips:tip,fmt:eur0,W:900,h:240})}</div>
+    <div class="scroll tbl" style="margin-top:10px"><table><thead><tr><th>Maand</th><th class="r">Huislasten</th><th class="r">Extra correctie</th><th class="r">Pilsomzet</th><th class="r">Pilsverlies</th></tr></thead><tbody>
+      ${rijen.slice().reverse().map(r=>`<tr><td>${esc(r.m.label)}</td>${sl.map(k=>`<td class="r num">${hoog.has(r.m.id+k)?'<span class="hoog" title="Opvallend hoog">▲ </span>':''}${eur(r.k[k])}</td>`).join('')}</tr>`).join('')}
+      <tr class="total"><td>Gemiddeld per maand</td>${sl.map(k=>`<td class="r num">${eur(gem(k))}</td>`).join('')}</tr>
+      <tr class="total"><td>Totaal</td>${sl.map(k=>`<td class="r num">${eur(som(k))}</td>`).join('')}</tr></tbody></table></div></section>`;
+  // Pils en ranking
+  const per=UI.statPer&&ms.some(m=>m.id===UI.statPer)?UI.statPer:'alles',bron=per==='alles'?rijen:rijen.filter(r=>r.m.id===per),tel={};
+  for(const r of bron)for(const id in r.p){const x=tel[id]=tel[id]||{tap:0,fles:0,mnd:0};x.tap+=r.p[id].tap;x.fles+=r.p[id].fles;x.mnd++}
+  const rank=Object.entries(tel).filter(([id])=>P(id)).map(([id,x])=>({p:P(id),tap:x.tap,fles:x.fles,tot:x.tap+x.fles,mnd:x.mnd})).filter(x=>x.tot>0).sort((a,b)=>b.tot-a.tot||byName(a.p,b.p));
+  const totP=sum(rank.map(x=>x.tot)),gemP=rank.length?totP/rank.length:0,maxP=Math.max(1,...rank.map(x=>x.tot)),mijnPlek=me?rank.findIndex(x=>x.p.id===me.id):-1;
+  const pils=`<section class="block"><h2>Pils</h2>
+    <div class="kpis"><div class="kpi"><div class="l">Totaal</div><div class="v">${num0(totP)}</div><div class="s">pilsjes ${per==='alles'?`in ${bron.length} ${bron.length===1?'maand':'maanden'}`:'deze maand'}</div></div>
+      <div class="kpi"><div class="l">Gemiddeld per drinker</div><div class="v">${gemP.toLocaleString('nl-NL',{maximumFractionDigits:0})}</div><div class="s">${rank.length} ${rank.length===1?'persoon':'personen'}</div></div>
+      <div class="kpi"><div class="l">Nummer 1</div><div class="v" style="font-size:1.15rem">${rank[0]?esc(rank[0].p.name):'—'}</div><div class="s">${rank[0]?num0(rank[0].tot)+' pilsjes':''}</div></div>
+      ${me?`<div class="kpi"><div class="l">Jouw plek</div><div class="v">${mijnPlek>=0?mijnPlek+1:'—'}</div><div class="s">${mijnPlek>=0?`van ${rank.length} · ${num0(rank[mijnPlek].tot)} ${rank[mijnPlek].tot===1?'pilsje':'pilsjes'}`:'nog geen pils'}</div></div>`:''}</div>
+    <div class="panel stack" style="margin-top:10px"><h3>Pils per maand, heel het huis</h3>${vzStaaf(lb,[{n:'Tap',c:'--vz-1',v:rijen.map(r=>sum(Object.values(r.p).map(x=>x.tap)))},{n:'Fles',c:'--vz-2',v:rijen.map(r=>sum(Object.values(r.p).map(x=>x.fles)))}],{titel:'Pils per maand',tips:tip,fmt:num0,W:900,h:220})}</div>
+    <div class="spread" style="margin-top:14px"><h3 style="margin:0">Ranking</h3><div class="seg vz-seg"><button data-act="statper" data-id="alles" aria-pressed="${per==='alles'}">Alles</button>${ms.slice(-4).map(m=>`<button data-act="statper" data-id="${m.id}" aria-pressed="${per===m.id}">${esc(maandKort(m))}</button>`).join('')}</div></div>
+    ${rank.length?`<div class="scroll tbl" style="margin-top:8px"><table class="rank"><thead><tr><th class="r">#</th><th>Naam</th><th class="vz-balkkol hide-sm"></th><th class="r">Tap</th><th class="r">Fles</th><th class="r">Totaal</th>${per==='alles'?'<th class="r hide-sm">Per maand</th>':''}</tr></thead><tbody>
+      ${rank.map((x,i)=>`<tr class="${me&&x.p.id===me.id?'ik':''}"><td class="r num">${i+1}</td><td>${esc(x.p.name)}</td><td class="vz-balkkol hide-sm"><span class="vz-balk" style="width:${(x.tot/maxP*100).toFixed(1)}%"></span></td><td class="r num">${num0(x.tap)}</td><td class="r num">${num0(x.fles)}</td><td class="r num"><b>${num0(x.tot)}</b></td>${per==='alles'?`<td class="r num hide-sm">${(x.tot/x.mnd).toLocaleString('nl-NL',{maximumFractionDigits:1})}</td>`:''}</tr>`).join('')}
+    </tbody></table></div>`:'<div class="empty">Nog geen pils geturfd in deze periode.</div>'}
+  </section>`;
+  return eigen+jaar+pils;
 }
 function vInstellingen(){
   const ppl=[...S.people];
@@ -2081,6 +2311,8 @@ function vInstellingen(){
     <div class="panel"><div class="people-grid">${[...S.people].filter(p=>HOUSE.includes(p.status)||(S.house.beheerders||[]).includes(p.id)).sort(byName).map(p=>`<label for="bh-${p.id}"><input type="checkbox" id="bh-${p.id}" data-ch="beheer" data-pid="${p.id}" ${(S.house.beheerders||[]).includes(p.id)?'checked':''}><span>${esc(p.name)}</span></label>`).join('')}</div></div></section>`}
   ${vKoppeling()}
   ${vTabelPersonen()}
+  ${vLogboek()}
+  ${vBackups()}
   <section class="block"><h2>Kostenposten voor extra correcties en overige kosten</h2>
     <p class="note">Huislasten zoals Ziggo en Makro beheer je op het tabblad Huislasten. Kostenposten hieronder gebruik je voor extra correcties (wie standaard meedoet en het minimum voor niet-deelnemers) en voor losse kosten die je over een groep wilt verdelen.</p>
     <div class="row">${zichtSeg()}<button data-act="addcat">+ Kostenpost</button></div>
@@ -2240,6 +2472,14 @@ const acts={
   backup:()=>download(`huisrekening-backup-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(S,null,1)),
   statbill:()=>mutate(()=>{const m=M(UI.month);m.pils.statAfr={bedrag:r2(statCalc(m).open),wie:housePeople().map(p=>p.id),datum:new Date().toISOString().slice(0,10)}}),
   statundo:()=>ask('Statiegeldverlies van de rekening van deze maand halen? Het bedrag blijft dan openstaan.','Van de rekening halen',()=>mutate(()=>{delete M(UI.month).pils.statAfr})),
+  saldobekijk:el=>{UI.saldoVenster=el.dataset.id;render()},
+  saldosluit:(el,ev)=>{if(ev&&ev.target.closest('[data-stop]')&&!ev.target.closest('button[data-act=saldosluit]'))return;UI.saldoVenster=null;render()},
+  saldogezien:el=>{store.set('huis.gezienSaldo',JSON.stringify([...gezienSaldo(),el.dataset.id].slice(-200)));render()},
+  logvers:()=>{UI.logboek=undefined;UI.logFout=null;render()},
+  backupterug:el=>ask(`De hele huisrekening terugzetten naar ${el.dataset.w}? Alles wat daarna is veranderd verdwijnt uit de rekening. De huidige stand wordt eerst als kopie bewaard.`,'Terugzetten',async()=>{
+    try{UI.autoStop=true;UI.dirty=false;clearTimeout(_autoTimer);clearTimeout(_saldoTimer);UI.stand0=null;store.del('huis.stand0');store.del(DRAFT);await BE.terugzetten(+el.dataset.id);location.reload()}
+    catch(e){UI.autoStop=false;toast('Terugzetten mislukt: '+(e.message||e),true)}}),
+  statper:el=>{UI.statPer=el.dataset.id;render()},
   matrixall:()=>{UI.matrixAll=!UI.matrixAll;render()},
   tabelhuis:()=>mutate(()=>{S.tabelPersonen=housePeople().map(p=>p.id)}),
   tabelstandaard:()=>mutate(()=>{delete S.tabelPersonen}),
@@ -2319,6 +2559,7 @@ const changes={
   evpart:el=>{const e=E(UI.eventId);mutate(()=>{e.participants=toggleIn(e.participants,el.dataset.pid,el.checked)})},
   evover:el=>{const e=E(UI.eventId),pid=el.dataset.pid,v=num(el.value);mutate(()=>{e.overrides=e.overrides||{};if(v==null)delete e.overrides[pid];else e.overrides[pid]=v})},
   pl:el=>{const pl=curPils(),f=el.dataset.f;mutate(()=>{pl[f]=num(el.value)||0})},
+  check:el=>mutate(()=>{const m=M(UI.month);m.check=m.check||{};if(el.checked)m.check[el.dataset.f]=true;else delete m.check[el.dataset.f]}),
   stat:el=>{const g=el.dataset.f,x=el.dataset.x,v=num(el.value);mutate(()=>{const pl=curPils(),st=pl.stat=pl.stat||{},h=st[g]=st[g]||{};if(v==null)delete h[x];else h[x]=Math.max(0,v)})},
   statprijs:el=>mutate(()=>{S.statiegeld=S.statiegeld||{};S.statiegeld[el.dataset.x]=Math.max(0,num(el.value)||0)}),
   statbedrag:el=>mutate(()=>{curPils().statAfr.bedrag=r2(num(el.value)||0)}),
@@ -2369,6 +2610,11 @@ document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');
   if(ev.target.closest('input,select,textarea,label')&&el.tagName==='TR')return;
   if(el.dataset.act==='line'&&ev.target.closest('tr.det'))return;
   acts[el.dataset.act]&&acts[el.dataset.act](el,ev)});
+// Tooltip bij de grafieken.
+document.addEventListener('pointermove',ev=>{const g=ev.target.closest&&ev.target.closest('[data-tip]');let t=document.getElementById('vz-tip');
+  if(!g){if(t)t.hidden=true;return}
+  if(!t){t=document.createElement('div');t.id='vz-tip';t.className='vz-tip';document.body.appendChild(t)}
+  t.hidden=false;t.textContent=g.dataset.tip;const b=t.getBoundingClientRect();t.style.left=Math.max(8,Math.min(innerWidth-b.width-8,ev.clientX+12))+'px';t.style.top=Math.max(8,ev.clientY-b.height-10)+'px'});
 document.addEventListener('change',ev=>{const el=ev.target.closest('[data-ch]');if(el&&changes[el.dataset.ch])changes[el.dataset.ch](el,ev)});
 // Mailtekst direct bijhouden, zodat een tussentijdse render niets wist.
 document.addEventListener('input',ev=>{const el=ev.target.closest('[data-ch="mailveld"]');if(el&&UI.mail)UI.mail[el.dataset.f]=el.value;
@@ -2377,6 +2623,7 @@ document.addEventListener('input',ev=>{const el=ev.target.closest('[data-ch="mai
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&UI.confirm){UI.confirm=null;render()}
   else if(ev.key==='Escape'&&UI.meld&&!UI.meld.bezig){UI.meld=null;render()}
   else if(ev.key==='Escape'&&UI.aanpVenster){UI.aanpVenster=null;render()}
+  else if(ev.key==='Escape'&&UI.saldoVenster){UI.saldoVenster=null;render()}
   if((ev.key==='Enter'||ev.key===' ')&&ev.target.matches('tr[data-act]')){ev.preventDefault();acts[ev.target.dataset.act](ev.target)}});
 
 /* ---------- start ---------- */
@@ -2384,7 +2631,7 @@ const draft=S?loadDraft():null;
 async function boot(){
   render();
   if(BE){
-    try{const r=await BE.load();if(!r||!r.data)throw new Error('geen gegevens gevonden');S=migrate(r.data);S.rev=r.rev??S.rev??1}
+    try{const r=await BE.load();if(!r||!r.data)throw new Error('geen gegevens gevonden');S=migrate(r.data);S.rev=r.rev??S.rev??1;UI.basis=kloon(S);UI.actief=r.actief||[]}
     catch(e){UI.loadMsg='De huisrekening kon niet geladen worden ('+((e&&e.message)||e)+'). Ben je ingelogd met een e-mailadres dat toegang heeft?';S=null;render();return}
     try{UI.editor=!!(await BE.canEdit())}catch(e){UI.editor=false}
     UI.beheerder=UI.editor;
@@ -2392,6 +2639,8 @@ async function boot(){
     DL={save:async({filename,data})=>{if(BE.download)await BE.download(filename,data);else browserDownload(filename,data);return {status:'saved'}}};
     UI.month=(UI.editor?openMonth():(S.months.filter(m=>m.closed).slice(-1)[0]||openMonth())).id;
     if(store.get('huis.tab'))UI.tab=store.get('huis.tab');
+    if(!UI.me&&window.HUIS_MIJN_ID!=null){const ik=S.people.find(p=>String(p.siteId)===String(window.HUIS_MIJN_ID));if(ik)UI.me=ik.id}
+    if(magOpslaan()&&store.get('huis.stand0')){try{UI.stand0=JSON.parse(store.get('huis.stand0'));planSaldoMelding(8000)}catch(e){store.del('huis.stand0')}}
     const d2=loadDraft();if(magOpslaan()&&d2){S=d2;UI.dirty=true;UI.wijzigingen=1;autoSave(300)}
     billCache.clear();render();laadMeldingen();
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')nuOpslaan();else verversVanServer()});

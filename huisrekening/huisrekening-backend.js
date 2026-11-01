@@ -37,7 +37,9 @@
       canEdit = !!j.canEdit;
       barman = !!j.barman;
       window.HUIS_BEHEERDERS = j.beheerders || null;
-      return { data: j.data, rev: j.rev };
+      window.HUIS_HOOFDADMIN = !!j.hoofdadmin;
+      window.HUIS_MIJN_ID = j.mijnId == null ? null : j.mijnId;
+      return { data: j.data, rev: j.rev, actief: j.actief || [], laatsteDoor: j.laatsteDoor || null };
     },
 
     // → true als de ingelogde gebruiker beheerder is
@@ -63,6 +65,28 @@
       if (res.status === 401 || res.status === 403) throw { code: 'not_writer' };
       if (!res.ok) throw new Error(await fout(res));
       return await res.json(); // { rev: <nieuwe versie> }
+    },
+
+    async logboek() {
+      const res = await fetch(API + '?actie=logboek', { headers: kop(), cache: 'no-store' });
+      if (!res.ok) throw new Error(await fout(res));
+      return (await res.json()).logboek || [];
+    },
+    async backups() {
+      const res = await fetch(API + '?actie=backups', { headers: kop(), cache: 'no-store' });
+      if (!res.ok) throw new Error(await fout(res));
+      return (await res.json()).backups || [];
+    },
+    async terugzetten(id) {
+      const res = await fetch(API + '?actie=terugzetten', { method: 'POST', cache: 'no-store', headers: kop({ 'content-type': 'application/json' }), body: JSON.stringify({ id }) });
+      if (!res.ok) throw new Error(await fout(res));
+      return await res.json();
+    },
+    // Pushmelding naar wie geraakt is door een aanpassing achteraf. items: [{ pid, d, maand }]
+    async saldoPush(items) {
+      const res = await fetch(API + '?actie=saldopush', { method: 'POST', cache: 'no-store', headers: kop({ 'content-type': 'application/json' }), body: JSON.stringify({ items }) });
+      if (!res.ok) throw new Error(await fout(res));
+      return await res.json();
     },
 
     // → [{ id, naam, jaar, email }] — leden van de site, om huisrekening-personen aan te koppelen
