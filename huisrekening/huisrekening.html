@@ -333,6 +333,12 @@ const E=id=>S.events.find(e=>e.id===id);
 const T=id=>S.transactions.find(t=>t.id===id);
 const H=id=>(S.huislasten||[]).find(h=>h.id===id);
 const housePeople=()=>S.people.filter(p=>HOUSE.includes(p.status));
+// Wie er als rij in de tabellen van Huislasten, Extra correctie en Pilsrekening staat (Instellingen → In de tabellen).
+// Zonder keuze: de huisgenoten plus wie in die maand iets betaalt.
+const tabelPersoon=p=>S.tabelPersonen?S.tabelPersonen.includes(p.id):HOUSE.includes(p.status);
+const tabelPeople=()=>S.people.filter(tabelPersoon);
+const zie=(p,betaalt)=>UI.matrixAll||(S.tabelPersonen?S.tabelPersonen.includes(p.id):HOUSE.includes(p.status)||!!betaalt);
+const zichtSeg=()=>`<div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">${S.tabelPersonen?'Gekozen personen':'Huisgenoten'}</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div>`;
 // Volgorde op anciënniteit: de volgorde van de huisgenotenlijst (oudste eerst, aan te passen in Instellingen).
 const byName=(a,b)=>{const i=S.people.findIndex(p=>p.id===a.id),j=S.people.findIndex(p=>p.id===b.id);return i-j};
 const names=ids=>ids.map(id=>(P(id)||{}).name).filter(Boolean).sort((a,b)=>a.localeCompare(b,'nl')).join(', ');
@@ -1518,7 +1524,7 @@ function vHuislasten(m){
   const bedrag=(id,h)=>{const b=dicht?(m.snapshot||{})[id]:B[id];const vastB=b?regels(b.lines.filter(l=>l.cat!=='Correctie'),h):0;
     return vastB};
   const totaal=h=>sum(Object.keys(B).map(id=>bedrag(id,h)));
-  const ppl=[...S.people].sort(byName).filter(p=>UI.matrixAll||HOUSE.includes(p.status)||hl.some(h=>h.payers.includes(p.id)||Math.abs(bedrag(p.id,h))>0.004));
+  const ppl=[...S.people].sort(byName).filter(p=>zie(p,hl.some(h=>h.payers.includes(p.id)||Math.abs(bedrag(p.id,h))>0.004)));
   const sug=ed?hlSuggesties():[];
   const kop=h=>ed?`<input id="hn-${h.id}" value="${esc(h.name)}" data-ch="hl" data-id="${h.id}" data-f="name" aria-label="Naam huislast" class="hl-naam">`
     +`<button class="ghost danger hl-weg" data-act="delhl" data-id="${h.id}" aria-label="Huislast ${esc(h.name)} verwijderen" title="Verwijderen">×</button>`:esc(h.name);
@@ -1543,7 +1549,7 @@ function vHuislasten(m){
     <p class="note">${ed?'Bovenaan per huislast de totaalprijs en hoe hij berekend wordt: een vast bedrag per persoon, of herkend in het bankafschrift (meerdere teksten scheid je met een komma). Daaronder per huisgenoot wat hij betaalt; met het vinkje zet je iemand aan of uit. Het vinkje vóór een naam zet iemand in één keer voor álle huislasten aan of uit.'
       :`Per huislast de totaalprijs en per huisgenoot wat hij in ${esc(m.label.toLowerCase())} betaalt.`}</p>
     ${ed&&m.closed?`<p class="note">Je past <b>${esc(m.label.toLowerCase())}</b> aan. Wijzigingen hier gelden alleen voor die maand; de saldo's van de maanden erna lopen vanzelf mee.</p>`:''}
-    ${ed?`<div class="row" style="margin-bottom:8px"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div></div>`:''}
+    ${ed?`<div class="row" style="margin-bottom:8px">${zichtSeg()}</div>`:''}
     ${hl.length?tabel:'<div class="empty">Nog geen huislasten.</div>'}
     ${sug.length?`<h3 style="margin-top:16px">Herkend in het afschrift</h3><p class="note">Deze afschrijvingen komen elke maand terug maar zijn nog geen huislast.</p>
       <div class="scroll tbl"><table><tbody>${sug.map(x=>`<tr><td>${esc(x.name)}</td><td class="small muted">${x.months.size>1?x.months.size+' maanden':'ook in eerdere maand'}</td><td class="r num">${eur(-x.last.amount)}</td><td class="r"><button class="ghost" data-act="hlsug" data-name="${esc(x.name)}">+ Als huislast</button></td></tr>`).join('')}</tbody></table></div>`:''}
@@ -1587,7 +1593,7 @@ function vService(m){
 function vEvent(e){
   const locked=vast(M(e.billMonth)),ok=UI.editor&&!locked;
   const k=eventCalc(e),c=k.c;
-  const pool=[...new Set([...(c?c.payers:[]),...housePeople().map(p=>p.id),...(e.participants||[]),...Object.keys(e.overrides||{})])].map(P).filter(Boolean).sort(byName);
+  const pool=[...new Set([...(c?c.payers:[]),...tabelPeople().map(p=>p.id),...(e.participants||[]),...Object.keys(e.overrides||{})])].map(P).filter(Boolean).sort(byName);
   const openMs=S.months.filter(x=>!x.closed);
   return `<section class="block panel" id="event-panel">
     <div class="spread"><h2>${esc(e.name)}</h2><button class="ghost" data-act="closeevent">Sluiten</button></div>
@@ -1728,7 +1734,7 @@ function impZet(m,cat,label,pid,aan){impWijzig(m,cat,label,A=>{A.wie=toggleIn(A.
 // Tabel met per post wie meebetaalt (vinkjes) en wat ieder betaalt; voor Huislasten en Extra correctie.
 function impEdit(m,cat,titel){
   const posts=impPosten(m,cat),info=posts.map(x=>({x,...impNieuw(m,cat,x)}));
-  const ppl=[...S.people].sort(byName).filter(p=>UI.matrixAll||HOUSE.includes(p.status)||info.some(i=>i.x.per[p.id]||i.nieuw[p.id]));
+  const ppl=[...S.people].sort(byName).filter(p=>zie(p,info.some(i=>i.x.per[p.id]||i.nieuw[p.id])));
   const cel=(p,i)=>{const aan=i.wie.includes(p.id),v=i.nieuw[p.id]||0,oud=i.x.per[p.id]||0,anders=Math.abs(v-oud)>0.004,vast=p.id in i.vast;
     const d=`data-cat="${esc(cat)}" data-label="${esc(i.x.label)}" data-pid="${p.id}"`;
     return `<td class="r num imp-cel${anders?' anders':''}${vast?' vast':''}"><input type="checkbox" data-ch="impzet" ${d} ${aan?'checked':''} aria-label="${esc(p.name)} betaalt ${esc(i.x.label)}">`
@@ -1739,7 +1745,7 @@ function impEdit(m,cat,titel){
   const heeft=m.impAanp&&m.impAanp[cat]&&Object.keys(m.impAanp[cat]).length;
   return `<section class="block breed${cat==='Huislasten'?' middel':''}"><h2>${esc(titel)} ${esc(m.label.toLowerCase())}</h2>
     <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is de basis. Met het vinkje zet je iemand aan of uit; iedereen die aangevinkt staat betaalt hetzelfde deel. Typ je bij iemand een ander bedrag, dan wordt dat een vast bedrag (blauw) en wordt het restant gelijk verdeeld over de overige aangevinkten; met ↺ gaat het weer automatisch. Ook het totaalbedrag van een post kun je aanpassen. De saldo's van de maanden erna lopen vanzelf mee.</p>
-    <div class="row" style="margin-bottom:8px"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div>
+    <div class="row" style="margin-bottom:8px">${zichtSeg()}
       ${heeft?`<button class="ghost" data-act="impreset" data-cat="${esc(cat)}">Alle aanpassingen ongedaan maken</button>`:''}</div>
     ${posts.length?`<div class="scroll tbl"><table class="hl-tabel"><thead>
       <tr><th class="n">${esc(titel)}</th>${info.map(i=>`<th class="r">${esc(i.x.label)}</th>`).join('')}<th class="r">Totaal</th></tr>
@@ -1755,12 +1761,12 @@ function impEdit(m,cat,titel){
 function scImport(m){const o={};for(const [id,b] of Object.entries(m.snapshot||{}))for(const l of b.lines||[])if(l.cat==='Servicekosten'&&!/^Aanpassing /.test(l.label))o[id]=(o[id]||0)+l.amount;return o}
 function scImportEdit(m){
   const oud=scImport(m),A=m.scAanp||{};
-  const ppl=[...S.people].sort(byName).filter(p=>UI.matrixAll||HOUSE.includes(p.status)||oud[p.id]!=null||A[p.id]!=null);
+  const ppl=[...S.people].sort(byName).filter(p=>zie(p,oud[p.id]!=null||A[p.id]!=null));
   const how=id=>{const l=((m.snapshot[id]||{}).lines||[]).find(x=>x.cat==='Servicekosten');return l?l.how:''};
   const nu=id=>A[id]!=null?+A[id]:(oud[id]||0);
   return `<section class="block"><h2>Servicekosten ${esc(m.label.toLowerCase())}</h2>
     <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is leidend. Pas per persoon het bedrag aan; de saldo's van de maanden erna lopen vanzelf mee.</p>
-    <div class="row" style="margin-bottom:8px"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div>
+    <div class="row" style="margin-bottom:8px">${zichtSeg()}
       ${Object.keys(A).length?'<button class="ghost" data-act="scimpreset">Alle aanpassingen ongedaan maken</button>':''}</div>
     <div class="scroll tbl"><table class="ledger"><thead><tr><th>Naam</th><th class="hide-sm">Berekening in de Excel</th><th class="r">Bedrag</th><th class="r">Verschil</th></tr></thead><tbody>
     ${ppl.map(p=>{const d=nu(p.id)-(oud[p.id]||0);return `<tr><td><b>${esc(p.name)}</b></td><td class="hide-sm small muted">${esc(how(p.id))}</td>
@@ -1808,7 +1814,7 @@ function afkoopImpVerschil(m){
 }
 function afkoopImpEdit(m){
   const rows=afkoopImp(m);if(!rows.length)return afkoopHistHTML(m);
-  const ppl=[...S.people].sort(byName).filter(p=>HOUSE.includes(p.status)||rows.some(x=>x.oud.includes(p.id)||x.wie.includes(p.id)));
+  const ppl=[...S.people].sort(byName).filter(p=>zie(p,!S.tabelPersonen&&rows.some(x=>x.oud.includes(p.id)||x.wie.includes(p.id))));
   return `<section class="block"><h2>Afkoopmomenten ${esc(m.label.toLowerCase())}</h2>
     <p class="note">Vink per afkoopmoment aan wie erbij was. De kosten worden verdeeld over wie aangevinkt staat; de saldo's van de maanden erna lopen vanzelf mee.</p>
     <div class="stack">${rows.map(x=>`<div class="panel stack"><div class="spread"><b>${esc(x.a.label||'Afkoop')}</b><span class="small muted">${afkoopName(x.a.type)} · ${x.a.count} × ${eur(x.a.price)} = ${eur(x.cost)} · ${x.wie.length} ${x.wie.length===1?'persoon':'personen'} · ${eur(x.perNu)} p.p.${Math.abs(x.perNu-x.perOud)>0.004?` (was ${eur(x.perOud)})`:''}</span></div>
@@ -1818,16 +1824,16 @@ function afkoopImpEdit(m){
 function pilsImpVerschil(m,id){const n=pilsImpNieuw(m,id);return sum(Object.values(n.cells))-sum(Object.values(n.oud.cells))}
 function pilsImportEdit(m){
   const imp=pilsImport(m),info=impPosten(m,'Pils').map(x=>({x,...impNieuw(m,'Pils',x)}));
-  const ids=[...new Set([...Object.keys(imp.per),...housePeople().map(p=>p.id),...Object.keys(m.pilsAanp||{})])].filter(id=>P(id));
+  const ids=[...new Set([...Object.keys(imp.per),...tabelPeople().map(p=>p.id),...Object.keys(m.pilsAanp||{})])].filter(id=>P(id));
   const rows=ids.map(id=>{const f=pilsImpNieuw(m,id,imp),deel=sum(info.map(i=>i.nieuw[id]||0)),deelOud=sum(info.map(i=>i.x.per[id]||0));
     return {p:P(id),cnt:f.cnt,tap:f.tap,fles:(f.cells[FLES]||0)+(f.cells[TAP]||0),flesOud:(f.oud.cells[FLES]||0)+(f.oud.cells[TAP]||0),deel,deelOud}})
-    .filter(r=>UI.matrixAll||HOUSE.includes(r.p.status)||r.cnt||r.tap||r.deel||r.deelOud||r.flesOud).sort((a,b)=>byName(a.p,b.p));
+    .filter(r=>zie(r.p,r.cnt||r.tap||r.deel||r.deelOud||r.flesOud)).sort((a,b)=>byName(a.p,b.p));
   const cel=(p,i)=>{const aan=i.wie.includes(p.id),v=i.nieuw[p.id]||0,oud=i.x.per[p.id]||0,anders=Math.abs(v-oud)>0.004;
     return `<td class="r num"><label class="hl-cel"><input type="checkbox" data-ch="impzet" data-cat="Pils" data-label="${esc(i.x.label)}" data-pid="${p.id}" ${aan?'checked':''} aria-label="${esc(p.name)} betaalt mee aan ${esc(i.x.label)}"> ${aan||anders?(anders?`<b title="was ${eur(oud)}">${eur(v)}</b>`:eur(v)):'<span class="muted">—</span>'}</label></td>`};
   const heeft=(m.pilsAanp&&Object.keys(m.pilsAanp).length)||(m.impAanp&&m.impAanp.Pils)||m.afkoopAanp;
   return `<section class="block breed"><h2>Pilsrekening ${esc(m.label.toLowerCase())}</h2>
     <p class="note">${esc(m.label)} komt uit de oude Excel; de rekening van die maand is leidend. Vul per persoon de <b>turven van de bar</b> (tap, ${eur3(imp.tapPrijs)} per turf) en <b>van de Nestor</b> (flesjes, ${eur3(imp.prijs)} per flesje) in. Bij de gedeelde posten zet je met het vinkje aan wie meebetaalt: haal je iemand eruit, dan wordt die post verdeeld over de overige meebetalers van ${esc(m.label.toLowerCase())}. de saldo's van de maanden erna lopen vanzelf mee. Vetgedrukte bedragen zijn aangepast.</p>
-    <div class="row" style="margin-bottom:8px"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div>
+    <div class="row" style="margin-bottom:8px">${zichtSeg()}
       ${heeft?'<button class="ghost" data-act="pilsimpreset">Alle aanpassingen ongedaan maken</button>':''}</div>
     <div class="scroll tbl"><table class="hl-tabel"><thead>
       <tr><th class="n">Naam</th><th class="r">Turven bar (tap)</th><th class="r">Turven Nestor (flesjes)</th><th class="r">Turven samen</th>${info.map(i=>`<th class="r">${esc(i.x.label)}</th>`).join('')}<th class="r">Verschil</th><th class="r">Totaal</th></tr>
@@ -1850,7 +1856,7 @@ function vPils(m){
   if(!m.pils)return `<section class="block"><h2>Pilsrekening ${esc(m.label.toLowerCase())}</h2><p class="note">Deze maand komt uit de oude Excel. Per persoon zie je hoeveel flesjes er geturfd zijn en wat elke post kostte.</p></section>`+
     lineMatrix(m,l=>l.cat==='Pils',{title:'Per persoon',count:{label:'Pils fles',re:/^(\d+) flesjes/,title:'Flesjes geturfd'},empty:'Geen pilskosten in deze maand.'})+(afk?afkoopImpEdit(m):afkoopHistHTML(m));
   const pl=m.pils,pc=pilsCalc(pl),ps=PS(),f=pl.fust,k=pl.krat;
-  const ppl=housePeople().sort(byName);
+  const ppl=(UI.matrixAll?[...S.people]:tabelPeople()).sort(byName);
   const fixedPrices=m.closed&&pl.prices;
   return `<section class="block breed">
     <h2>Pilsrekening ${esc(m.label.toLowerCase())}</h2>
@@ -2005,9 +2011,20 @@ function vKas(m){
   </div></section>`;
 }
 
+// Instellingen: wie als rij in de tabellen van Huislasten, Extra correctie en Pilsrekening staat.
+function vTabelPersonen(){
+  const ppl=[...S.people].sort((a,b)=>(HOUSE.includes(b.status)-HOUSE.includes(a.status))||byName(a,b));
+  const n=tabelPeople().length;
+  return `<section class="block"><h2>Wie zie je in de tabellen?</h2>
+    <p class="note">Vink aan wie er als rij staat bij Huislasten, Extra correctie en Pilsrekening. Wie niet aangevinkt is, verdwijnt alleen uit beeld; bedragen blijven gewoon meetellen. Met de knop <b>Iedereen</b> boven een tabel zie je tijdelijk weer iedereen.</p>
+    <div class="row" style="margin-bottom:8px"><span class="small muted">${S.tabelPersonen?`${n} ${n===1?'persoon':'personen'} gekozen`:'Nu: de huisgenoten plus wie in die maand meebetaalt'}</span>
+      <button class="ghost" data-act="tabelhuis">Alleen huisgenoten</button>${S.tabelPersonen?`<button class="ghost" data-act="tabelstandaard">Terug naar automatisch</button>`:''}</div>
+    <div class="panel"><div class="people-grid">${ppl.map(p=>`<label for="tz-${p.id}"><input type="checkbox" id="tz-${p.id}" data-ch="tabelp" data-pid="${p.id}" ${tabelPersoon(p)?'checked':''}><span>${esc(p.name)}${HOUSE.includes(p.status)?'':` <span class="small muted">· ${esc(statusLabel(p.status))}</span>`}</span></label>`).join('')}</div></div>
+  </section>`;
+}
 function vInstellingen(){
   const ppl=[...S.people];
-  const mx=(UI.matrixAll?ppl:ppl.filter(p=>HOUSE.includes(p.status)));
+  const mx=(UI.matrixAll?ppl:ppl.filter(tabelPersoon));
   const {avg}=serviceShares();
   return `${BE?`<section class="block"><h2>Beheerders</h2>
     <p class="note">Wie de huisrekening mag beheren stel je in op de site: tabblad <b>Huisrekening</b> → <b>Wie heeft toegang?</b> (alleen de hoofdadmin ziet dat).</p>
@@ -2015,9 +2032,10 @@ function vInstellingen(){
     <p class="note">Beheerders staan onderaan de pagina vermeld. Wie echt mag opslaan, bepaal je op claude.ai: open het Delen-menu van deze pagina en geef die persoon bewerkrechten.</p>
     <div class="panel"><div class="people-grid">${[...S.people].filter(p=>HOUSE.includes(p.status)||(S.house.beheerders||[]).includes(p.id)).sort(byName).map(p=>`<label for="bh-${p.id}"><input type="checkbox" id="bh-${p.id}" data-ch="beheer" data-pid="${p.id}" ${(S.house.beheerders||[]).includes(p.id)?'checked':''}><span>${esc(p.name)}</span></label>`).join('')}</div></div></section>`}
   ${vKoppeling()}
+  ${vTabelPersonen()}
   <section class="block"><h2>Kostenposten voor extra correcties en overige kosten</h2>
     <p class="note">Huislasten zoals Ziggo en Makro beheer je op het tabblad Huislasten. Kostenposten hieronder gebruik je voor extra correcties (wie standaard meedoet en het minimum voor niet-deelnemers) en voor losse kosten die je over een groep wilt verdelen.</p>
-    <div class="row"><div class="seg"><button data-act="matrixall" aria-pressed="${!UI.matrixAll}">Huisgenoten</button><button data-act="matrixall" aria-pressed="${UI.matrixAll}">Iedereen</button></div><button data-act="addcat">+ Kostenpost</button></div>
+    <div class="row">${zichtSeg()}<button data-act="addcat">+ Kostenpost</button></div>
     <div class="scroll tbl"><table class="matrix"><thead><tr><th class="n">Naam</th><th>Status</th>${S.categories.map(c=>`<th class="c">${esc(c.name)}</th>`).join('')}</tr></thead><tbody>
       ${mx.map(p=>`<tr><td class="n">${esc(p.name)}</td><td><select id="ms-${p.id}" data-ch="pfield" data-id="${p.id}" data-f="status" aria-label="Status ${esc(p.name)}">${STATUSES.map(([v,l])=>`<option value="${v}" ${p.status===v?'selected':''}>${l}</option>`).join('')}</select></td>
         ${S.categories.map(c=>`<td class="c"><input type="checkbox" id="mc-${c.id}-${p.id}" aria-label="${esc(p.name)} betaalt mee aan ${esc(c.name)}" data-ch="catpayer" data-id="${c.id}" data-pid="${p.id}" ${c.payers.includes(p.id)?'checked':''}></td>`).join('')}</tr>`).join('')}
@@ -2173,6 +2191,8 @@ const acts={
   downloadhtml:()=>download('Huisrekening Omega Ksi.html',buildDocument()),
   backup:()=>download(`huisrekening-backup-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(S,null,1)),
   matrixall:()=>{UI.matrixAll=!UI.matrixAll;render()},
+  tabelhuis:()=>mutate(()=>{S.tabelPersonen=housePeople().map(p=>p.id)}),
+  tabelstandaard:()=>mutate(()=>{delete S.tabelPersonen}),
   catfill:el=>{const c=C(el.dataset.id),f=el.dataset.f;mutate(()=>{c.payers=f==='none'?[]:S.people.filter(p=>f==='bewoner'?p.status==='bewoner':['bewoner','huisgenoot'].includes(p.status)).map(p=>p.id)})},
   addcat:()=>mutate(()=>S.categories.push({id:uid('c'),name:'Nieuwe kostenpost',payers:S.people.filter(p=>p.status==='bewoner').map(p=>p.id),minimum:0,hint:''})),
   delcat:el=>{const id=el.dataset.id,used=S.transactions.some(t=>t.categoryId===id)||S.events.some(e=>e.categoryId===id)||S.recurring.some(r=>r.categoryId===id);
@@ -2272,6 +2292,7 @@ const changes={
   impbedrag:el=>mutate(()=>impWijzig(M(UI.month),el.dataset.cat,el.dataset.label,A=>{const pid=el.dataset.pid;
     if(el.value===''){delete A.vast[pid];return}A.vast[pid]=num(el.value)||0;if(!A.wie.includes(pid))A.wie.push(pid)})),
   imptotaal:el=>mutate(()=>impWijzig(M(UI.month),el.dataset.cat,el.dataset.label,A=>{A.totaal=el.value===''?null:(num(el.value)||0)})),
+  tabelp:el=>mutate(()=>{S.tabelPersonen=toggleIn(S.tabelPersonen||tabelPeople().map(p=>p.id),el.dataset.pid,el.checked)}),
   impzet:el=>mutate(()=>impZet(M(UI.month),el.dataset.cat,el.dataset.label,el.dataset.pid,el.checked)),
   imprij:el=>{const m=M(UI.month),aan=el.checked,cat=el.dataset.cat;mutate(()=>{for(const x of impPosten(m,cat))impZet(m,cat,x.label,el.dataset.pid,aan)})},
   scimp:el=>mutate(()=>{const m=M(UI.month),id=el.dataset.pid,oud=scImport(m)[id]||0,v=el.value===''?0:+el.value;
