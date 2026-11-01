@@ -1651,14 +1651,12 @@ function impNieuw(m,cat,x){
   const oud=Object.keys(x.per).filter(id=>Math.abs(x.per[id])>0.00001),totOud=sum(oud.map(id=>x.per[id]));
   const A=impEntry(m,cat,x.label)||{},wie=A.wie||oud,tot=A.totaal!=null?+A.totaal:totOud;
   const vast=Object.fromEntries(Object.entries(A.vast||{}).filter(([id])=>wie.includes(id)).map(([id,v])=>[id,+v||0]));
-  // Vaste bedragen eerst; het restant wordt gelijk verdeeld over de overige aangevinkten.
-  // Wie in de Excel een afwijkend bedrag had (niet het bedrag dat de meesten betaalden), houdt dat bedrag.
-  const tel={};for(const id of oud){const c=Math.round(x.per[id]*100);tel[c]=(tel[c]||0)+1}
-  const [modus,keer]=Object.entries(tel).sort((a,b)=>b[1]-a[1])[0]||[0,0];
-  const eigen=keer>1?Object.fromEntries(oud.filter(id=>wie.includes(id)&&!(id in vast)&&Math.round(x.per[id]*100)!==+modus).map(id=>[id,x.per[id]])):{};
-  const vrij=wie.filter(id=>!(id in vast)&&!(id in eigen));
-  const rest=tot-sum(Object.values(vast))-sum(Object.values(eigen)),nieuw={...eigen,...vast};
-  for(const id of vrij)nieuw[id]=vrij.length?rest/vrij.length:0;
+  // Niet aangepast: precies de bedragen uit de Excel. Wel aangepast: vaste bedragen eerst,
+  // het restant gelijk verdeeld over alle overige aangevinkten.
+  const vrij=wie.filter(id=>!(id in vast));
+  const rest=tot-sum(Object.values(vast)),nieuw={...vast};
+  if(!impEntry(m,cat,x.label))for(const id of oud)nieuw[id]=x.per[id];
+  else for(const id of vrij)nieuw[id]=vrij.length?rest/vrij.length:0;
   return {nieuw,wie,tot,totOud,oud,vast,rest};
 }
 function impVerschillen(m,cat){
