@@ -1407,7 +1407,7 @@ function statementHTML(pid,m){
   const groups={};for(const [ix,l] of b.lines.entries()){(groups[l.cat]=groups[l.cat]||[]).push([ix,l])}
   const rows=[`<tr class="bal"><td>Saldo per ${fmtDate(prevTo)}</td><td class="r num">${eur(b.start)}</td></tr>`];
   {const ea=eerdereAanpassingen(pid,m),d=sum(ea.map(a=>a.d));
-    if(ea.length)rows.push(`<tr class="ln aanp"><td>Aangepast in ${esc(ea.map(a=>a.m.label.split(' ')[0].toLowerCase()).join(', '))} <button class="linkknop" data-act="aanpbekijk" data-pid="${pid}" data-mid="${m.id}">Bekijk</button></td><td class="r num">${d>0?'+':''}${eur(d)}</td></tr>`)}
+    if(ea.length)rows.push(`<tr class="ln aanp"><td>Al verwerkt in dit saldo: aanpassing in ${esc(ea.map(a=>a.m.label.split(' ')[0].toLowerCase()).join(', '))} <button class="linkknop" data-act="aanpbekijk" data-pid="${pid}" data-mid="${m.id}">Bekijk</button></td><td class="r num" title="Telt niet nog een keer mee">(${d>0?'+':''}${eur(d)})</td></tr>`)}
   const gOpen=c=>UI.grpAll||UI.grpOpen.has(pid+'|'+c);
   const gRow=(c,label,amt,n)=>`<tr class="grp tog" data-act="grp" data-key="${esc(pid+'|'+c)}" tabindex="0" aria-expanded="${gOpen(c)}"><td><span class="chev" aria-hidden="true">${gOpen(c)?'▾':'▸'}</span>${esc(label)} <span class="muted small">(${n})</span>${meldKnop(`${P(pid).name} · ${label} (${amt})`,m)}</td><td class="r num">${amt}</td></tr>`;
   for(const [cat,ls] of Object.entries(groups)){
@@ -1985,7 +1985,7 @@ function pilsImportEdit(m){
     <div class="row" style="margin-bottom:8px">${zichtSeg()}
       ${heeft?'<button class="ghost" data-act="pilsimpreset">Alle aanpassingen ongedaan maken</button>':''}</div>
     <div class="scroll tbl"><table class="hl-tabel"><thead>
-      <tr><th class="n">Naam</th><th class="r">Turven bar (tap)</th><th class="r">Turven Nestor (flesjes)</th><th class="r">Turven samen</th>${info.map(i=>`<th class="r">${esc(i.x.label)}</th>`).join('')}<th class="r">Verschil</th><th class="r">Totaal</th></tr>
+      <tr><th class="n">Naam</th><th class="r">Turven bar (tap)</th><th class="r">Turven Nestor (flesjes)</th><th class="r">Turven samen</th>${info.map(i=>`<th class="r">${esc(i.x.label)}</th>`).join('')}<th class="r" title="Hoeveel het totaal van deze persoon veranderde ten opzichte van de oude Excel">T.o.v. Excel</th><th class="r">Totaal</th></tr>
       <tr class="hl-info"><td class="n">Totaal / prijs</td><td class="r num">${sum(rows.map(r=>r.tap||0))} × ${eur3(imp.tapPrijs)}</td><td class="r num">${sum(rows.map(r=>r.cnt||0))} × ${eur3(imp.prijs)}</td><td class="r num"><b>${eur(sum(rows.map(r=>r.fles)))}</b></td>${info.map(i=>`<td class="r num"><b>${eur(i.tot)}</b></td>`).join('')}<td></td><td></td></tr>
     </thead><tbody>
     ${rows.map(r=>{const alle=info.length&&info.every(i=>i.wie.includes(r.p.id)),tot=r.fles+r.deel,d=tot-(r.flesOud+r.deelOud);
