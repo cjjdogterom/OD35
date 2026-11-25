@@ -2029,6 +2029,8 @@
     transition: all 0.15s; justify-content: center;
   }
   .share-btn:hover { border-color: var(--burgundy); background: var(--paper-warm); }
+  .gmail-terugval { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 9999; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 0.6rem 0.8rem; box-shadow: 0 4px 16px rgb(0 0 0 / .15); font-size: 0.9rem; max-width: calc(100vw - 32px); }
+  .gmail-terugval button { border: 0; background: none; cursor: pointer; margin-left: 0.4rem; }
   .share-btn-mail:hover { background: #e3eef9; border-color: #2a4d82; color: #2a4d82; }
   .share-btn-wa:hover { background: #dbf5dd; border-color: #25d366; color: #128c7e; }
   .share-btn-sms:hover { background: #e6e6f0; border-color: #5e6478; color: #2a3045; }
@@ -4652,10 +4654,17 @@ function openGmail({ to = [], bcc = [], subject = '', body = '' }) {
   const telefoon = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   if (IN_APP) { location.href = window.OD35_APP && window.OD35_APP.gmail ? appUrl : web; return; }
   if (!telefoon) { window.open(web, '_blank', 'noopener'); return; }
-  // Geen Gmail-app? Dan blijft de pagina zichtbaar en gaan we na even naar Gmail in de browser.
-  const terug = setTimeout(() => { if (document.visibilityState === 'visible') location.href = web; }, 1500);
-  document.addEventListener('visibilitychange', () => clearTimeout(terug), { once: true });
+  // Altijd eerst de Gmail-app. Safari vraagt soms eerst "Openen in Gmail?"; daarom niet zelf doorschakelen naar
+  // de browser, maar alleen een link tonen voor als de app niet opent (bijv. omdat hij niet geïnstalleerd is).
   location.href = appUrl;
+  setTimeout(() => {
+    if (document.visibilityState !== 'visible') return;
+    let m = document.getElementById('gmail-terugval');
+    if (!m) { m = document.createElement('div'); m.id = 'gmail-terugval'; m.className = 'gmail-terugval'; document.body.appendChild(m); }
+    m.innerHTML = 'Gmail-app niet geopend? <a href="' + web.replace(/"/g, '&quot;') + '" target="_blank" rel="noopener">Open Gmail in de browser</a> <button type="button" aria-label="Sluiten">✕</button>';
+    m.querySelector('button').onclick = () => m.remove();
+    setTimeout(() => m.remove(), 15000);
+  }, 2500);
 }
 document.addEventListener('click', e => {
   const k = e.target.closest('[data-gmail]');
