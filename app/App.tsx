@@ -30,7 +30,8 @@ const SLEUTEL_FACEID = 'faceIdSlot';
 const SLEUTEL_FACEID_GEVRAAGD = 'faceIdGevraagd';
 
 // Vóór de scripts van de site: laat weten dat de site in de app draait.
-const VLAG_JS = `window.OD35_APP = { versie: '${VERSIE}', platform: 'ios' }; true;`;
+// gmail: deze versie kan de Gmail-app openen (googlegmail://); de site valt anders terug op Gmail in de browser.
+const VLAG_JS = `window.OD35_APP = { versie: '${VERSIE}', platform: 'ios', gmail: true }; true;`;
 
 // Meldingen ook tonen als de app open is.
 Notifications.setNotificationHandler({
@@ -272,6 +273,18 @@ export default function App() {
           const adres = decodeURIComponent(url.slice(7).split('?')[0]);
           Alert.alert('Geen mail-app', `Er is geen mail-app ingesteld op deze iPhone. Mail zelf naar ${adres}.`);
         }
+      });
+      return false;
+    }
+    if (scheme === 'googlegmail') {
+      // Gmail-app niet geïnstalleerd: hetzelfde mailtje openen in Gmail in de browser.
+      Linking.openURL(url).catch(() => {
+        const q = new URLSearchParams(url.split('?')[1] || '');
+        const web = 'https://mail.google.com/mail/?view=cm&fs=1'
+          + (q.get('to') ? '&to=' + encodeURIComponent(q.get('to') || '') : '')
+          + (q.get('bcc') ? '&bcc=' + encodeURIComponent(q.get('bcc') || '') : '')
+          + '&su=' + encodeURIComponent(q.get('subject') || '') + '&body=' + encodeURIComponent(q.get('body') || '');
+        WebBrowser.openBrowserAsync(web, { controlsColor: MARINE }).catch(() => {});
       });
       return false;
     }

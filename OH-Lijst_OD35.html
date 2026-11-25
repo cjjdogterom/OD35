@@ -4635,6 +4635,34 @@ try {
 const APP_BRUG_RN = !!(window.OD35_APP && window.ReactNativeWebView);
 const APP_BRUG_WK = !!(window.OD35_APP && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.od35);
 const IN_APP = APP_BRUG_RN || APP_BRUG_WK;
+
+// Een nieuw mailtje openen in Gmail in plaats van de standaard mail-app (Apple Mail).
+// iPhone/Android: de Gmail-app (googlegmail://). Lukt dat niet, of draait een oudere versie van onze app
+// die de Gmail-app nog niet kan openen, dan Gmail in de browser. Computer: Gmail in een nieuw tabblad.
+function openGmail({ to = [], bcc = [], subject = '', body = '' }) {
+  const lijst = a => (Array.isArray(a) ? a : [a]).filter(Boolean).join(',');
+  const web = 'https://mail.google.com/mail/?view=cm&fs=1'
+    + (lijst(to) ? '&to=' + encodeURIComponent(lijst(to)) : '')
+    + (lijst(bcc) ? '&bcc=' + encodeURIComponent(lijst(bcc)) : '')
+    + (subject ? '&su=' + encodeURIComponent(subject) : '')
+    + (body ? '&body=' + encodeURIComponent(body) : '');
+  const appUrl = 'googlegmail://co?to=' + encodeURIComponent(lijst(to))
+    + (lijst(bcc) ? '&bcc=' + encodeURIComponent(lijst(bcc)) : '')
+    + '&subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  const telefoon = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (IN_APP) { location.href = window.OD35_APP && window.OD35_APP.gmail ? appUrl : web; return; }
+  if (!telefoon) { window.open(web, '_blank', 'noopener'); return; }
+  // Geen Gmail-app? Dan blijft de pagina zichtbaar en gaan we na even naar Gmail in de browser.
+  const terug = setTimeout(() => { if (document.visibilityState === 'visible') location.href = web; }, 1500);
+  document.addEventListener('visibilitychange', () => clearTimeout(terug), { once: true });
+  location.href = appUrl;
+}
+document.addEventListener('click', e => {
+  const k = e.target.closest('[data-gmail]');
+  if (!k) return;
+  e.preventDefault();
+  try { openGmail(JSON.parse(k.dataset.gmail)); } catch (_) {}
+});
 if (IN_APP) document.documentElement.classList.add('in-app');
 let appPushToken = null;   // apparaatnummer voor pushmeldingen, krijgen we van de app
 function appBericht(type, data) {
@@ -9290,6 +9318,7 @@ function openInviteMemberDialog() {
       </div>
       <div style="display:flex; flex-direction:column; gap:0.6rem;">
         <a href="mailto:?subject=${subject}&body=${body}" class="share-btn share-btn-mail">📧 Open in mailprogramma</a>
+        <a href="#" class="share-btn share-btn-mail" data-gmail="${escapeHtml(JSON.stringify({ subject: decodeURIComponent(subject), body: decodeURIComponent(body) }))}">✉️ Open in Gmail</a>
         <a href="https://wa.me/?text=${body}" target="_blank" rel="noopener" class="share-btn share-btn-wa">💬 Deel via WhatsApp</a>
         <a href="sms:?body=${body}" class="share-btn share-btn-sms">📱 Deel via SMS</a>
         <button type="button" class="share-btn share-btn-copy" data-share-text="${escapeHtml(text)}">📋 Kopieer tekst</button>
@@ -9316,6 +9345,7 @@ function openShareDialog(email, pw) {
       <p class="modal-sub">Voor <strong>${escapeHtml(email)}</strong></p>
       <div style="display:flex; flex-direction:column; gap:0.6rem; margin-top:1rem;">
         <a href="mailto:${encodeURIComponent(email)}?subject=${subj}&body=${body}" class="share-btn share-btn-mail">📧 Open in mailprogramma</a>
+        <a href="#" class="share-btn share-btn-mail" data-gmail="${escapeHtml(JSON.stringify({ to: email, subject: decodeURIComponent(subj), body: decodeURIComponent(body) }))}">✉️ Open in Gmail</a>
         <a href="https://wa.me/?text=${body}" target="_blank" rel="noopener" class="share-btn share-btn-wa">💬 Deel via WhatsApp</a>
         <a href="sms:?body=${body}" class="share-btn share-btn-sms">📱 Deel via SMS</a>
         <button type="button" class="share-btn share-btn-copy" data-action="copy-share-text" data-share-text="${escapeHtml(text)}">📋 Kopieer tekst</button>
@@ -9469,6 +9499,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div style="color:#4a8c4a;margin-bottom:0.6rem;"><strong>✓ Admin aangemaakt.</strong> Deel de inloggegevens via:</div>
         <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
           <a href="mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}" class="share-btn share-btn-mail">📧 Mail</a>
+          <a href="#" class="share-btn share-btn-mail" data-gmail="${escapeHtml(JSON.stringify({ to: email, subject: decodeURIComponent(subject), body: decodeURIComponent(body) }))}">✉️ Gmail</a>
           <a href="https://wa.me/?text=${body}" target="_blank" rel="noopener" class="share-btn share-btn-wa">💬 WhatsApp</a>
           <a href="sms:?body=${body}" class="share-btn share-btn-sms">📱 SMS</a>
           <button type="button" class="share-btn share-btn-copy" data-share-text="${escapeHtml(plainText)}">📋 Kopieer tekst</button>
@@ -10976,6 +11007,8 @@ function refreshMailSummary() {
   sumEl.innerHTML = `<strong>${emails.length}</strong> uniek e-mailadres${emails.length === 1 ? '' : 'sen'} bij <strong>${personCount}</strong> ${personCount === 1 ? 'persoon' : 'personen'}.`;
   btn.textContent = `Open mailprogramma (${emails.length})`;
   btn.disabled = emails.length === 0;
+  const gmailOpen = document.getElementById('mail-gmail-open-btn');
+  if (gmailOpen) { gmailOpen.textContent = `Open in Gmail (${emails.length})`; gmailOpen.disabled = emails.length === 0; }
   if (copyBtn) copyBtn.disabled = emails.length === 0;
   if (gmailBtn) {
     gmailBtn.textContent = `📨 Direct via Gmail (${emails.length})`;
@@ -11130,6 +11163,26 @@ document.getElementById('mail-recipient-area').addEventListener('input', e => {
   document.querySelectorAll('.mail-person-row').forEach(r => {
     r.style.display = (!q || r.dataset.search.includes(q)) ? '' : 'none';
   });
+});
+
+// Onderwerp en platte tekst uit het mailformulier (HTML-tags omgezet naar gewone tekst).
+function mailFormInhoud() {
+  const subject = document.getElementById('mail-subject').value.trim();
+  const body = document.getElementById('mail-html').value
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\/p>\s*<p[^>]*>/gi, '\n\n')
+    .replace(/<\/?p[^>]*>/gi, '')
+    .replace(/<[^>]+>/g, '');
+  return { subject, body };
+}
+document.getElementById('mail-gmail-open-btn').addEventListener('click', () => {
+  const recipients = computeMailRecipients();
+  if (recipients.length === 0) return;
+  const { subject, body } = mailFormInhoud();
+  const status = document.getElementById('mail-status');
+  status.className = 'mail-status success';
+  status.textContent = `Gmail openen met ${recipients.length} ontvanger${recipients.length === 1 ? '' : 's'} in BCC…`;
+  openGmail({ bcc: recipients, subject, body });
 });
 
 // Submit — opent default mail client met BCC
@@ -12705,6 +12758,7 @@ Met vriendelijke groet,"></textarea>
       <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
         <button type="button" class="mail-send-btn admin-only" id="mail-gmail-btn" style="flex:2; background:#1a73e8; display:none;">📨 Direct versturen via Gmail (0)</button>
         <button type="submit" class="mail-send-btn" id="mail-send-btn" style="flex:1;">Open mailprogramma (0)</button>
+        <button type="button" class="mail-send-btn" id="mail-gmail-open-btn" style="flex:1; background:#fff; color:#1a73e8; border:1px solid #1a73e8;">Open in Gmail (0)</button>
         <button type="button" class="mail-send-btn" id="mail-copy-btn" style="flex:1; background:transparent; color:var(--burgundy); border:1px solid var(--burgundy);">Kopieer adressen</button>
       </div>
       <div class="mail-status" id="mail-status"></div>
